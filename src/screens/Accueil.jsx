@@ -1,26 +1,40 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useData } from '../data.jsx';
+import { useData, saveRoutine } from '../data.jsx';
 import { useSession } from '../session.jsx';
-import { templateFor, fmtDay, sameDay } from '../lib/stats.js';
-import { Icon } from '../components.jsx';
+import { fmtDay, sameDay, titleKey } from '../lib/stats.js';
+import { routineFromHistory } from '../lib/routines.js';
+import { Icon, ExerciseImage } from '../components.jsx';
 
-const firstName = (user) => {
-  const n = user?.user_metadata?.name || '';
-  return n.split(' ')[0] || 'Kilian';
-};
+const firstName = (user) => (user?.user_metadata?.name || '').split(' ')[0] || 'Kilian';
 
 export default function Accueil({ user }) {
   const data = useData();
   const session = useSession();
   const nav = useNavigate();
+  const [busy, setBusy] = useState(false);
   const today = new Date();
-  const next = data.nextProgram;
-  const tpl = next ? templateFor(data, next.title) : [];
-  const nSets = tpl.reduce((a, e) => a + e.sets.filter((s) => s.set_type !== 'warmup').length, 0);
-  const lastOfNext = next ? data.workouts.find((w) => w.title === next.title) : null;
-  const minutes = lastOfNext?.end ? Math.round((lastOfNext.end - lastOfNext.start) / 60000) : null;
 
-  const start = (title) => { session.start(title); nav('/seance'); };
+  // Last time each routine was done, matched on the session title.
+  const lastDone = (name) => data.workouts.find((w) => titleKey(w.title) === titleKey(name))?.start || null;
+  const routines = data.routines.map((r) => ({ ...r, last: lastDone(r.name) }));
+  const suggested = routines.length
+    ? [...routines].sort((a, b) => (a.last?.getTime() || 0) - (b.last?.getTime() || 0))[0]
+    : null;
+
+  const startRoutine = (r) => { session.startRoutine(r); nav('/seance'); };
+  const importFromHistory = async () => {
+    setBusy(true);
+    try {
+      let pos = data.routines.length;
+      for (const p of data.programs.slice(0, 4)) await saveRoutine({ ...routineFromHistory(data, p.title), position: pos++ });
+      await data.refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const sets = (r) => r.exercises.reduce((a, e) => a + e.sets.filter((s) => s.type !== 'warmup').length, 0);
 
   return (
     <main className="screen">
@@ -33,7 +47,7 @@ export default function Accueil({ user }) {
         <span className="label">Cette semaine</span>
         <div className="week">
           {data.weekDays.map((d) => (
-            <div key={d.letter + d.date.getDate()}>
+            <div key={d.date.toISOString()}>
               <span style={d.today ? { color: 'var(--text)', fontWeight: 700 } : null}>{d.letter}</span>
               <div className={`dot ${d.done ? 'on' : d.today ? 'today' : ''}`} aria-label={`${d.date.toLocaleDateString('fr-FR', { weekday: 'long' })} : ${d.done ? 'séance faite' : 'pas de séance'}`} />
             </div>
@@ -48,45 +62,49 @@ export default function Accueil({ user }) {
           <span className="small muted">{session.done} / {session.total} séries validées</span>
           <Link to="/seance" className="btn primary big"><Icon name="play" size={18} width={2.5} />Reprendre</Link>
         </div>
-      ) : next ? (
+      ) : suggested ? (
         <div className="card lg" style={{ margin: '24px 20px 0' }}>
           <div className="stack" style={{ gap: 6 }}>
-            <span className="label accent" style={{ fontWeight: 600 }}>Séance suggérée</span>
-            <span className="display" style={{ fontSize: 26 }}>{next.title}</span>
-            <span className="small muted">{tpl.length} exercices · {nSets} séries{minutes ? ` · environ ${minutes} min` : ''}</span>
+            <span className="label accent" style={{ fontWeight: 600 }}>À faire ensuite</span>
+            <span className="display" style={{ fontSize: 26 }}>{suggested.name}</span>
+            <span className="small muted">{suggested.exercises.length} exercices · {sets(suggested)} séries{suggested.last ? ` · dernière fois le ${fmtDay(suggested.last)}` : ''}</span>
           </div>
           <div className="stack" style={{ gap: 8 }}>
-            {tpl.slice(0, 3).map((e) => {
-              const n = e.sets.filter((s) => s.set_type !== 'warmup');
-              const reps = n.length ? Math.max(...n.map((s) => s.reps || 0)) : 0;
-              return <div key={e.name} className="between" style={{ fontSize: 14 }}><span>{e.name}</span><span className="muted">{n.length} × {reps}</span></div>;
-            })}
-            {tpl.length > 3 && <span className="small muted">+ {tpl.length - 3} autres</span>}
+            {suggested.exercises.slice(0, 3).map((e) => (
+              <div key={e.name} className="row" style={{ gap: 10, fontSize: 14 }}>
+                <ExerciseImage name={e.name} size={36} radius={8} />
+                <span className="grow">{e.name}</span>
+                <span className="muted">{e.sets.filter((s) => s.type !== 'warmup').length} × {e.sets[e.sets.length - 1]?.reps ?? '?'}</span>
+              </div>
+            ))}
+            {suggested.exercises.length > 3 && <span className="small muted">+ {suggested.exercises.length - 3} autres</span>}
           </div>
-          <button className="btn primary big" onClick={() => start(next.title)}><Icon name="play" size={18} width={2.5} />Démarrer la séance</button>
+          <button className="btn primary big" onClick={() => startRoutine(suggested)}><Icon name="play" size={18} width={2.5} />Démarrer la routine</button>
         </div>
-      ) : (
-        <div className="card lg" style={{ margin: '24px 20px 0' }}>
-          <span className="display" style={{ fontSize: 22 }}>Aucune séance pour l'instant</span>
-          <span className="small muted">Importe ton historique depuis le profil, ou démarre une séance libre.</span>
-          <Link to="/profil" className="btn primary big">Importer mon historique</Link>
-        </div>
-      )}
+      ) : null}
 
-      {!!data.programs.length && (
-        <div className="section">
-          <span className="label">Mon programme</span>
-          {data.programs.filter((p) => p.title !== next?.title || session.active).map((p) => (
-            <button key={p.title} className="prog-item" disabled={session.active} onClick={() => start(p.title)}>
-              <span className="grow stack" style={{ gap: 2 }}>
-                <span style={{ fontSize: 15, fontWeight: 600 }}>{p.title}</span>
-                <span className="xs muted">Dernière fois : {sameDay(p.last, today) ? "aujourd'hui" : fmtDay(p.last)} · {p.count} fois en 4 mois</span>
-              </span>
-              <span className="muted"><Icon name="chevron" size={18} /></span>
-            </button>
-          ))}
+      <div className="section">
+        <div className="between">
+          <span className="label">Mes routines</span>
+          <Link to="/routines/nouvelle" className="small" style={{ fontWeight: 600 }}>+ Nouvelle</Link>
         </div>
-      )}
+        {routines.length ? routines.map((r) => (
+          <div key={r.id} className="prog-item" style={{ padding: '10px 6px 10px 14px' }}>
+            <Link to={`/routines/${r.id}`} className="grow stack" style={{ gap: 2, color: 'inherit', textDecoration: 'none' }} aria-label={`Modifier la routine ${r.name}`}>
+              <span style={{ fontSize: 15, fontWeight: 600 }}>{r.name}</span>
+              <span className="xs muted">{r.exercises.length} exercices · {r.last ? (sameDay(r.last, today) ? "faite aujourd'hui" : `dernière fois le ${fmtDay(r.last)}`) : 'jamais faite'}</span>
+            </Link>
+            <button className="icon-btn sq" aria-label={`Démarrer ${r.name}`} disabled={session.active} onClick={() => startRoutine(r)}><Icon name="play" size={18} width={2.5} /></button>
+          </div>
+        )) : (
+          <div className="card">
+            <span style={{ fontWeight: 600 }}>Pas encore de routine</span>
+            <span className="small muted">Je peux créer tes routines à partir de tes séances habituelles ({data.programs.map((p) => p.title).join(', ') || 'aucune pour l\'instant'}). Tu pourras ensuite les modifier.</span>
+            {!!data.programs.length && <button className="btn primary" onClick={importFromHistory} disabled={busy}>{busy ? 'Création…' : 'Créer depuis mon historique'}</button>}
+            <Link to="/routines/nouvelle" className="btn">Créer une routine vide</Link>
+          </div>
+        )}
+      </div>
 
       {!session.active && (
         <div className="section">

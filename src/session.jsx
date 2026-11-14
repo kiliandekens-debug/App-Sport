@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './supabase.js';
 import { useData } from './data.jsx';
-import { templateFor, lastSetsOf, isWork } from './lib/stats.js';
+import { templateFor, lastSetsOf } from './lib/stats.js';
+import { defaultRest, routineFromHistory, toggleSuperset as toggleSS, cleanSupersets } from './lib/routines.js';
 
 const KEY = 'app-sport-session';
 const REST_KEY = 'app-sport-rest';
@@ -22,37 +23,49 @@ export const SET_LABEL = { warmup: 'É', dropset: 'D', failure: 'F' };
 export const SET_NAME = { normal: 'normale', warmup: "d'échauffement", dropset: 'dégressive', failure: "jusqu'à l'échec" };
 export const REST_OPTIONS = [0, 30, 45, 60, 75, 90, 105, 120, 150, 180, 240, 300];
 
-const COMPOUND = /développé|developpe|couché|rowing|tirage|traction|presse|squat|soulevé|dips|chest press|militaire/i;
-export const defaultRest = (name) => (COMPOUND.test(name) ? 120 : 90);
-
 function restFor(name) {
   const saved = readJson(REST_KEY) || {};
   return saved[name] ?? defaultRest(name);
 }
 
-function buildExercise(data, name, templateSets) {
+// routineEx: { name, rest, superset, sets: [{ type, kg, reps }] } (all optional but name).
+// Loads not fixed by the routine come from the coach plan, then from the last session.
+function buildExercise(data, routineEx) {
+  const { name } = routineEx;
   const prev = lastSetsOf(data, name).filter((s) => s.weight_kg != null).map((s) => ({ kg: s.weight_kg, reps: s.reps, type: s.set_type }));
   const prevWork = prev.filter((p) => p.type !== 'warmup');
+  const prevWarm = prev.filter((p) => p.type === 'warmup');
   const plan = data.plans.get(name);
-  const shape = (templateSets && templateSets.length ? templateSets.map((s) => s.set_type) : prev.map((p) => p.type));
-  const types = shape.length ? shape : ['normal', 'normal', 'normal'];
-  let w = 0;
-  const sets = types.map((type, i) => {
-    const p = type === 'warmup' ? prev.filter((x) => x.type === 'warmup')[i] : prevWork[w++] || prevWork[prevWork.length - 1];
+  const shape = routineEx.sets?.length ? routineEx.sets : prev.length ? prev.map((p) => ({ type: p.type })) : [{}, {}, {}];
+  let w = 0, u = 0;
+  const sets = shape.map((t) => {
+    const type = t.type || 'normal';
+    const p = type === 'warmup' ? prevWarm[u++] : prevWork[w++] || prevWork[prevWork.length - 1];
     const usePlan = plan && type !== 'warmup';
-    return {
-      kg: String(usePlan ? plan.target_kg : p?.kg ?? ''),
-      reps: String(usePlan ? plan.target_reps : p?.reps ?? ''),
-      type: type || 'normal',
-      done: false,
-    };
+    const kg = t.kg ?? (usePlan ? plan.target_kg : p?.kg);
+    const reps = usePlan && t.kg == null ? plan.target_reps : t.reps ?? p?.reps;
+    return { kg: kg == null ? '' : String(kg), reps: reps == null ? '' : String(reps), type, done: false };
   });
   return {
     name,
     prev,
-    rest: restFor(name),
+    rest: routineEx.rest ?? restFor(name),
+    superset: routineEx.superset || null,
     plan: plan ? { kg: Number(plan.target_kg), reps: plan.target_reps, reason: plan.reason } : null,
     sets,
+  };
+}
+
+// The current session as a routine (set shapes and target reps, loads left to "last time").
+export function sessionToRoutine(s, name) {
+  return {
+    name,
+    exercises: s.exercises.map((e) => ({
+      name: e.name,
+      rest: e.rest,
+      superset: e.superset || null,
+      sets: e.sets.map((x) => ({ type: x.type || 'normal', reps: x.reps === '' ? null : Math.round(num(x.reps)), kg: null })),
+    })),
   };
 }
 
@@ -103,7 +116,12 @@ export function SessionProvider({ children }) {
   const begin = (title, exercises) => setS({ title, startedAt: new Date().toISOString(), exercises, current: 0, restUntil: null, restTotal: 0 });
 
   const start = useCallback((title) => {
-    begin(title, templateFor(data, title).map((t) => buildExercise(data, t.name, t.sets)));
+    const r = routineFromHistory(data, title);
+    begin(title, r.exercises.map((e) => buildExercise(data, { ...e, rest: undefined })));
+  }, [data]);
+
+  const startRoutine = useCallback((routine) => {
+    begin(routine.name, (routine.exercises || []).map((e) => buildExercise(data, e)));
   }, [data]);
 
   const startEmpty = useCallback(() => {
@@ -115,7 +133,7 @@ export function SessionProvider({ children }) {
     setS((cur) => {
       const base = cur || { title: 'Séance libre', startedAt: new Date().toISOString(), exercises: [], current: 0, restUntil: null, restTotal: 0 };
       if (base.exercises.some((e) => e.name === name)) return { ...base, current: base.exercises.findIndex((e) => e.name === name) };
-      const exercises = [...base.exercises, buildExercise(data, name)];
+      const exercises = [...base.exercises, buildExercise(data, { name })];
       return { ...base, exercises, current: exercises.length - 1 };
     });
   }, [data]);
@@ -124,7 +142,10 @@ export function SessionProvider({ children }) {
     const c = s;
     if (!c) return null;
     const done = c.exercises.flatMap((e, position) =>
-      e.sets.filter((x) => x.done).map((x, set_index) => ({ exercise: e.name, position, set_index, set_type: x.type || 'normal', weight_kg: num(x.kg), reps: Math.round(num(x.reps)) })));
+      e.sets.filter((x) => x.done).map((x, set_index) => ({
+        exercise: e.name, position, set_index, set_type: x.type || 'normal', weight_kg: num(x.kg), reps: Math.round(num(x.reps)),
+        superset_id: e.superset ? e.superset.charCodeAt(0) - 64 : null,
+      })));
     const ended = new Date().toISOString();
     if (done.length) {
       const { data: w, error } = await supabase.from('workouts').insert({ title: c.title, started_at: c.startedAt, ended_at: ended, source: 'app' }).select('id').single();
@@ -147,7 +168,7 @@ export function SessionProvider({ children }) {
   }, [s, data]);
 
   const value = useMemo(() => {
-    const base = { start, startEmpty, addExercise, cancel: () => setS(null) };
+    const base = { start, startRoutine, startEmpty, addExercise, cancel: () => setS(null) };
     if (!s) return { active: false, ...base };
     const restLeft = s.restUntil ? Math.max(0, Math.ceil((s.restUntil - now) / 1000)) : 0;
     const ex = s.exercises[s.current];
@@ -187,13 +208,30 @@ export function SessionProvider({ children }) {
         update((c) => {
           const exercises = c.exercises.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((x, j) => (j === si ? { ...x, done: true } : x)) }));
           const e = exercises[ei];
-          const allDone = e.sets.every((x) => x.done);
-          const nextEx = allDone ? exercises.findIndex((x, i) => i > ei && x.sets.some((y) => !y.done)) : -1;
-          const rest = e.rest ?? 0;
+          const open = (x) => x.sets.some((y) => !y.done);
+          let current = c.current;
+          let rest = e.rest ?? 0;
+          if (e.superset) {
+            // Superset: go straight to the next exercise of the group, rest after the last one.
+            const members = exercises.map((x, i) => ({ x, i })).filter((m) => m.x.superset === e.superset);
+            const pos = members.findIndex((m) => m.i === ei);
+            const after = members.slice(pos + 1).find((m) => open(m.x));
+            if (after) return { ...c, exercises, current: after.i, restUntil: null };
+            const first = members.find((m) => open(m.x));
+            rest = Math.max(...members.map((m) => m.x.rest ?? 0));
+            if (first) current = first.i;
+            else {
+              const nx = exercises.findIndex((x, i) => i > members[members.length - 1].i && open(x));
+              if (nx >= 0) current = nx;
+            }
+          } else if (!open(e)) {
+            const nx = exercises.findIndex((x, i) => i > ei && open(x));
+            if (nx >= 0) current = nx;
+          }
           return {
             ...c,
             exercises,
-            current: allDone && nextEx >= 0 ? nextEx : c.current,
+            current,
             restUntil: rest > 0 ? Date.now() + rest * 1000 : null,
             restTotal: rest,
           };
@@ -205,8 +243,9 @@ export function SessionProvider({ children }) {
         return { ...e, sets: [...e.sets, { kg: last.kg, reps: last.reps, type: 'normal', done: false }] };
       }),
       removeLastSet: (ei) => mapEx(ei, (e) => ({ ...e, sets: e.sets.slice(0, -1) })),
+      toggleSuperset: (ei) => update((c) => ({ ...c, exercises: toggleSS(c.exercises, ei) })),
       removeExercise: (ei) => update((c) => {
-        const exercises = c.exercises.filter((_, i) => i !== ei);
+        const exercises = cleanSupersets(c.exercises.filter((_, i) => i !== ei));
         return { ...c, exercises, current: Math.min(c.current, Math.max(0, exercises.length - 1)) };
       }),
       moveExercise: (ei, d) => update((c) => {
@@ -228,7 +267,7 @@ export function SessionProvider({ children }) {
       })),
       skipRest: () => update((c) => ({ ...c, restUntil: null })),
     };
-  }, [s, now, start, startEmpty, addExercise, finish, update]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [s, now, start, startRoutine, startEmpty, addExercise, finish, update]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <SessionCtx.Provider value={value}>{children}</SessionCtx.Provider>;
 }

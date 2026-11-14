@@ -1,4 +1,43 @@
+import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { imagesOf } from './lib/images.js';
+import { SUPERSET_COLORS } from './lib/routines.js';
+
+// Exercise illustration: two frames (start / end position) shown in turn.
+export function ExerciseImage({ name, base, size = 48, animate = false, radius = 12 }) {
+  const imgs = imagesOf(name, base);
+  const [frame, setFrame] = useState(0);
+  const [broken, setBroken] = useState(false);
+  useEffect(() => {
+    if (!animate || imgs.length < 2) return undefined;
+    const t = setInterval(() => setFrame((f) => 1 - f), 900);
+    return () => clearInterval(t);
+  }, [animate, imgs.length]);
+  const box = { width: size === 'full' ? '100%' : size, height: size === 'full' ? 'auto' : size, aspectRatio: size === 'full' ? '16 / 10' : undefined, maxHeight: size === 'full' ? 260 : undefined, borderRadius: radius, flexShrink: 0, overflow: 'hidden', background: '#FFFFFF' };
+  const fit = size === 'full' ? 'contain' : 'cover';
+  if (!imgs.length || broken) {
+    return <div style={{ ...box, background: 'var(--raised)', color: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden="true"><Icon name="dumbbell" size={typeof size === 'number' ? Math.round(size / 2) : 40} /></div>;
+  }
+  return (
+    <div style={{ ...box, position: 'relative' }}>
+      {imgs.map((src, i) => (
+        <img
+          key={src}
+          src={src}
+          alt={i === 0 ? `Illustration : ${name}` : ''}
+          loading="lazy"
+          onError={() => setBroken(true)}
+          style={{ position: i ? 'absolute' : 'static', inset: 0, width: '100%', height: '100%', objectFit: fit, display: 'block', opacity: animate ? (frame === i ? 1 : 0) : i === 0 ? 1 : 0, transition: 'opacity 0.25s' }}
+        />
+      ))}
+    </div>
+  );
+}
+
+export function SupersetTag({ letter }) {
+  if (!letter) return null;
+  return <span className="tag" style={{ background: SUPERSET_COLORS[letter] || 'var(--accent)', alignSelf: 'flex-start' }}>Superset {letter}</span>;
+}
 
 const P = {
   home: <path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" />,
@@ -21,6 +60,10 @@ const P = {
   watch: <><rect x="6" y="6" width="12" height="12" rx="3" /><path d="M9 6l1-3h4l1 3M9 18l1 3h4l1-3" /></>,
   upload: <path d="M12 16V4M7 9l5-5 5 5M5 20h14" />,
   trash: <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />,
+  link: <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />,
+  edit: <path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4" />,
+  list: <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />,
+  close: <path d="M6 6l12 12M18 6L6 18" />,
 };
 
 export function Icon({ name, size = 20, width = 2, fill }) {

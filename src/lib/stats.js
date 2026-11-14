@@ -61,7 +61,8 @@ export function analyse(workouts) {
         if (s.weight_kg > maxKg) maxKg = s.weight_kg;
         if (e > bestE) { bestE = e; bestSet = s; }
       }
-      ex.history.push({ date: w.start, workoutId: w.id, maxKg, e1rm: bestE, vol, maxReps, sets });
+      const allSets = w.sets.filter((s) => s.exercise === name);
+      ex.history.push({ date: w.start, workoutId: w.id, maxKg, e1rm: bestE, vol, maxReps, sets, allSets });
       if (!ex.best || bestE > ex.best.e1rm) ex.best = { e1rm: bestE, kg: bestSet.weight_kg, reps: bestSet.reps, date: w.start };
     }
   }
@@ -149,5 +150,5 @@ export function templateFor(data, title) {
 export function lastSetsOf(data, name) {
   const ex = data.exercises.get(name);
   if (!ex || !ex.history.length) return [];
-  return ex.history[ex.history.length - 1].sets;
+  return ex.history[ex.history.length - 1].allSets;
 }

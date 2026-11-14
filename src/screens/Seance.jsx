@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useSession, mmss, num, SET_LABEL, SET_NAME, REST_OPTIONS } from '../session.jsx';
-import { useData } from '../data.jsx';
-import { fmtKg, fmtInt } from '../lib/stats.js';
-import { Icon } from '../components.jsx';
+import { useSession, mmss, num, SET_LABEL, SET_NAME, REST_OPTIONS, sessionToRoutine } from '../session.jsx';
+import { useData, saveRoutine } from '../data.jsx';
+import { fmtKg, fmtInt, titleKey } from '../lib/stats.js';
+import { SUPERSET_COLORS } from '../lib/routines.js';
+import { Icon, ExerciseImage, SupersetTag } from '../components.jsx';
 
 const TYPE_COLOR = { warmup: '#F5C04A', dropset: '#B38CFF', failure: '#FF6B6B' };
 const restLabel = (sec) => (sec ? mmss(sec) : 'Désactivé');
@@ -14,6 +15,8 @@ export default function Seance() {
   const nav = useNavigate();
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
+  const [note, setNote] = useState('');
+  const [showImg, setShowImg] = useState(true);
 
   if (!s.active) {
     return (
@@ -54,6 +57,20 @@ export default function Seance() {
     if (t && t.trim()) s.rename(t.trim());
   };
 
+  const saveAsRoutine = async () => {
+    const existing = data.routines.find((r) => titleKey(r.name) === titleKey(s.title));
+    const name = window.prompt(existing ? `Mettre à jour la routine « ${existing.name} » ? (ou change le nom pour en créer une nouvelle)` : 'Nom de la routine', existing?.name || s.title);
+    if (!name || !name.trim()) return;
+    const same = data.routines.find((r) => r.name === name.trim());
+    try {
+      await saveRoutine({ ...sessionToRoutine(s, name.trim()), id: same?.id, position: data.routines.length });
+      await data.refresh();
+      setNote(same ? 'Routine mise à jour.' : 'Routine enregistrée.');
+    } catch (e) {
+      setNote(e.message || String(e));
+    }
+  };
+
   const best = ex ? data.exercises.get(ex.name)?.best : null;
   const work = ex ? ex.sets.filter((x) => x.type !== 'warmup') : [];
   const target = work.length ? `${work.length} × ${work[0].reps || '?'}` : '';
@@ -86,27 +103,53 @@ export default function Seance() {
               const w = e.sets.filter((x) => x.type !== 'warmup');
               const d = w.filter((x) => x.done).length;
               const full = e.sets.length > 0 && e.sets.every((x) => x.done);
+              const linked = e.superset && s.exercises[i + 1]?.superset === e.superset;
               return (
-                <button key={e.name} className={`prog-item ${i === ei ? 'cur' : ''}`} onClick={() => s.setCurrent(i)}>
-                  <span className={`ring ${full ? 'full' : i === ei ? 'on' : ''}`}>{full && <Icon name="check" size={14} width={3} />}</span>
-                  <span className="grow stack" style={{ gap: 2 }}>
-                    <span style={{ fontSize: 15, fontWeight: i === ei ? 600 : 400 }}>{e.name}</span>
-                    <span className="xs muted">Repos {restLabel(e.rest)}{e.plan ? ` · coach : ${fmtKg(e.plan.kg)} kg × ${e.plan.reps}` : ''}</span>
-                  </span>
-                  <span className={`small ${i === ei ? 'accent' : 'muted'}`}>{d}/{w.length}</span>
-                </button>
+                <div key={e.name} className="stack" style={{ gap: 0 }}>
+                  <button className={`prog-item ${i === ei ? 'cur' : ''}`} onClick={() => s.setCurrent(i)}
+                    style={{ paddingLeft: 8, borderLeft: e.superset ? `4px solid ${SUPERSET_COLORS[e.superset]}` : undefined }}>
+                    <span style={{ position: 'relative' }}>
+                      <ExerciseImage name={e.name} size={44} radius={10} />
+                      {full && <span className="ring full" style={{ position: 'absolute', right: -6, bottom: -6, width: 22, height: 22 }}><Icon name="check" size={12} width={3} /></span>}
+                    </span>
+                    <span className="grow stack" style={{ gap: 2 }}>
+                      <span style={{ fontSize: 15, fontWeight: i === ei ? 600 : 400 }}>{e.name}</span>
+                      <span className="xs muted">{e.superset ? `Superset ${e.superset} · ` : ''}Repos {restLabel(e.rest)}{e.plan ? ` · coach : ${fmtKg(e.plan.kg)} kg × ${e.plan.reps}` : ''}</span>
+                    </span>
+                    <span className={`small ${i === ei ? 'accent' : 'muted'}`}>{d}/{w.length}</span>
+                  </button>
+                  {i < s.exercises.length - 1 && (
+                    <button onClick={() => s.toggleSuperset(i)} aria-label={linked ? `Délier ${e.name} du superset` : `Lier ${e.name} en superset avec ${s.exercises[i + 1].name}`}
+                      style={{ alignSelf: 'center', height: 28, padding: '0 12px', margin: '2px 0', borderRadius: 14, border: 'none', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, background: linked ? 'var(--done)' : 'transparent', color: linked ? 'var(--accent)' : 'var(--muted)' }}>
+                      <Icon name="link" size={14} />{linked ? 'Superset' : 'Lier'}
+                    </button>
+                  )}
+                </div>
               );
             })}
             <Link to="/exercices" className="btn dashed" style={{ height: 52 }}><Icon name="plus" size={18} />Ajouter un exercice</Link>
+            {!!s.exercises.length && (
+              <button className="btn" style={{ height: 48, borderRadius: 14, background: 'transparent', border: '1px solid var(--border)' }} onClick={saveAsRoutine}>
+                <Icon name="list" size={18} />Enregistrer comme routine
+              </button>
+            )}
+            {note && <span className="small accent">{note}</span>}
           </div>
         </div>
 
         <div className="panel" style={{ paddingTop: 20 }}>
           {ex ? (
             <div className="card" style={{ margin: '0 20px' }}>
+              {showImg && (
+                <button onClick={() => setShowImg(false)} aria-label="Masquer l'illustration" style={{ padding: 0, border: 'none', background: 'none' }}>
+                  <ExerciseImage name={ex.name} size="full" animate radius={14} />
+                </button>
+              )}
               <div className="row" style={{ alignItems: 'flex-start' }}>
                 <div className="grow stack" style={{ gap: 4 }}>
+                  <SupersetTag letter={ex.superset} />
                   <span className="display" style={{ fontSize: 22, lineHeight: 1.15 }}>{ex.name}</span>
+                  {!showImg && <button className="xs" onClick={() => setShowImg(true)} style={{ alignSelf: 'flex-start', padding: 0, border: 'none', background: 'none', color: 'var(--accent)' }}>Voir l'illustration</button>}
                   <span className="small muted">Objectif {target || '–'}{best ? ` · record ${fmtKg(best.kg)} kg × ${best.reps}` : ''}</span>
                   {ex.plan && <span className="xs accent">Coach : {ex.plan.reason}</span>}
                 </div>

@@ -5,22 +5,23 @@ import { analyse } from './lib/stats.js';
 const DataCtx = createContext(null);
 
 export function DataProvider({ children }) {
-  const [raw, setRaw] = useState({ workouts: [], custom: [], plans: [] });
+  const [raw, setRaw] = useState({ workouts: [], custom: [], plans: [], routines: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const refresh = useCallback(async () => {
     try {
-      const [workouts, sets, custom, plans] = await Promise.all([
+      const [workouts, sets, custom, plans, routines] = await Promise.all([
         fetchAll('workouts', 'id,title,started_at,ended_at', 'started_at'),
-        fetchAll('sets', 'workout_id,exercise,position,set_index,set_type,weight_kg,reps,duration_seconds,distance_km', 'id'),
+        fetchAll('sets', 'workout_id,exercise,position,set_index,set_type,weight_kg,reps,duration_seconds,distance_km,superset_id', 'id'),
         fetchAll('custom_exercises', '*', 'created_at'),
         fetchAll('coach_plans', '*', 'created_at'),
+        fetchAll('routines', '*', 'position'),
       ]);
       const byId = new Map(workouts.map((w) => [w.id, { ...w, sets: [] }]));
       for (const s of sets) byId.get(s.workout_id)?.sets.push({ ...s, weight_kg: s.weight_kg == null ? null : Number(s.weight_kg) });
       for (const w of byId.values()) w.sets.sort((a, b) => a.position - b.position || a.set_index - b.set_index);
-      setRaw({ workouts: [...byId.values()], custom, plans });
+      setRaw({ workouts: [...byId.values()], custom, plans, routines });
       setError(null);
     } catch (e) {
       setError(e.message || String(e));
@@ -34,7 +35,7 @@ export function DataProvider({ children }) {
   const value = useMemo(() => {
     const data = analyse(raw.workouts);
     const plans = new Map(raw.plans.map((p) => [p.exercise, p]));
-    return { ...data, custom: raw.custom, plans, loading, error, refresh };
+    return { ...data, custom: raw.custom, routines: raw.routines, plans, loading, error, refresh };
   }, [raw, loading, error, refresh]);
 
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;
@@ -64,6 +65,24 @@ export async function importWorkouts(parsed, existing, onProgress) {
     onProgress?.(done, todo.length);
   }
   return { added: todo.length, skipped: parsed.length - todo.length };
+}
+
+// Routine exercises: [{ name, rest, superset, sets: [{ type, kg, reps }] }]
+export async function saveRoutine(routine) {
+  const row = { name: routine.name, exercises: routine.exercises, updated_at: new Date().toISOString() };
+  if (routine.id) {
+    const { error } = await supabase.from('routines').update(row).eq('id', routine.id);
+    if (error) throw error;
+    return routine.id;
+  }
+  const { data, error } = await supabase.from('routines').insert({ ...row, position: routine.position ?? 0 }).select('id').single();
+  if (error) throw error;
+  return data.id;
+}
+
+export async function deleteRoutine(id) {
+  const { error } = await supabase.from('routines').delete().eq('id', id);
+  if (error) throw error;
 }
 
 export async function savePlan(exercise, plan) {

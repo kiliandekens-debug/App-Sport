@@ -49,6 +49,7 @@ export function parseHevyCsv(text) {
       distance_km: num(r.distance_km),
       duration_seconds: num(r.duration_seconds),
       rpe: num(r.rpe),
+      superset_id: num(r.superset_id),
     });
   }
   return [...byStart.values()].sort((a, b) => a.started_at.localeCompare(b.started_at));
