@@ -55,8 +55,18 @@ export default function Coach() {
 
       <div className="split" style={{ paddingTop: 16 }}>
         <div className="panel pad stack" style={{ gap: 12 }}>
+          {state?.summary && (
+            <div className="card" style={{ border: '1px solid #3B4A17', background: 'var(--done)' }}>
+              <span className="row accent" style={{ gap: 8, fontWeight: 700 }}><Icon name="check" size={18} width={3} />Séance enregistrée</span>
+              <span className="display" style={{ fontSize: 22 }}>{state.summary.title}</span>
+              <div className="session-stats" style={{ padding: 0 }}>
+                <span><b>{state.summary.minutes}</b>min</span>
+                <span><b>{fmtInt(state.summary.volume)}</b>kg</span>
+                <span><b>{state.summary.sets}</b>séries</span>
+              </div>
+            </div>
+          )}
           <div className="bubble">
-            {state?.summary ? 'Séance enregistrée. ' : ''}
             {review.totalSets} séries, {fmtInt(review.volume)} kg soulevés.
             {review.items.some((i) => i.kind === 'question') ? ' Une chose m\'intrigue.' : ' Voici ce que je propose pour la suite.'}
           </div>

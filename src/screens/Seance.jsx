@@ -1,22 +1,116 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSession, mmss, num, SET_LABEL, SET_NAME, REST_OPTIONS, sessionToRoutine } from '../session.jsx';
 import { useData, saveRoutine } from '../data.jsx';
+import { useUi } from '../ui.jsx';
 import { fmtKg, fmtInt, titleKey } from '../lib/stats.js';
 import { SUPERSET_COLORS } from '../lib/routines.js';
 import { Icon, ExerciseImage, SupersetTag } from '../components.jsx';
+import ExerciseSheet from './ExerciseSheet.jsx';
 
 const TYPE_COLOR = { warmup: '#F5C04A', dropset: '#B38CFF', failure: '#FF6B6B' };
 const restLabel = (sec) => (sec ? mmss(sec) : 'Désactivé');
 
+// One exercise with all its sets, as in Hevy: everything is editable in place.
+function ExerciseCard({ e, ei, s, best, isCurrent, onOpen, cardRef }) {
+  const ui = useUi();
+  const [menu, setMenu] = useState(false);
+  const isLast = ei === s.exercises.length - 1;
+  const linked = e.superset && s.exercises[ei + 1]?.superset === e.superset;
+  const activeIdx = e.sets.findIndex((x) => !x.done);
+  const prevWarm = e.prev.filter((q) => q.type === 'warmup');
+  const prevWork = e.prev.filter((q) => q.type !== 'warmup');
+  let workN = 0, wu = 0, wk = 0;
+
+  const remove = async () => {
+    if (await ui.confirm({ title: `Retirer ${e.name} ?`, message: 'Les séries déjà validées sur cet exercice seront perdues.', ok: 'Retirer', danger: true })) s.removeExercise(ei);
+  };
+
+  return (
+    <section ref={cardRef} className={`ex-card ${isCurrent ? 'cur' : ''}`} style={e.superset ? { borderLeft: `4px solid ${SUPERSET_COLORS[e.superset]}` } : null} aria-label={e.name}>
+      <div className="row" style={{ gap: 12 }}>
+        <button onClick={onOpen} aria-label={`Voir l'illustration de ${e.name}`} style={{ padding: 0, border: 'none', background: 'none' }}>
+          <ExerciseImage name={e.name} size={48} />
+        </button>
+        <div className="grow stack" style={{ gap: 3 }}>
+          <SupersetTag letter={e.superset} />
+          <span className="display" style={{ fontSize: 17, lineHeight: 1.2 }}>{e.name}</span>
+          {best && <span className="xs muted">Record {fmtKg(best.kg)} kg × {best.reps}</span>}
+        </div>
+        <button className="icon-btn sq" aria-label={`Options de ${e.name}`} aria-expanded={menu} onClick={() => setMenu(!menu)}><Icon name={menu ? 'close' : 'more'} size={18} /></button>
+      </div>
+
+      {menu && (
+        <div className="ex-menu">
+          {!isLast && <button onClick={() => { s.toggleSuperset(ei); setMenu(false); }}><Icon name="link" size={16} />{linked ? 'Délier du superset' : `Superset avec ${s.exercises[ei + 1].name}`}</button>}
+          <button disabled={ei === 0} onClick={() => s.moveExercise(ei, -1)}><Icon name="up" size={16} />Monter</button>
+          <button disabled={isLast} onClick={() => s.moveExercise(ei, 1)}><Icon name="down" size={16} />Descendre</button>
+          <button disabled={!e.sets.length} onClick={() => s.removeLastSet(ei)}><Icon name="minus" size={16} />Retirer la dernière série</button>
+          <button style={{ color: '#FF9A9A' }} onClick={remove}><Icon name="trash" size={16} />Retirer l'exercice</button>
+        </div>
+      )}
+
+      <label className="rest-row">
+        <Icon name="timer" size={16} />
+        <span>Repos</span>
+        <select aria-label={`Temps de repos pour ${e.name}`} value={e.rest ?? 0} onChange={(ev) => s.setRest(ei, Number(ev.target.value))}>
+          {REST_OPTIONS.map((o) => <option key={o} value={o}>{restLabel(o)}</option>)}
+        </select>
+      </label>
+      {e.plan && <span className="xs accent">Coach : {fmtKg(e.plan.kg)} kg × {e.plan.reps}. {e.plan.reason}.</span>}
+
+      <div className="sets-head"><span>Série</span><span>Précédent</span><span style={{ textAlign: 'center' }}>Kg</span><span style={{ textAlign: 'center' }}>Reps</span><span /></div>
+      <div className="stack" style={{ gap: 6 }}>
+        {e.sets.map((x, i) => {
+          const type = x.type || 'normal';
+          const label = type === 'normal' ? String(++workN) : SET_LABEL[type];
+          const p = type === 'warmup' ? prevWarm[wu++] : prevWork[wk++];
+          const prev = p ? `${fmtKg(p.kg)} × ${p.reps}` : '–';
+          const typeBtn = (
+            <button className="n" onClick={() => s.cycleType(ei, i)} aria-label={`Série ${i + 1}, ${SET_NAME[type]}. Changer le type`}
+              style={{ height: 40, borderRadius: 10, border: 'none', background: 'transparent', color: TYPE_COLOR[type] || 'inherit', fontWeight: 700, fontSize: 15 }}>{label}</button>
+          );
+          if (x.done) {
+            return (
+              <div key={i} className="set-row done">
+                {typeBtn}<span className="muted small">{prev}</span>
+                <span className="c">{fmtKg(num(x.kg))}</span><span className="c">{x.reps}</span>
+                <button className="check" aria-label={`Annuler la validation de la série ${i + 1}`} onClick={() => s.unvalidate(ei, i)}><Icon name="check" size={18} width={2.5} /></button>
+              </div>
+            );
+          }
+          return (
+            <div key={i} className={`set-row ${isCurrent && i === activeIdx ? 'active' : ''}`}>
+              {typeBtn}<span className="muted small">{prev}</span>
+              <input aria-label={`Charge en kg, série ${i + 1}`} inputMode="decimal" value={x.kg} placeholder={p ? fmtKg(p.kg) : 'kg'} onFocus={(ev) => ev.target.select()} onChange={(ev) => s.setSet(ei, i, { kg: ev.target.value })} />
+              <input aria-label={`Répétitions, série ${i + 1}`} inputMode="numeric" value={x.reps} placeholder={p ? String(p.reps) : 'reps'} onFocus={(ev) => ev.target.select()} onChange={(ev) => s.setSet(ei, i, { reps: ev.target.value })} />
+              <button className="check outline" aria-label={`Valider la série ${i + 1}`} onClick={() => s.validate(ei, i)}><Icon name="check" size={18} width={2.5} /></button>
+            </div>
+          );
+        })}
+      </div>
+      <button className="btn dashed" onClick={() => s.addSet(ei)}><Icon name="plus" size={16} />Ajouter une série</button>
+    </section>
+  );
+}
+
 export default function Seance() {
   const s = useSession();
   const data = useData();
+  const ui = useUi();
   const nav = useNavigate();
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState('');
-  const [note, setNote] = useState('');
-  const [showImg, setShowImg] = useState(true);
+  const [open, setOpen] = useState(null);
+  const [hint, setHint] = useState(() => { try { return !localStorage.getItem('app-sport-hint-types'); } catch { return false; } });
+  const refs = useRef({});
+  const mounted = useRef(false);
+  const curName = s.active ? s.exercises[s.current]?.name : null;
+
+  // Follow the session: bring the exercise being worked on into view.
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; if (!s.active || s.current === 0) return; }
+    if (curName && refs.current[curName]) refs.current[curName].scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [curName]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!s.active) {
     return (
@@ -32,211 +126,113 @@ export default function Seance() {
 
   const ex = s.exercise;
   const ei = s.current;
+  const anyDone = s.exercises.some((e) => e.sets.some((x) => x.done));
 
+  const abandon = async () => {
+    if (await ui.confirm({ title: 'Abandonner la séance ?', message: anyDone ? 'Les séries validées ne seront pas enregistrées.' : 'Rien ne sera enregistré.', ok: 'Abandonner', danger: true })) { s.cancel(); nav('/'); }
+  };
   const finish = async () => {
-    if (s.done === 0) {
-      if (!window.confirm('Aucune série validée. Abandonner la séance ?')) return;
-      s.cancel();
-      nav('/');
-      return;
-    }
-    if (!window.confirm('Terminer et enregistrer la séance ?')) return;
+    if (!anyDone) { abandon(); return; }
+    const left = s.total - s.done;
+    const ok = await ui.confirm({
+      title: 'Terminer la séance ?',
+      message: left > 0 ? `${left} série${left > 1 ? 's' : ''} non validée${left > 1 ? 's' : ''} ne ser${left > 1 ? 'ont' : 'a'} pas enregistrée${left > 1 ? 's' : ''}.` : `${s.done} séries, ${fmtInt(s.volume)} kg soulevés.`,
+      ok: 'Terminer',
+    });
+    if (!ok) return;
     setSaving(true);
-    setErr('');
     try {
       const summary = await s.finish();
       nav('/coach', { state: { summary } });
-    } catch (e) {
-      setErr(e.message || String(e));
+    } catch (err) {
+      ui.notify(`Échec de l'enregistrement : ${err.message || err}`);
       setSaving(false);
     }
   };
-
-  const rename = () => {
-    const t = window.prompt('Nom de la séance', s.title);
-    if (t && t.trim()) s.rename(t.trim());
+  const rename = async () => {
+    const t = await ui.prompt({ title: 'Nom de la séance', value: s.title, ok: 'Renommer' });
+    if (t) s.rename(t);
   };
-
   const saveAsRoutine = async () => {
     const existing = data.routines.find((r) => titleKey(r.name) === titleKey(s.title));
-    const name = window.prompt(existing ? `Mettre à jour la routine « ${existing.name} » ? (ou change le nom pour en créer une nouvelle)` : 'Nom de la routine', existing?.name || s.title);
-    if (!name || !name.trim()) return;
-    const same = data.routines.find((r) => r.name === name.trim());
+    const name = await ui.prompt({
+      title: existing ? 'Mettre à jour la routine' : 'Enregistrer comme routine',
+      message: existing ? `Garde ce nom pour mettre à jour « ${existing.name} », ou change-le pour créer une nouvelle routine.` : 'Tu la retrouveras sur l\'accueil, prête à démarrer.',
+      value: existing?.name || s.title,
+      ok: 'Enregistrer',
+    });
+    if (!name) return;
+    const same = data.routines.find((r) => r.name === name);
     try {
-      await saveRoutine({ ...sessionToRoutine(s, name.trim()), id: same?.id, position: data.routines.length });
+      await saveRoutine({ ...sessionToRoutine(s, name), id: same?.id, position: data.routines.length });
       await data.refresh();
-      setNote(same ? 'Routine mise à jour.' : 'Routine enregistrée.');
-    } catch (e) {
-      setNote(e.message || String(e));
+      ui.notify(same ? 'Routine mise à jour' : 'Routine enregistrée');
+    } catch (err) {
+      ui.notify(err.message || String(err));
     }
   };
-
-  const best = ex ? data.exercises.get(ex.name)?.best : null;
-  const work = ex ? ex.sets.filter((x) => x.type !== 'warmup') : [];
-  const target = work.length ? `${work.length} × ${work[0].reps || '?'}` : '';
-  let workN = 0;
+  const dismissHint = () => { setHint(false); try { localStorage.setItem('app-sport-hint-types', '1'); } catch { /* private mode */ } };
 
   return (
     <main className="screen wide" style={{ paddingBottom: 'calc(150px + env(safe-area-inset-bottom))' }}>
-      <div className="split">
-        <div className="panel">
-          <div className="head-row">
-            <Link to="/" aria-label="Réduire la séance" className="icon-btn only-narrow"><Icon name="down" /></Link>
-            <button className="grow stack" style={{ gap: 2, background: 'none', border: 'none', color: 'inherit', textAlign: 'left', padding: 0 }} onClick={rename} aria-label={`Renommer la séance ${s.title}`}>
-              <span className="xs muted" style={{ textTransform: 'uppercase', letterSpacing: '0.04em' }}>Séance en cours</span>
-              <span className="display" style={{ fontSize: 20 }}>{s.title}</span>
-            </button>
-            <Link to="/montre" aria-label="Vue montre" className="icon-btn"><Icon name="watch" /></Link>
-            <button className="btn primary" onClick={finish} disabled={saving}>{saving ? '…' : 'Terminer'}</button>
-          </div>
-          {err && <p className="pad small" style={{ color: '#FF8A8A' }}>{err}</p>}
-
-          <div className="grid3 pad" style={{ paddingBottom: 16 }}>
-            <div className="tile"><span className="xs muted">Durée</span><span className="v accent">{mmss(s.elapsed)}</span></div>
-            <div className="tile"><span className="xs muted">Volume</span><span className="v">{fmtInt(s.volume)} kg</span></div>
-            <div className="tile"><span className="xs muted">Séries</span><span className="v">{s.done}<span className="muted" style={{ fontSize: 14 }}> / {s.total}</span></span></div>
-          </div>
-
-          <div className="pad stack" style={{ gap: 6 }}>
-            <span className="label">Exercices</span>
-            {s.exercises.map((e, i) => {
-              const w = e.sets.filter((x) => x.type !== 'warmup');
-              const d = w.filter((x) => x.done).length;
-              const full = e.sets.length > 0 && e.sets.every((x) => x.done);
-              const linked = e.superset && s.exercises[i + 1]?.superset === e.superset;
-              return (
-                <div key={e.name} className="stack" style={{ gap: 0 }}>
-                  <button className={`prog-item ${i === ei ? 'cur' : ''}`} onClick={() => s.setCurrent(i)}
-                    style={{ paddingLeft: 8, borderLeft: e.superset ? `4px solid ${SUPERSET_COLORS[e.superset]}` : undefined }}>
-                    <span style={{ position: 'relative' }}>
-                      <ExerciseImage name={e.name} size={44} radius={10} />
-                      {full && <span className="ring full" style={{ position: 'absolute', right: -6, bottom: -6, width: 22, height: 22 }}><Icon name="check" size={12} width={3} /></span>}
-                    </span>
-                    <span className="grow stack" style={{ gap: 2 }}>
-                      <span style={{ fontSize: 15, fontWeight: i === ei ? 600 : 400 }}>{e.name}</span>
-                      <span className="xs muted">{e.superset ? `Superset ${e.superset} · ` : ''}Repos {restLabel(e.rest)}{e.plan ? ` · coach : ${fmtKg(e.plan.kg)} kg × ${e.plan.reps}` : ''}</span>
-                    </span>
-                    <span className={`small ${i === ei ? 'accent' : 'muted'}`}>{d}/{w.length}</span>
-                  </button>
-                  {i < s.exercises.length - 1 && (
-                    <button onClick={() => s.toggleSuperset(i)} aria-label={linked ? `Délier ${e.name} du superset` : `Lier ${e.name} en superset avec ${s.exercises[i + 1].name}`}
-                      style={{ alignSelf: 'center', height: 28, padding: '0 12px', margin: '2px 0', borderRadius: 14, border: 'none', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6, background: linked ? 'var(--done)' : 'transparent', color: linked ? 'var(--accent)' : 'var(--muted)' }}>
-                      <Icon name="link" size={14} />{linked ? 'Superset' : 'Lier'}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-            <Link to="/exercices" className="btn dashed" style={{ height: 52 }}><Icon name="plus" size={18} />Ajouter un exercice</Link>
-            {!!s.exercises.length && (
-              <button className="btn" style={{ height: 48, borderRadius: 14, background: 'transparent', border: '1px solid var(--border)' }} onClick={saveAsRoutine}>
-                <Icon name="list" size={18} />Enregistrer comme routine
-              </button>
-            )}
-            {note && <span className="small accent">{note}</span>}
-          </div>
+      <header className="session-head">
+        <div className="row">
+          <Link to="/" aria-label="Réduire la séance" className="icon-btn"><Icon name="down" /></Link>
+          <button className="grow" style={{ background: 'none', border: 'none', color: 'inherit', textAlign: 'left', padding: 0, minHeight: 44 }} onClick={rename} aria-label={`Renommer la séance ${s.title}`}>
+            <span className="display" style={{ fontSize: 20, lineHeight: 1.15 }}>{s.title}</span>
+          </button>
+          <Link to="/montre" aria-label="Vue montre" className="icon-btn"><Icon name="watch" /></Link>
+          <button className="btn primary" onClick={finish} disabled={saving}>{saving ? '…' : 'Terminer'}</button>
         </div>
+        <div className="session-stats">
+          <span><b className="accent" style={{ color: 'var(--accent)' }}>{mmss(s.elapsed)}</b>durée</span>
+          <span><b>{fmtInt(s.volume)}</b>kg</span>
+          <span><b>{s.done}/{s.total}</b>séries</span>
+        </div>
+        <div className="session-bar"><div style={{ width: `${s.total ? (s.done / s.total) * 100 : 0}%` }} /></div>
+      </header>
 
-        <div className="panel" style={{ paddingTop: 20 }}>
-          {ex ? (
-            <div className="card" style={{ margin: '0 20px' }}>
-              {showImg && (
-                <button onClick={() => setShowImg(false)} aria-label="Masquer l'illustration" style={{ padding: 0, border: 'none', background: 'none' }}>
-                  <ExerciseImage name={ex.name} size="full" animate radius={14} />
-                </button>
-              )}
-              <div className="row" style={{ alignItems: 'flex-start' }}>
-                <div className="grow stack" style={{ gap: 4 }}>
-                  <SupersetTag letter={ex.superset} />
-                  <span className="display" style={{ fontSize: 22, lineHeight: 1.15 }}>{ex.name}</span>
-                  {!showImg && <button className="xs" onClick={() => setShowImg(true)} style={{ alignSelf: 'flex-start', padding: 0, border: 'none', background: 'none', color: 'var(--accent)' }}>Voir l'illustration</button>}
-                  <span className="small muted">Objectif {target || '–'}{best ? ` · record ${fmtKg(best.kg)} kg × ${best.reps}` : ''}</span>
-                  {ex.plan && <span className="xs accent">Coach : {ex.plan.reason}</span>}
-                </div>
-                <Link to="/exercices" aria-label="Ajouter ou changer d'exercice" className="icon-btn sq"><Icon name="swap" size={18} /></Link>
-              </div>
+      <div className="split" style={{ paddingTop: 16 }}>
+        <nav className="panel only-wide session-nav stack" style={{ gap: 6 }} aria-label="Exercices de la séance">
+          {s.exercises.map((e, i) => {
+            const w = e.sets.filter((x) => x.type !== 'warmup');
+            return (
+              <button key={e.name} className={`prog-item ${i === ei ? 'cur' : ''}`} onClick={() => { s.setCurrent(i); refs.current[e.name]?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
+                <ExerciseImage name={e.name} size={40} radius={10} />
+                <span className="grow" style={{ fontSize: 15, fontWeight: i === ei ? 600 : 400 }}>{e.name}</span>
+                <span className={`small ${i === ei ? 'accent' : 'muted'}`}>{w.filter((x) => x.done).length}/{w.length}</span>
+              </button>
+            );
+          })}
+        </nav>
 
-              <label className="row" style={{ gap: 10, padding: '8px 12px', borderRadius: 12, background: 'var(--raised)' }}>
-                <span style={{ color: 'var(--rest)' }}><Icon name="timer" size={18} /></span>
-                <span className="grow small">Temps de repos</span>
-                <select
-                  aria-label={`Temps de repos pour ${ex.name}`}
-                  value={ex.rest ?? 0}
-                  onChange={(e) => s.setRest(ei, Number(e.target.value))}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--rest)', fontWeight: 700, fontSize: 15, textAlign: 'right' }}
-                >
-                  {REST_OPTIONS.map((o) => <option key={o} value={o}>{restLabel(o)}</option>)}
-                </select>
-              </label>
+        <div className="panel pad stack" style={{ gap: 12 }}>
+          {hint && !!s.exercises.length && (
+            <button onClick={dismissHint} className="row xs soft" style={{ padding: '10px 12px', borderRadius: 12, background: 'var(--chip)', border: 'none', textAlign: 'left', lineHeight: 1.4 }}>
+              <span className="grow">Touche le numéro d'une série pour la passer en échauffement (É), dégressive (D) ou échec (F). Touche l'image pour voir le mouvement.</span>
+              <Icon name="close" size={16} />
+            </button>
+          )}
 
-              <div className="sets-head"><span>Série</span><span>Précédent</span><span style={{ textAlign: 'center' }}>Kg</span><span style={{ textAlign: 'center' }}>Reps</span><span /></div>
-              <div className="stack" style={{ gap: 6 }}>
-                {ex.sets.map((x, i) => {
-                  const type = x.type || 'normal';
-                  const label = type === 'normal' ? String(++workN) : SET_LABEL[type];
-                  const p = type === 'warmup'
-                    ? ex.prev.filter((q) => q.type === 'warmup')[ex.sets.slice(0, i).filter((y) => y.type === 'warmup').length]
-                    : ex.prev.filter((q) => q.type !== 'warmup')[ex.sets.slice(0, i).filter((y) => y.type !== 'warmup').length];
-                  const prev = p ? `${fmtKg(p.kg)} × ${p.reps}` : '–';
-                  const typeBtn = (
-                    <button
-                      className="n"
-                      onClick={() => s.cycleType(ei, i)}
-                      aria-label={`Série ${i + 1}, ${SET_NAME[type]}. Changer le type`}
-                      style={{ height: 40, borderRadius: 10, border: 'none', background: 'transparent', color: TYPE_COLOR[type] || 'inherit', fontWeight: 700, fontSize: 15 }}
-                    >{label}</button>
-                  );
-                  if (x.done) {
-                    return (
-                      <div key={i} className="set-row done">
-                        {typeBtn}<span className="muted small">{prev}</span>
-                        <span className="c">{fmtKg(num(x.kg))}</span><span className="c">{x.reps}</span>
-                        <button className="check" aria-label={`Annuler la validation de la série ${i + 1}`} onClick={() => s.unvalidate(ei, i)}><Icon name="check" size={18} width={2.5} /></button>
-                      </div>
-                    );
-                  }
-                  return (
-                    <div key={i} className={`set-row ${i === s.activeSet ? 'active' : 'pending'}`}>
-                      {typeBtn}<span className="muted small">{prev}</span>
-                      <input aria-label={`Charge en kg, série ${i + 1}`} inputMode="decimal" value={x.kg} placeholder={p ? fmtKg(p.kg) : 'kg'} onChange={(e) => s.setSet(ei, i, { kg: e.target.value })} />
-                      <input aria-label={`Répétitions, série ${i + 1}`} inputMode="numeric" value={x.reps} placeholder={p ? String(p.reps) : 'reps'} onChange={(e) => s.setSet(ei, i, { reps: e.target.value })} />
-                      <button className="check outline" aria-label={`Valider la série ${i + 1}`} onClick={() => s.validate(ei, i)}><Icon name="check" size={18} width={2.5} /></button>
-                    </div>
-                  );
-                })}
-              </div>
-              <span className="xs muted">Touche le numéro d'une série pour la passer en échauffement (É), dégressive (D) ou échec (F).</span>
-              <div className="grid2">
-                <button className="btn dashed" onClick={() => s.addSet(ei)}>+ Série</button>
-                <button className="btn dashed" onClick={() => s.removeLastSet(ei)} disabled={!ex.sets.length}>− Dernière série</button>
-              </div>
-              <div className="row" style={{ gap: 8 }}>
-                <button className="icon-btn sq" aria-label="Monter l'exercice" onClick={() => s.moveExercise(ei, -1)} disabled={ei === 0}><Icon name="up" size={18} /></button>
-                <button className="icon-btn sq" aria-label="Descendre l'exercice" onClick={() => s.moveExercise(ei, 1)} disabled={ei === s.exercises.length - 1}><Icon name="down" size={18} /></button>
-                <div className="grow" />
-                <button className="btn" style={{ background: 'transparent', color: '#FF8A8A', fontWeight: 500, fontSize: 14 }} onClick={() => { if (window.confirm(`Retirer ${ex.name} de la séance ?`)) s.removeExercise(ei); }}>
-                  <Icon name="trash" size={16} />Retirer l'exercice
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="card" style={{ margin: '0 20px' }}>
+          {s.exercises.map((e, i) => (
+            <ExerciseCard key={e.name} e={e} ei={i} s={s} best={data.exercises.get(e.name)?.best} isCurrent={i === ei}
+              onOpen={() => setOpen({ name: e.name })} cardRef={(el) => { refs.current[e.name] = el; }} />
+          ))}
+
+          {!s.exercises.length && (
+            <div className="card">
               <span className="display" style={{ fontSize: 20 }}>Séance vide</span>
-              <span className="small muted">Ajoute tes exercices un par un, comme dans Hevy. Tes dernières charges sont reprises automatiquement.</span>
-              <Link to="/exercices" className="btn primary big"><Icon name="plus" size={18} width={2.5} />Ajouter un exercice</Link>
+              <span className="small muted">Ajoute tes exercices un par un. Tes dernières charges sont reprises automatiquement.</span>
             </div>
           )}
 
-          {ex && s.next && (
-            <div className="row" style={{ margin: '12px 20px 0', padding: '14px 16px', borderRadius: 16, background: 'var(--card)' }}>
-              <span className="icon-btn sq muted"><Icon name="next" /></span>
-              <div className="grow stack" style={{ gap: 2 }}>
-                <span className="xs muted">Ensuite</span>
-                <span style={{ fontSize: 15, fontWeight: 600 }}>{s.next.name}</span>
-              </div>
-              <span className="small muted">{s.next.sets.filter((x) => x.type !== 'warmup').length} × {s.next.sets[s.next.sets.length - 1]?.reps || '?'}</span>
-            </div>
+          <Link to="/exercices" className="btn primary big" style={{ height: 52, fontSize: 16 }}><Icon name="plus" size={18} width={2.5} />Ajouter un exercice</Link>
+          {!!s.exercises.length && (
+            <button className="btn" style={{ height: 48, borderRadius: 14, background: 'transparent', border: '1px solid var(--border)' }} onClick={saveAsRoutine}>
+              <Icon name="list" size={18} />Enregistrer comme routine
+            </button>
           )}
+          <button className="btn" style={{ background: 'transparent', color: '#FF9A9A', fontWeight: 500 }} onClick={abandon}>Abandonner la séance</button>
         </div>
       </div>
 
@@ -248,8 +244,8 @@ export default function Seance() {
               <div className="row" style={{ gap: 10 }}>
                 <button className="rest-btn" aria-label="Retirer 15 secondes" onClick={() => s.shiftRest(-15)}>−15</button>
                 <div className="grow stack" style={{ alignItems: 'center', gap: 0 }}>
-                  <span className="xs muted" style={{ textTransform: 'uppercase', letterSpacing: '0.06em' }}>Repos</span>
-                  <span className="rest-num" aria-live="off">{mmss(s.restLeft)}</span>
+                  <span className="xs muted">Repos</span>
+                  <span className="rest-num">{mmss(s.restLeft)}</span>
                 </div>
                 <button className="rest-btn" aria-label="Ajouter 15 secondes" onClick={() => s.shiftRest(15)}>+15</button>
                 <button className="btn light" style={{ height: 52, borderRadius: 14 }} onClick={s.skipRest}>Passer</button>
@@ -257,25 +253,28 @@ export default function Seance() {
             </>
           ) : ex && s.activeSet >= 0 ? (
             <div className="row">
-              <div className="grow stack" style={{ gap: 2 }}>
-                <span className="xs muted">À toi · {ex.name}</span>
+              <button className="grow stack" style={{ gap: 2, background: 'none', border: 'none', color: 'inherit', textAlign: 'left', padding: 0 }} onClick={() => refs.current[ex.name]?.scrollIntoView({ behavior: 'smooth', block: 'start' })} aria-label={`Aller à ${ex.name}`}>
+                <span className="xs muted">À toi : {ex.name}</span>
                 <span className="display" style={{ fontSize: 22 }}>{ex.sets[s.activeSet].kg ? fmtKg(num(ex.sets[s.activeSet].kg)) : '?'} kg × {ex.sets[s.activeSet].reps || '?'}</span>
-              </div>
+              </button>
               <button className="btn primary" style={{ height: 56, borderRadius: 16, padding: '0 24px', fontSize: 16 }} onClick={() => s.validate(ei, s.activeSet)}>Valider</button>
             </div>
           ) : (
             <div className="row">
               <div className="grow stack" style={{ gap: 2 }}>
                 <span className="xs accent" style={{ fontWeight: 600 }}>{ex ? 'Exercice terminé' : 'Séance vide'}</span>
-                <span style={{ fontSize: 15, fontWeight: 600 }}>{s.next ? `Prochain : ${s.next.name}` : ex ? 'Ajoute un exercice ou termine' : 'Ajoute ton premier exercice'}</span>
+                <span style={{ fontSize: 15, fontWeight: 600 }}>{s.next ? `Prochain : ${s.next.name}` : ex ? 'Tout est fait' : 'Ajoute ton premier exercice'}</span>
               </div>
               {s.next
                 ? <button className="btn" style={{ height: 52, borderRadius: 14 }} onClick={() => s.setCurrent(s.exercises.indexOf(s.next))}>Suivant</button>
-                : <Link to="/exercices" className="btn" style={{ height: 52, borderRadius: 14 }}>+ Exercice</Link>}
+                : ex ? <button className="btn primary" style={{ height: 52, borderRadius: 14 }} onClick={finish} disabled={saving}>Terminer</button>
+                  : null}
             </div>
           )}
         </div>
       </div>
+
+      <ExerciseSheet exercise={open} onClose={() => setOpen(null)} />
     </main>
   );
 }

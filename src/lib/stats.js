@@ -110,6 +110,19 @@ export function analyse(workouts) {
     return { date: d, done: ws.some((w) => sameDay(w.start, d)), today: sameDay(d, now), letter: 'LMMJVSD'[i] };
   });
 
+  // Consecutive weeks with at least one session, up to this week (or last week if this one is empty).
+  const weekSet = new Set(ws.map((w) => startOfWeek(w.start).getTime()));
+  const cursor = startOfWeek(now);
+  if (!weekSet.has(cursor.getTime())) cursor.setDate(cursor.getDate() - 7);
+  let streak = 0;
+  while (weekSet.has(cursor.getTime())) { streak += 1; cursor.setDate(cursor.getDate() - 7); }
+  const thisWeek = ws.filter((w) => w.start >= weekStart);
+  const week = {
+    sessions: thisWeek.length,
+    kg: thisWeek.reduce((a, w) => a + w.sets.filter((x) => isWork(x) && isPlausible(x)).reduce((b, x) => b + x.weight_kg * x.reps, 0), 0),
+    streak,
+  };
+
   const full = months.slice(0, 13);
   const peak = full.reduce((a, b) => (b.tonnes > a.tonnes ? b : a), full[0]);
   const lastFull = full[full.length - 1];
@@ -131,6 +144,7 @@ export function analyse(workouts) {
     programs,
     nextProgram,
     weekDays,
+    week,
     alerts: { legSets, workSets, peak, lastFull },
   };
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useData } from '../data.jsx';
-import { Bars } from '../components.jsx';
+import { LineChart, ExerciseImage } from '../components.jsx';
 import { fmtKg, fmtDay, fmtInt } from '../lib/stats.js';
 
 const METRICS = [
@@ -15,11 +15,11 @@ export default function Progres() {
   const [name, setName] = useState(list[0]?.name || '');
   const [metric, setMetric] = useState('maxKg');
   const ex = data.exercises.get(name);
-  const hist = ex ? ex.history.slice(-10) : [];
+  const hist = ex ? ex.history.slice(-12) : [];
   const [, label, fmt] = METRICS.find((m) => m[0] === metric);
   const values = hist.map((h) => h[metric]);
   const last = hist[hist.length - 1];
-  const bestOf = values.length ? Math.max(...values) : 0;
+  const delta = values.length ? Math.round((values[values.length - 1] - values[0]) * 10) / 10 : 0;
 
   const records = data.exerciseList.slice(0, 8).filter((e) => e.best);
 
@@ -52,18 +52,15 @@ export default function Progres() {
             <div className="card lg" style={{ margin: '16px 20px 0', gap: 14 }}>
               <div className="between" style={{ alignItems: 'flex-end' }}>
                 <div className="stack" style={{ gap: 4 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>{label} · dernière séance</span>
-                  <span className="display" style={{ fontSize: 34 }}>{fmt(last[metric])}</span>
-                  <span className="xs muted">Meilleur sur la période : {fmt(bestOf)}</span>
+                  <span className="small muted">{label}, dernière séance</span>
+                  <span className="display" style={{ fontSize: 34, lineHeight: 1.1 }}>{fmt(last[metric])}</span>
+                  <span className="xs" style={{ color: delta > 0 ? 'var(--accent)' : delta < 0 ? 'var(--rest)' : 'var(--muted)' }}>
+                    {delta === 0 ? 'Stable' : `${delta > 0 ? '+' : '−'}${fmt(Math.abs(delta))}`} depuis le {fmtDay(hist[0].date)}
+                  </span>
                 </div>
-                <span className="xs muted">{hist.length} dernières séances</span>
+                <ExerciseImage name={ex.name} size={56} />
               </div>
-              <Bars
-                height={160}
-                values={values}
-                highlight={[values.length - 1]}
-                label={`${label} par séance : ${values.map((v) => fmt(v)).join(', ')}`}
-              />
+              <LineChart values={values} format={fmt} label={`${label} par séance : ${values.map((v) => fmt(v)).join(', ')}`} />
               <div className="between xs muted"><span>{fmtDay(hist[0].date)}</span><span>{fmtDay(last.date)}</span></div>
             </div>
           )}

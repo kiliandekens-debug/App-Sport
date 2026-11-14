@@ -209,7 +209,7 @@ export function SessionProvider({ children }) {
           const exercises = c.exercises.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((x, j) => (j === si ? { ...x, done: true } : x)) }));
           const e = exercises[ei];
           const open = (x) => x.sets.some((y) => !y.done);
-          let current = c.current;
+          let current = ei;
           let rest = e.rest ?? 0;
           if (e.superset) {
             // Superset: go straight to the next exercise of the group, rest after the last one.

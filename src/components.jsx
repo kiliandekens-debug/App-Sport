@@ -13,13 +13,13 @@ export function ExerciseImage({ name, base, size = 48, animate = false, radius =
     const t = setInterval(() => setFrame((f) => 1 - f), 900);
     return () => clearInterval(t);
   }, [animate, imgs.length]);
-  const box = { width: size === 'full' ? '100%' : size, height: size === 'full' ? 'auto' : size, aspectRatio: size === 'full' ? '16 / 10' : undefined, maxHeight: size === 'full' ? 260 : undefined, borderRadius: radius, flexShrink: 0, overflow: 'hidden', background: '#FFFFFF' };
+  const box = { width: size === 'full' ? '100%' : size, height: size === 'full' ? 'auto' : size, aspectRatio: size === 'full' ? '16 / 10' : undefined, maxHeight: size === 'full' ? 260 : undefined, borderRadius: radius, flexShrink: 0, overflow: 'hidden', background: '#000' };
   const fit = size === 'full' ? 'contain' : 'cover';
   if (!imgs.length || broken) {
     return <div style={{ ...box, background: 'var(--raised)', color: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden="true"><Icon name="dumbbell" size={typeof size === 'number' ? Math.round(size / 2) : 40} /></div>;
   }
   return (
-    <div style={{ ...box, position: 'relative' }}>
+    <div className={size === 'full' ? undefined : 'thumb-mono'} style={{ ...box, position: 'relative' }}>
       {imgs.map((src, i) => (
         <img
           key={src}
@@ -64,6 +64,9 @@ const P = {
   edit: <path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4" />,
   list: <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />,
   close: <path d="M6 6l12 12M18 6L6 18" />,
+  more: <path d="M5 12h.01M12 12h.01M19 12h.01" />,
+  minus: <path d="M5 12h14" />,
+  flame: <path d="M12 3c1 3 4 5 4 9a4 4 0 0 1-8 0c0-1.5.5-2.5 1.5-3.5C10 10 12 8 12 3zM12 21a7 7 0 0 0 7-7" />,
 };
 
 export function Icon({ name, size = 20, width = 2, fill }) {
@@ -120,6 +123,40 @@ export function Bars({ values, labels, height = 96, highlight = [], partialLast 
   );
 }
 
-export function Loading({ text = 'Chargement de tes séances…' }) {
-  return <div className="center"><span className="muted">{text}</span></div>;
+export function Loading({ text = 'Chargement de tes séances' }) {
+  return (
+    <div className="screen" role="status" aria-label={text} style={{ padding: '28px 20px', gap: 14 }}>
+      <div className="skel" style={{ height: 18, width: 140 }} />
+      <div className="skel" style={{ height: 38, width: 220 }} />
+      <div className="skel" style={{ height: 64 }} />
+      <div className="skel" style={{ height: 230, borderRadius: 24 }} />
+      <div className="skel" style={{ height: 64 }} />
+      <div className="skel" style={{ height: 64 }} />
+    </div>
+  );
+}
+
+// Line chart for a progression: a few points, min and max marked, last point emphasised.
+export function LineChart({ values, format = (v) => String(v), label }) {
+  const W = 320, H = 150, px = 10, pt = 22, pb = 22;
+  if (!values.length) return null;
+  const min = Math.min(...values), max = Math.max(...values);
+  const span = max - min || 1;
+  const x = (i) => (values.length === 1 ? W / 2 : px + (i * (W - 2 * px)) / (values.length - 1));
+  const y = (v) => (max === min ? H / 2 : pt + (1 - (v - min) / span) * (H - pt - pb));
+  const pts = values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`);
+  const last = values.length - 1;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={label} style={{ display: 'block' }}>
+      <line x1="0" x2={W} y1={y(max)} y2={y(max)} stroke="#2E2E33" strokeDasharray="3 5" />
+      {max !== min && <line x1="0" x2={W} y1={y(min)} y2={y(min)} stroke="#2E2E33" strokeDasharray="3 5" />}
+      <text x="0" y={y(max) - 7} fontSize="11" fill="#9A9AA0">{format(max)}</text>
+      {max !== min && <text x="0" y={y(min) + 16} fontSize="11" fill="#9A9AA0">{format(min)}</text>}
+      {values.length > 1 && <path d={`M${pts[0]} L${pts.slice(1).join(' L')} L${x(last)},${H} L${x(0)},${H} Z`} fill="var(--accent)" opacity="0.07" />}
+      {values.length > 1 && <polyline points={pts.join(' ')} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />}
+      {values.map((v, i) => (
+        <circle key={i} cx={x(i)} cy={y(v)} r={i === last ? 5.5 : 3.2} fill={i === last ? 'var(--accent)' : 'var(--card)'} stroke="var(--accent)" strokeWidth="2" />
+      ))}
+    </svg>
+  );
 }

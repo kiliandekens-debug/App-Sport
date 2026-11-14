@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useData, saveRoutine } from '../data.jsx';
 import { useSession } from '../session.jsx';
-import { fmtDay, sameDay, titleKey } from '../lib/stats.js';
+import { fmtDay, fmtKg, sameDay, titleKey } from '../lib/stats.js';
 import { routineFromHistory } from '../lib/routines.js';
 import { Icon, ExerciseImage } from '../components.jsx';
 
@@ -43,8 +43,7 @@ export default function Accueil({ user }) {
         <h1 className="title">Salut {firstName(user)}</h1>
       </div>
 
-      <div className="pad stack" style={{ paddingTop: 12 }}>
-        <span className="label">Cette semaine</span>
+      <div className="pad stack" style={{ paddingTop: 12, gap: 14 }}>
         <div className="week">
           {data.weekDays.map((d) => (
             <div key={d.date.toISOString()}>
@@ -53,6 +52,13 @@ export default function Accueil({ user }) {
             </div>
           ))}
         </div>
+        {data.summary.sessions > 0 && (
+          <div className="row" style={{ gap: 18, fontSize: 13, color: 'var(--muted)', flexWrap: 'wrap' }}>
+            <span><b className="display" style={{ color: 'var(--text)', fontSize: 17, marginRight: 5 }}>{data.week.sessions}</b>séance{data.week.sessions > 1 ? 's' : ''} cette semaine</span>
+            <span><b className="display" style={{ color: 'var(--text)', fontSize: 17, marginRight: 5 }}>{fmtKg(data.week.kg / 1000)} t</b>soulevées</span>
+            {data.week.streak > 1 && <span className="row" style={{ gap: 5, color: 'var(--rest)' }}><Icon name="flame" size={16} /><b className="display" style={{ fontSize: 17 }}>{data.week.streak}</b>semaines d'affilée</span>}
+          </div>
+        )}
       </div>
 
       {session.active ? (

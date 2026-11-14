@@ -16,10 +16,9 @@ export default function ExerciseSheet({ exercise, onClose, children }) {
   const st = data.exercises.get(exercise.name);
   const last = st?.history[st.history.length - 1];
   return (
-    <div role="dialog" aria-modal="true" aria-label={exercise.name} onClick={onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-      <div onClick={(e) => e.stopPropagation()}
-        style={{ width: '100%', maxWidth: 520, maxHeight: '92dvh', overflowY: 'auto', background: 'var(--card)', borderRadius: '24px 24px 0 0', padding: '16px 20px calc(24px + env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div className="overlay" onClick={onClose}>
+      <div className="sheet" role="dialog" aria-modal="true" aria-label={exercise.name} onClick={(e) => e.stopPropagation()}>
+        <span className="sheet-grip" />
         <div className="row">
           <span className="display grow" style={{ fontSize: 20, lineHeight: 1.2 }}>{exercise.name}</span>
           <button className="icon-btn" aria-label="Fermer" onClick={onClose}><Icon name="close" /></button>

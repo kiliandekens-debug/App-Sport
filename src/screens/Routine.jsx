@@ -4,6 +4,7 @@ import { useData, saveRoutine, deleteRoutine } from '../data.jsx';
 import { useSession, SET_TYPES, SET_LABEL, SET_NAME, REST_OPTIONS, mmss } from '../session.jsx';
 import { defaultRest, toggleSuperset, cleanSupersets } from '../lib/routines.js';
 import { Icon, ExerciseImage, SupersetTag } from '../components.jsx';
+import { useUi } from '../ui.jsx';
 import { ExercisePicker } from './Exercices.jsx';
 
 const TYPE_COLOR = { warmup: '#F5C04A', dropset: '#B38CFF', failure: '#FF6B6B' };
@@ -14,6 +15,7 @@ export default function Routine() {
   const data = useData();
   const session = useSession();
   const nav = useNavigate();
+  const ui = useUi();
   const existing = data.routines.find((r) => r.id === id);
   const [r, setR] = useState(() => existing
     ? { id: existing.id, name: existing.name, exercises: existing.exercises || [] }
@@ -51,7 +53,7 @@ export default function Routine() {
       const clean = { ...r, name: r.name.trim(), exercises: cleanSupersets(r.exercises) };
       const newId = await saveRoutine(clean);
       await data.refresh();
-      if (andStart) { session.startRoutine(clean); nav('/seance'); } else nav(`/routines/${newId}`, { replace: true });
+      if (andStart) { session.startRoutine(clean); nav('/seance'); } else { ui.notify('Routine enregistrée'); nav(`/routines/${newId}`, { replace: true }); }
     } catch (e) {
       setErr(e.message || String(e));
     } finally {
@@ -60,7 +62,7 @@ export default function Routine() {
   };
 
   const remove = async () => {
-    if (!window.confirm(`Supprimer la routine « ${r.name} » ? Tes séances passées ne sont pas touchées.`)) return;
+    if (!(await ui.confirm({ title: `Supprimer « ${r.name} » ?`, message: 'Tes séances passées ne sont pas touchées.', ok: 'Supprimer', danger: true }))) return;
     await deleteRoutine(r.id);
     await data.refresh();
     nav('/');
