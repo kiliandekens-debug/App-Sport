@@ -23,6 +23,33 @@ export const SET_LABEL = { warmup: 'É', dropset: 'D', failure: 'F' };
 export const SET_NAME = { normal: 'normale', warmup: "d'échauffement", dropset: 'dégressive', failure: "jusqu'à l'échec" };
 export const REST_OPTIONS = [0, 30, 45, 60, 75, 90, 105, 120, 150, 180, 240, 300];
 
+// Warm-up sets are computed from the first working set: 40 / 60 / 80 % for three sets
+// (Hevy's default). A warm-up edited by hand stops following the working weight.
+const WARM_SCHEMES = { 1: [[0.6, 5]], 2: [[0.5, 5], [0.75, 3]], 3: [[0.4, 5], [0.6, 5], [0.8, 3]], 4: [[0.3, 5], [0.5, 5], [0.7, 3], [0.85, 2]] };
+const round05 = (v) => Math.round(v * 2) / 2;
+
+export function applyWarmups(sets) {
+  const base = num(sets.find((x) => x.type !== 'warmup')?.kg);
+  const n = sets.filter((x) => x.type === 'warmup').length;
+  if (!base || !n) return sets;
+  const scheme = WARM_SCHEMES[Math.min(n, 4)];
+  let i = 0;
+  return sets.map((x) => {
+    if (x.type !== 'warmup') return x;
+    const step = scheme[Math.min(i++, scheme.length - 1)];
+    return x.auto && !x.done ? { ...x, kg: String(round05(base * step[0])) } : x;
+  });
+}
+
+// Adds three automatic warm-up sets, or puts the existing ones back on automatic.
+export function withAutoWarmups(sets) {
+  const has = sets.some((x) => x.type === 'warmup');
+  const next = has
+    ? sets.map((x) => (x.type === 'warmup' && !x.done ? { ...x, auto: true } : x))
+    : [...WARM_SCHEMES[3].map(([, reps]) => ({ kg: '', reps: String(reps), type: 'warmup', done: false, auto: true })), ...sets];
+  return applyWarmups(next);
+}
+
 function restFor(name) {
   const saved = readJson(REST_KEY) || {};
   return saved[name] ?? defaultRest(name);
@@ -44,7 +71,7 @@ function buildExercise(data, routineEx) {
     const usePlan = plan && type !== 'warmup';
     const kg = t.kg ?? (usePlan ? plan.target_kg : p?.kg);
     const reps = usePlan && t.kg == null ? plan.target_reps : t.reps ?? p?.reps;
-    return { kg: kg == null ? '' : String(kg), reps: reps == null ? '' : String(reps), type, done: false };
+    return { kg: kg == null ? '' : String(kg), reps: reps == null ? '' : String(reps), type, done: false, auto: type === 'warmup' && t.kg == null };
   });
   return {
     name,
@@ -52,7 +79,7 @@ function buildExercise(data, routineEx) {
     rest: routineEx.rest ?? restFor(name),
     superset: routineEx.superset || null,
     plan: plan ? { kg: Number(plan.target_kg), reps: plan.target_reps, reason: plan.reason } : null,
-    sets,
+    sets: applyWarmups(sets),
   };
 }
 
@@ -198,7 +225,8 @@ export function SessionProvider({ children }) {
       finish,
       rename: (title) => update((c) => ({ ...c, title })),
       setCurrent: (i) => update((c) => ({ ...c, current: i })),
-      setSet: (ei, si, patch) => mapEx(ei, (e) => ({ ...e, sets: e.sets.map((x, j) => (j === si ? { ...x, ...patch } : x)) })),
+      setSet: (ei, si, patch) => mapEx(ei, (e) => ({ ...e, sets: applyWarmups(e.sets.map((x, j) => (j === si ? { ...x, ...patch, auto: 'kg' in patch ? false : x.auto } : x))) })),
+      addWarmups: (ei) => mapEx(ei, (e) => ({ ...e, sets: withAutoWarmups(e.sets) })),
       cycleType: (ei, si) => mapEx(ei, (e) => ({
         ...e,
         sets: e.sets.map((x, j) => (j === si ? { ...x, type: SET_TYPES[(SET_TYPES.indexOf(x.type || 'normal') + 1) % SET_TYPES.length] } : x)),

@@ -8,7 +8,7 @@ import { SUPERSET_COLORS } from '../lib/routines.js';
 import { Icon, ExerciseImage, SupersetTag } from '../components.jsx';
 import ExerciseSheet from './ExerciseSheet.jsx';
 
-const TYPE_COLOR = { warmup: '#F5C04A', dropset: '#B38CFF', failure: '#FF6B6B' };
+const TYPE_COLOR = { warmup: 'var(--warm)', dropset: 'var(--drop)', failure: 'var(--danger)' };
 const restLabel = (sec) => (sec ? mmss(sec) : 'Désactivé');
 
 // One exercise with all its sets, as in Hevy: everything is editable in place.
@@ -20,6 +20,7 @@ function ExerciseCard({ e, ei, s, best, isCurrent, onOpen, cardRef }) {
   const activeIdx = e.sets.findIndex((x) => !x.done);
   const prevWarm = e.prev.filter((q) => q.type === 'warmup');
   const prevWork = e.prev.filter((q) => q.type !== 'warmup');
+  const hasWarm = e.sets.some((x) => x.type === 'warmup');
   let workN = 0, wu = 0, wk = 0;
 
   const remove = async () => {
@@ -42,11 +43,12 @@ function ExerciseCard({ e, ei, s, best, isCurrent, onOpen, cardRef }) {
 
       {menu && (
         <div className="ex-menu">
+          <button onClick={() => { s.addWarmups(ei); setMenu(false); }}><Icon name="flame" size={16} />{hasWarm ? "Recalculer l'échauffement" : "Ajouter l'échauffement (calcul auto)"}</button>
           {!isLast && <button onClick={() => { s.toggleSuperset(ei); setMenu(false); }}><Icon name="link" size={16} />{linked ? 'Délier du superset' : `Superset avec ${s.exercises[ei + 1].name}`}</button>}
           <button disabled={ei === 0} onClick={() => s.moveExercise(ei, -1)}><Icon name="up" size={16} />Monter</button>
           <button disabled={isLast} onClick={() => s.moveExercise(ei, 1)}><Icon name="down" size={16} />Descendre</button>
           <button disabled={!e.sets.length} onClick={() => s.removeLastSet(ei)}><Icon name="minus" size={16} />Retirer la dernière série</button>
-          <button style={{ color: '#FF9A9A' }} onClick={remove}><Icon name="trash" size={16} />Retirer l'exercice</button>
+          <button style={{ color: 'var(--danger)' }} onClick={remove}><Icon name="trash" size={16} />Retirer l'exercice</button>
         </div>
       )}
 
@@ -89,7 +91,10 @@ function ExerciseCard({ e, ei, s, best, isCurrent, onOpen, cardRef }) {
           );
         })}
       </div>
-      <button className="btn dashed" onClick={() => s.addSet(ei)}><Icon name="plus" size={16} />Ajouter une série</button>
+      <div className={hasWarm ? 'stack' : 'grid2'}>
+        {!hasWarm && <button className="btn dashed" onClick={() => s.addWarmups(ei)}><Icon name="flame" size={16} />Échauffement auto</button>}
+        <button className="btn dashed" onClick={() => s.addSet(ei)}><Icon name="plus" size={16} />Série</button>
+      </div>
     </section>
   );
 }
@@ -209,7 +214,7 @@ export default function Seance() {
         <div className="panel pad stack" style={{ gap: 12 }}>
           {hint && !!s.exercises.length && (
             <button onClick={dismissHint} className="row xs soft" style={{ padding: '10px 12px', borderRadius: 12, background: 'var(--chip)', border: 'none', textAlign: 'left', lineHeight: 1.4 }}>
-              <span className="grow">Touche le numéro d'une série pour la passer en échauffement (É), dégressive (D) ou échec (F). Touche l'image pour voir le mouvement.</span>
+              <span className="grow">Les échauffements (É) se calculent seuls à 40, 60 et 80 % de ta première série de travail. Touche le numéro d'une série pour changer son type, et l'image pour voir le mouvement.</span>
               <Icon name="close" size={16} />
             </button>
           )}
@@ -232,7 +237,7 @@ export default function Seance() {
               <Icon name="list" size={18} />Enregistrer comme routine
             </button>
           )}
-          <button className="btn" style={{ background: 'transparent', color: '#FF9A9A', fontWeight: 500 }} onClick={abandon}>Abandonner la séance</button>
+          <button className="btn" style={{ background: 'transparent', color: 'var(--danger)', fontWeight: 500 }} onClick={abandon}>Abandonner la séance</button>
         </div>
       </div>
 

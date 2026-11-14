@@ -57,7 +57,7 @@ export default function Coach() {
         <div className="panel pad stack" style={{ gap: 12 }}>
           {state?.summary && (
             <div className="card" style={{ border: '1px solid #3B4A17', background: 'var(--done)' }}>
-              <span className="row accent" style={{ gap: 8, fontWeight: 700 }}><Icon name="check" size={18} width={3} />Séance enregistrée</span>
+              <span className="row" style={{ gap: 8, fontWeight: 700, color: 'var(--ok)' }}><Icon name="check" size={18} width={3} />Séance enregistrée</span>
               <span className="display" style={{ fontSize: 22 }}>{state.summary.title}</span>
               <div className="session-stats" style={{ padding: 0 }}>
                 <span><b>{state.summary.minutes}</b>min</span>
@@ -77,7 +77,7 @@ export default function Coach() {
                 <span>{it.text}</span>
                 <div className="row" style={{ alignItems: 'flex-end', gap: 6, height: 56 }} role="img" aria-label={`Charge : ${fmtKg(it.before)} kg avant, ${fmtKg(it.now)} kg cette fois`}>
                   <div className="grow stack" style={{ alignItems: 'center', gap: 4 }}><div style={{ width: '100%', height: 44, borderRadius: 6, background: 'var(--border)' }} /><span className="xs muted">Avant</span></div>
-                  <div className="grow stack" style={{ alignItems: 'center', gap: 4 }}><div style={{ width: '100%', height: Math.max(6, 44 * (it.now / it.before)), borderRadius: 6, background: 'var(--rest)' }} /><span className="xs muted">Cette fois</span></div>
+                  <div className="grow stack" style={{ alignItems: 'center', gap: 4 }}><div style={{ width: '100%', height: Math.max(6, 44 * (it.now / it.before)), borderRadius: 6, background: 'var(--rest-fill)' }} /><span className="xs muted">Cette fois</span></div>
                 </div>
               </div>
               {answers[it.name] ? (
@@ -116,10 +116,10 @@ export default function Coach() {
                 </div>
               ))}
             </div>
-            <button className={`btn big ${applied ? '' : 'primary'}`} style={{ height: 48, borderRadius: 14, fontSize: 15, color: applied ? 'var(--accent)' : undefined, background: applied ? 'var(--done)' : undefined }} onClick={apply} disabled={applied}>
+            <button className={`btn big ${applied ? '' : 'primary'}`} style={{ height: 48, borderRadius: 14, fontSize: 15, color: applied ? 'var(--ok)' : undefined, background: applied ? 'var(--done)' : undefined }} onClick={apply} disabled={applied}>
               {applied ? 'Ajouté au programme' : 'Appliquer à la prochaine séance'}
             </button>
-            {err && <span className="small" style={{ color: '#FF8A8A' }}>{err}</span>}
+            {err && <span className="small" style={{ color: 'var(--danger)' }}>{err}</span>}
           </div>
         </div>
       </div>

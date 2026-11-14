@@ -5,14 +5,16 @@ import { parseHevyCsv } from '../lib/csv.js';
 import { Bars, Icon } from '../components.jsx';
 import { fmtDay, fmtInt } from '../lib/stats.js';
 import { weeklyFacts } from '../lib/coach.js';
+import { getTheme, setTheme } from '../theme.js';
 
-const COLORS = ['var(--accent)', '#5AC8FA', '#FF8A3D', '#D4D4D8', '#6E6E76', '#B38CFF', '#3A3A40', '#FF5C5C'];
+const COLORS = ['var(--accent)', 'var(--rest-fill)', 'var(--ok)', 'var(--drop)', 'var(--text)', 'var(--muted)', 'var(--border)', 'var(--danger)'];
 
 export default function Profil({ user }) {
   const data = useData();
   const fileRef = useRef(null);
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
+  const [theme, setThemeState] = useState(getTheme);
   const { summary: s, months, muscles } = data;
   const facts = weeklyFacts(data);
   const name = user?.user_metadata?.name || 'Kilian';
@@ -40,7 +42,7 @@ export default function Profil({ user }) {
   return (
     <main className="screen">
       <div className="row" style={{ padding: '24px 20px 8px', gap: 14 }}>
-        <div className="display accent" style={{ width: 56, height: 56, borderRadius: 28, background: 'var(--chip)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>{name[0]}</div>
+        <div className="display accent" style={{ width: 56, height: 56, borderRadius: 28, background: 'var(--brand)', color: 'var(--on-brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30 }}>{name[0]}</div>
         <div className="stack" style={{ gap: 2 }}>
           <h1 className="title" style={{ fontSize: 28 }}>{name}</h1>
           <span className="small muted">{s.since ? `Membre depuis le ${fmtDay(s.since)} ${s.since.getFullYear()}` : user?.email}</span>
@@ -94,6 +96,15 @@ export default function Profil({ user }) {
           )}
         </>
       )}
+
+      <div className="section">
+        <span className="label">Apparence</span>
+        <div className="seg" role="group" aria-label="Apparence" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+          {[['auto', 'Automatique'], ['light', 'Clair'], ['dark', 'Sombre']].map(([k, l]) => (
+            <button key={k} className={theme === k ? 'on' : ''} aria-pressed={theme === k} onClick={() => { setTheme(k); setThemeState(k); }}>{l}</button>
+          ))}
+        </div>
+      </div>
 
       <div className="section">
         <span className="label">Données</span>

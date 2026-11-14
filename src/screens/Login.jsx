@@ -31,7 +31,7 @@ export default function Login() {
               <input className="input" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </label>
             <button className="btn primary big" disabled={state === 'sending'}>{state === 'sending' ? 'Envoi…' : 'Recevoir le lien'}</button>
-            {error && <span className="small" style={{ color: '#FF8A8A' }}>{error}</span>}
+            {error && <span className="small" style={{ color: 'var(--danger)' }}>{error}</span>}
           </form>
         )}
       </div>

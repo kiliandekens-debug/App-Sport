@@ -7,7 +7,7 @@ import { Icon, ExerciseImage, SupersetTag } from '../components.jsx';
 import { useUi } from '../ui.jsx';
 import { ExercisePicker } from './Exercices.jsx';
 
-const TYPE_COLOR = { warmup: '#F5C04A', dropset: '#B38CFF', failure: '#FF6B6B' };
+const TYPE_COLOR = { warmup: 'var(--warm)', dropset: 'var(--drop)', failure: 'var(--danger)' };
 const restLabel = (sec) => (sec ? mmss(sec) : 'Désactivé');
 
 export default function Routine() {
@@ -125,7 +125,12 @@ export default function Routine() {
                     </div>
                   );
                 })}
-                <span className="xs muted">« auto » reprend ta charge de la dernière fois (ou celle du coach).</span>
+                {!e.sets.some((x) => x.type === 'warmup') && (
+                  <button className="btn dashed" onClick={() => setEx(i, (ex) => ({ ...ex, sets: [{ type: 'warmup', reps: 5, kg: null }, { type: 'warmup', reps: 5, kg: null }, { type: 'warmup', reps: 3, kg: null }, ...ex.sets] }))}>
+                    <Icon name="flame" size={16} />Échauffement auto (40, 60, 80 %)
+                  </button>
+                )}
+                <span className="xs muted">« auto » reprend ta charge de la dernière fois. Les échauffements (É) en auto sont calculés depuis ta première série de travail.</span>
                 <div className="grid2">
                   <button className="btn dashed" onClick={() => setEx(i, (ex) => ({ ...ex, sets: [...ex.sets, { ...(ex.sets[ex.sets.length - 1] || { reps: 10 }), type: 'normal' }] }))}>+ Série</button>
                   <button className="btn dashed" disabled={e.sets.length <= 1} onClick={() => setEx(i, (ex) => ({ ...ex, sets: ex.sets.slice(0, -1) }))}>− Série</button>
@@ -142,7 +147,7 @@ export default function Routine() {
                   <button className="icon-btn sq" aria-label="Monter" disabled={i === 0} onClick={() => move(i, -1)}><Icon name="up" size={18} /></button>
                   <button className="icon-btn sq" aria-label="Descendre" disabled={i === r.exercises.length - 1} onClick={() => move(i, 1)}><Icon name="down" size={18} /></button>
                   <div className="grow" />
-                  <button className="icon-btn sq" aria-label={`Retirer ${e.name}`} style={{ color: '#FF8A8A' }} onClick={() => setR((c) => ({ ...c, exercises: cleanSupersets(c.exercises.filter((_, j) => j !== i)) }))}><Icon name="trash" size={18} /></button>
+                  <button className="icon-btn sq" aria-label={`Retirer ${e.name}`} style={{ color: 'var(--danger)' }} onClick={() => setR((c) => ({ ...c, exercises: cleanSupersets(c.exercises.filter((_, j) => j !== i)) }))}><Icon name="trash" size={18} /></button>
                 </div>
               </div>
               {i < r.exercises.length - 1 && (
@@ -156,8 +161,8 @@ export default function Routine() {
         })}
 
         <button className="btn dashed" style={{ height: 52 }} onClick={() => setPicking(true)}><Icon name="plus" size={18} />Ajouter des exercices</button>
-        {err && <span className="small" style={{ color: '#FF8A8A' }}>{err}</span>}
-        {r.id && <button className="btn" style={{ background: 'transparent', color: '#FF8A8A' }} onClick={remove}><Icon name="trash" size={16} />Supprimer la routine</button>}
+        {err && <span className="small" style={{ color: 'var(--danger)' }}>{err}</span>}
+        {r.id && <button className="btn" style={{ background: 'transparent', color: 'var(--danger)' }} onClick={remove}><Icon name="trash" size={16} />Supprimer la routine</button>}
       </div>
 
       <div className="dock"><div className="dock-in">

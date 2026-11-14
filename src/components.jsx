@@ -36,7 +36,7 @@ export function ExerciseImage({ name, base, size = 48, animate = false, radius =
 
 export function SupersetTag({ letter }) {
   if (!letter) return null;
-  return <span className="tag" style={{ background: SUPERSET_COLORS[letter] || 'var(--accent)', alignSelf: 'flex-start' }}>Superset {letter}</span>;
+  return <span className="tag" style={{ background: SUPERSET_COLORS[letter] || 'var(--accent)', color: '#111418', alignSelf: 'flex-start' }}>Superset {letter}</span>;
 }
 
 const P = {
@@ -148,10 +148,10 @@ export function LineChart({ values, format = (v) => String(v), label }) {
   const last = values.length - 1;
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={label} style={{ display: 'block' }}>
-      <line x1="0" x2={W} y1={y(max)} y2={y(max)} stroke="#2E2E33" strokeDasharray="3 5" />
-      {max !== min && <line x1="0" x2={W} y1={y(min)} y2={y(min)} stroke="#2E2E33" strokeDasharray="3 5" />}
-      <text x="0" y={y(max) - 7} fontSize="11" fill="#9A9AA0">{format(max)}</text>
-      {max !== min && <text x="0" y={y(min) + 16} fontSize="11" fill="#9A9AA0">{format(min)}</text>}
+      <line x1="0" x2={W} y1={y(max)} y2={y(max)} stroke="var(--line)" strokeDasharray="3 5" />
+      {max !== min && <line x1="0" x2={W} y1={y(min)} y2={y(min)} stroke="var(--line)" strokeDasharray="3 5" />}
+      <text x="0" y={y(max) - 7} fontSize="11" fill="var(--muted)">{format(max)}</text>
+      {max !== min && <text x="0" y={y(min) + 16} fontSize="11" fill="var(--muted)">{format(min)}</text>}
       {values.length > 1 && <path d={`M${pts[0]} L${pts.slice(1).join(' L')} L${x(last)},${H} L${x(0)},${H} Z`} fill="var(--accent)" opacity="0.07" />}
       {values.length > 1 && <polyline points={pts.join(' ')} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />}
       {values.map((v, i) => (

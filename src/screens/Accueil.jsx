@@ -56,22 +56,22 @@ export default function Accueil({ user }) {
           <div className="row" style={{ gap: 18, fontSize: 13, color: 'var(--muted)', flexWrap: 'wrap' }}>
             <span><b className="display" style={{ color: 'var(--text)', fontSize: 17, marginRight: 5 }}>{data.week.sessions}</b>séance{data.week.sessions > 1 ? 's' : ''} cette semaine</span>
             <span><b className="display" style={{ color: 'var(--text)', fontSize: 17, marginRight: 5 }}>{fmtKg(data.week.kg / 1000)} t</b>soulevées</span>
-            {data.week.streak > 1 && <span className="row" style={{ gap: 5, color: 'var(--rest)' }}><Icon name="flame" size={16} /><b className="display" style={{ fontSize: 17 }}>{data.week.streak}</b>semaines d'affilée</span>}
+            {data.week.streak > 1 && <span className="row" style={{ gap: 5, color: 'var(--ok)' }}><Icon name="flame" size={16} /><b className="display" style={{ fontSize: 17 }}>{data.week.streak}</b>semaines d'affilée</span>}
           </div>
         )}
       </div>
 
       {session.active ? (
-        <div className="card lg" style={{ margin: '24px 20px 0' }}>
-          <span className="label accent" style={{ fontWeight: 600 }}>Séance en cours</span>
+        <div className="card lg hero" style={{ margin: '24px 20px 0' }}>
+          <span className="label">Séance en cours</span>
           <span className="display" style={{ fontSize: 26 }}>{session.title}</span>
           <span className="small muted">{session.done} / {session.total} séries validées</span>
           <Link to="/seance" className="btn primary big"><Icon name="play" size={18} width={2.5} />Reprendre</Link>
         </div>
       ) : suggested ? (
-        <div className="card lg" style={{ margin: '24px 20px 0' }}>
+        <div className="card lg hero" style={{ margin: '24px 20px 0' }}>
           <div className="stack" style={{ gap: 6 }}>
-            <span className="label accent" style={{ fontWeight: 600 }}>À faire ensuite</span>
+            <span className="label">À faire ensuite</span>
             <span className="display" style={{ fontSize: 26 }}>{suggested.name}</span>
             <span className="small muted">{suggested.exercises.length} exercices · {sets(suggested)} séries{suggested.last ? ` · dernière fois le ${fmtDay(suggested.last)}` : ''}</span>
           </div>

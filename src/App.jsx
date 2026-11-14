@@ -48,7 +48,7 @@ function Shell({ user }) {
   if (data.loading) return <Loading />;
   return (
     <div className="app">
-      {data.error && <div className="pad small" style={{ color: '#FF8A8A', paddingTop: 12 }}>Erreur de chargement : {data.error}</div>}
+      {data.error && <div className="pad small" style={{ color: 'var(--danger)', paddingTop: 12 }}>Erreur de chargement : {data.error}</div>}
       <Routes>
         <Route path="/" element={<Accueil user={user} />} />
         <Route path="/seance" element={<Seance />} />

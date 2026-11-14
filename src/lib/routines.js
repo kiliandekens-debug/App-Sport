@@ -53,4 +53,4 @@ export function toggleSuperset(exercises, i) {
   return cleanSupersets(exercises.map((e, j) => (j === i || j === i + 1 || (old && e.superset === old) ? { ...e, superset: letter } : e)));
 }
 
-export const SUPERSET_COLORS = { A: '#5AC8FA', B: '#FF8A3D', C: '#B38CFF', D: '#F5C04A', E: '#FF6B9A', F: '#7EE0B5', G: '#5AC8FA', H: '#FF8A3D' };
+export const SUPERSET_COLORS = { A: '#F2B705', B: '#3FBF7F', C: '#F2695C', D: '#B79CFF', E: '#5CC8F2', F: '#F29E4C', G: '#F2B705', H: '#3FBF7F' };
