@@ -1,3 +1,5 @@
+import { LIBRARY_IMAGES } from './library.js';
+
 // Exercise illustrations from Free Exercise DB (public domain, Unlicense):
 // https://github.com/yuhonas/free-exercise-db — two frames per exercise (start / end).
 const BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
@@ -134,7 +136,9 @@ export function imageId(name, base) {
   if (!name) return null;
   const n = name.toLowerCase().trim();
   if (EXACT[n]) return EXACT[n];
-  if (base && EXACT[base.toLowerCase().trim()]) return EXACT[base.toLowerCase().trim()];
+  if (LIBRARY_IMAGES[n]) return LIBRARY_IMAGES[n];
+  const b = base?.toLowerCase().trim();
+  if (b && (EXACT[b] || LIBRARY_IMAGES[b])) return EXACT[b] || LIBRARY_IMAGES[b];
   for (const [re, id] of RULES) if (re.test(n)) return id;
   return null;
 }
