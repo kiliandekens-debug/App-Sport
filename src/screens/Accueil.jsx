@@ -85,7 +85,14 @@ export default function Accueil({ user }) {
               <span className="muted"><Icon name="chevron" size={18} /></span>
             </button>
           ))}
-          {!session.active && <Link to="/exercices" className="btn dashed" style={{ height: 48 }}>Séance libre : choisir mes exercices</Link>}
+        </div>
+      )}
+
+      {!session.active && (
+        <div className="section">
+          <button className="btn dashed" style={{ height: 52, borderRadius: 14 }} onClick={() => { session.startEmpty(); nav('/seance'); }}>
+            <Icon name="plus" size={18} />Démarrer une séance vide
+          </button>
         </div>
       )}
     </main>

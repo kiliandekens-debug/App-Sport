@@ -10,6 +10,8 @@ const P = {
   plus: <path d="M12 5v14M5 12h14" />,
   back: <path d="M15 6l-6 6 6 6" />,
   down: <path d="M6 9l6 6 6-6" />,
+  up: <path d="M6 15l6-6 6 6" />,
+  timer: <><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2 2M9 2h6" /></>,
   chevron: <path d="M9 6l6 6-6 6" />,
   play: <path d="M7 4l12 8-12 8z" />,
   swap: <path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7" />,

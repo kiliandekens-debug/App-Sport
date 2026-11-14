@@ -34,13 +34,21 @@ export default function Exercices() {
     .filter((x) => equip === 'Tout' || x.equip === equip)
     .filter((x) => !query || x.name.toLowerCase().includes(query));
 
+  const inSession = new Set(session.active ? session.exercises.map((e) => e.name) : []);
   const add = (name) => {
+    if (!session.active) { session.addExercise(name); nav('/seance'); return; }
     session.addExercise(name);
-    nav('/seance');
   };
 
   return (
     <main className="screen wide">
+      {session.active && (
+        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 'calc(84px + env(safe-area-inset-bottom))', zIndex: 12, padding: '0 20px', display: 'flex', justifyContent: 'center' }}>
+          <Link to="/seance" className="btn primary big" style={{ maxWidth: 440, boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+            Retour à la séance · {session.exercises.length} exercice{session.exercises.length > 1 ? 's' : ''}
+          </Link>
+        </div>
+      )}
       <div className="split">
         <div className="panel">
           <div className="head" style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
@@ -64,7 +72,7 @@ export default function Exercices() {
             {['Tout', ...EQUIPS].map((m) => <button key={m} className={`chip ${equip === m ? 'on' : ''}`} aria-pressed={equip === m} onClick={() => setEquip(m)}>{m}</button>)}
           </div>
 
-          <div className="pad stack" style={{ paddingTop: 14, gap: 6 }}>
+          <div className="pad stack" style={{ paddingTop: 14, gap: 6, paddingBottom: session.active ? 72 : 0 }}>
             {list.map((ex) => (
               <div key={ex.name} className="ex-item">
                 <button className="grow stack" style={{ gap: 2, background: 'none', border: 'none', color: 'inherit', textAlign: 'left', padding: 0 }} onClick={() => (window.innerWidth < 900 ? nav('/variante', { state: { base: ex } }) : setBase(ex))} aria-label={`Créer une variante de ${ex.name}`}>
@@ -72,7 +80,9 @@ export default function Exercices() {
                   <span className="xs muted">{ex.muscle} · {ex.equip}{ex.count ? ` · ${ex.count} séances` : ''}</span>
                 </button>
                 {ex.source === 'custom' && <span className="tag">Perso</span>}
-                <button className="icon-btn sq" aria-label={`Ajouter ${ex.name} à la séance`} onClick={() => add(ex.name)}><Icon name="plus" size={18} /></button>
+                {inSession.has(ex.name)
+                  ? <span className="icon-btn sq accent" aria-label={`${ex.name} est dans la séance`}><Icon name="check" size={18} width={2.5} /></span>
+                  : <button className="icon-btn sq" aria-label={`Ajouter ${ex.name} à la séance`} onClick={() => add(ex.name)}><Icon name="plus" size={18} /></button>}
               </div>
             ))}
             {!list.length && (

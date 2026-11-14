@@ -53,7 +53,7 @@ export default function Montre() {
   const ex = s.exercise;
 
   if (s.resting) {
-    const pct = s.restLeft / s.restTotal;
+    const pct = s.restTotal ? s.restLeft / s.restTotal : 0;
     const c = 2 * Math.PI * 56;
     const nextSet = ex && s.activeSet >= 0 ? ex.sets[s.activeSet] : null;
     return (
