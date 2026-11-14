@@ -202,7 +202,7 @@ button:active:not(:disabled), a.btn:active { transform: scale(0.97); }
 @keyframes slideup { from { transform: translateY(24px); opacity: 0; } }
 @keyframes toastin { from { opacity: 0; transform: translate(-50%, 8px); } }
 
-.thumb-mono img { filter: grayscale(1) contrast(1.08); }
+.thumb-mono img { filter: brightness(1.08) contrast(1.04) saturate(1.05); }
 .skel { border-radius: 14px; background: linear-gradient(90deg, var(--chip) 25%, var(--raised) 50%, var(--chip) 75%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 

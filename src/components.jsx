@@ -13,7 +13,7 @@ export function ExerciseImage({ name, base, size = 48, animate = false, radius =
     const t = setInterval(() => setFrame((f) => 1 - f), 900);
     return () => clearInterval(t);
   }, [animate, imgs.length]);
-  const box = { width: size === 'full' ? '100%' : size, height: size === 'full' ? 'auto' : size, aspectRatio: size === 'full' ? '16 / 10' : undefined, maxHeight: size === 'full' ? 260 : undefined, borderRadius: radius, flexShrink: 0, overflow: 'hidden', background: '#000' };
+  const box = { width: size === 'full' ? '100%' : size, height: size === 'full' ? 'auto' : size, aspectRatio: size === 'full' ? '16 / 10' : undefined, maxHeight: size === 'full' ? 260 : undefined, borderRadius: radius, flexShrink: 0, overflow: 'hidden', background: '#F4F5F7' };
   const fit = size === 'full' ? 'contain' : 'cover';
   if (!imgs.length || broken) {
     return <div style={{ ...box, background: 'var(--raised)', color: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden="true"><Icon name="dumbbell" size={typeof size === 'number' ? Math.round(size / 2) : 40} /></div>;
