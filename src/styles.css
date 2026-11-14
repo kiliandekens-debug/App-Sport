@@ -229,3 +229,7 @@ button:active:not(:disabled), a.btn:active { transform: scale(0.97); }
 }
 @media (max-width: 899px) { .only-wide { display: none !important; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* Nothing may widen the page on a phone. */
+html, body { overflow-x: clip; }
+.btn:disabled.primary { opacity: 1; filter: saturate(0.6) brightness(0.92); }

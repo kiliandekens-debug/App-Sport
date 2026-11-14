@@ -1,127 +1,188 @@
 import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useData, savePlan } from '../data.jsx';
+import { useUi } from '../ui.jsx';
 import { reviewLastSession, weeklyFacts } from '../lib/coach.js';
-import { fmtKg, fmtInt, fmtDay, sameDay } from '../lib/stats.js';
-import { Icon } from '../components.jsx';
+import { fmtKg, fmtInt, fmtDay, sameDay, titleKey, isWork, isPlausible } from '../lib/stats.js';
+import { incrementOf } from '../lib/exercises.js';
+import { Icon, ExerciseImage } from '../components.jsx';
 
+const KIND = {
+  up: ['Charge en hausse', 'var(--done)', 'var(--ok)'],
+  hold: ['Même charge', 'var(--chip)', 'var(--soft)'],
+  question: ['À vérifier', 'var(--rest-bg)', 'var(--rest)'],
+};
+
+const volumeOf = (w) => w.sets.filter((s) => isWork(s) && isPlausible(s)).reduce((a, s) => a + s.weight_kg * s.reps, 0);
+
+function setsText(sets) {
+  if (!sets.length) return '';
+  const same = sets.every((s) => s.weight_kg === sets[0].weight_kg);
+  return same
+    ? `${fmtKg(sets[0].weight_kg)} kg × ${sets.map((s) => s.reps).join(', ')}`
+    : sets.map((s) => `${fmtKg(s.weight_kg)} × ${s.reps}`).join(', ');
+}
+
+function Stepper({ label, value, name, onStep }) {
+  const btn = { width: 40, height: 44, background: 'var(--card)', border: '1px solid var(--line)' };
+  return (
+    <div className="row" style={{ gap: 4, padding: 4, borderRadius: 12, background: 'var(--raised)' }}>
+      <button className="icon-btn" style={btn} aria-label={`Moins de ${label} sur ${name}`} onClick={() => onStep(-1)}><Icon name="minus" size={16} /></button>
+      <div className="grow stack" style={{ gap: 0, alignItems: 'center' }}>
+        <span className="display" style={{ fontSize: 24, fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap' }}>{value}</span>
+        <span className="xs muted">{label}</span>
+      </div>
+      <button className="icon-btn" style={btn} aria-label={`Plus de ${label} sur ${name}`} onClick={() => onStep(1)}><Icon name="plus" size={16} /></button>
+    </div>
+  );
+}
+
+// One line per exercise: what was done, what to do next time, adjustable in place.
 export default function Coach() {
   const data = useData();
+  const ui = useUi();
   const { state } = useLocation();
   const review = useMemo(() => reviewLastSession(data), [data]);
   const facts = useMemo(() => weeklyFacts(data), [data]);
   const [answers, setAnswers] = useState({});
-  const [applied, setApplied] = useState(false);
-  const [err, setErr] = useState('');
+  const [tweak, setTweak] = useState({});
+  const [saving, setSaving] = useState(false);
 
   if (!review) {
     return (
-      <main className="screen"><div className="center"><span className="title-s">Le coach attend ta première séance</span></div></main>
+      <main className="screen">
+        <div className="head"><h1 className="title">Coach</h1></div>
+        <div className="pad"><div className="card"><span className="muted">Termine une première séance : le coach te proposera ensuite les charges de la suivante.</span></div></div>
+      </main>
     );
   }
 
   const w = review.workout;
-  const when = sameDay(w.start, new Date()) ? "d'aujourd'hui" : `du ${fmtDay(w.start)}`;
+  const prev = data.workouts.find((x) => x.id !== w.id && titleKey(x.title) === titleKey(w.title));
+  const prevVol = prev ? volumeOf(prev) : 0;
+  const deltaPct = prevVol ? Math.round(((review.volume - prevVol) / prevVol) * 100) : null;
+  const minutes = w.end ? Math.round((w.end - w.start) / 60000) : null;
 
-  const planned = review.items
-    .map((it) => {
-      if (it.kind !== 'question') return { name: it.name, ...it.plan };
-      const a = answers[it.name];
-      return a ? { name: it.name, ...it.replies[a].plan } : { name: it.name, pending: true };
-    });
+  const rows = review.items.map((it) => {
+    const sets = w.sets.filter((s) => s.exercise === it.name && isWork(s) && isPlausible(s));
+    const base = it.kind === 'question' ? (answers[it.name] ? it.replies[answers[it.name]].plan : null) : it.plan;
+    const target = base ? { ...base, ...(tweak[it.name] || {}) } : null;
+    const stat = data.exercises.get(it.name);
+    const pr = stat && stat.history.length > 1 && stat.best.date.getTime() === w.start.getTime() ? stat.best : null;
+    const saved = data.plans.get(it.name);
+    const isSaved = !!(target && saved && Number(saved.target_kg) === target.target_kg && saved.target_reps === target.target_reps);
+    return { ...it, sets, target, pr, isSaved };
+  });
+  const ready = rows.filter((r) => r.target);
+  const pending = rows.length - ready.length;
+  const allSaved = ready.length > 0 && ready.every((r) => r.isSaved);
+
+  const step = (r, field, d) => {
+    const cur = r.target[field];
+    const next = field === 'target_kg' ? Math.max(0, Math.round((cur + d * incrementOf(r.name)) * 10) / 10) : Math.max(1, cur + d);
+    setTweak({ ...tweak, [r.name]: { ...(tweak[r.name] || {}), [field]: next, reason: 'Ajusté par toi' } });
+  };
 
   const apply = async () => {
-    setErr('');
+    setSaving(true);
     try {
-      for (const p of planned.filter((x) => !x.pending)) {
-        await savePlan(p.name, { target_kg: p.target_kg, target_reps: p.target_reps, reason: p.reason });
-      }
+      for (const r of ready) await savePlan(r.name, { target_kg: r.target.target_kg, target_reps: r.target.target_reps, reason: r.target.reason });
       await data.refresh();
-      setApplied(true);
+      ui.notify('Charges appliquées à la prochaine séance');
     } catch (e) {
-      setErr(e.message || String(e));
+      ui.notify(e.message || String(e));
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    <main className="screen wide">
-      <div className="head-row" style={{ borderBottom: '1px solid var(--chip)', paddingTop: 24 }}>
-        <span className="icon-btn accent"><Icon name="spark" size={22} /></span>
-        <div className="grow stack" style={{ gap: 2 }}>
-          <h1 className="title-s">Coach</h1>
-          <span className="xs muted">Bilan de la séance {when} · {w.title}</span>
-        </div>
+    <main className="screen">
+      <div className="head">
+        <span className="small muted">Bilan et charges conseillées</span>
+        <h1 className="title">Coach</h1>
       </div>
 
-      <div className="split" style={{ paddingTop: 16 }}>
-        <div className="panel pad stack" style={{ gap: 12 }}>
-          {state?.summary && (
-            <div className="card" style={{ border: '1px solid #3B4A17', background: 'var(--done)' }}>
-              <span className="row" style={{ gap: 8, fontWeight: 700, color: 'var(--ok)' }}><Icon name="check" size={18} width={3} />Séance enregistrée</span>
-              <span className="display" style={{ fontSize: 22 }}>{state.summary.title}</span>
-              <div className="session-stats" style={{ padding: 0 }}>
-                <span><b>{state.summary.minutes}</b>min</span>
-                <span><b>{fmtInt(state.summary.volume)}</b>kg</span>
-                <span><b>{state.summary.sets}</b>séries</span>
-              </div>
-            </div>
-          )}
-          <div className="bubble">
-            {review.totalSets} séries, {fmtInt(review.volume)} kg soulevés.
-            {review.items.some((i) => i.kind === 'question') ? ' Une chose m\'intrigue.' : ' Voici ce que je propose pour la suite.'}
+      <div className="pad stack" style={{ gap: 12, paddingTop: 10 }}>
+        <div className="card hero" style={{ gap: 8 }}>
+          <span className="label">{state?.summary ? 'Séance enregistrée' : `Dernière séance, ${sameDay(w.start, new Date()) ? "aujourd'hui" : `le ${fmtDay(w.start)}`}`}</span>
+          <span className="display">{w.title}</span>
+          <div className="session-stats" style={{ padding: 0 }}>
+            <span><b>{review.totalSets}</b>séries</span>
+            <span><b>{fmtInt(review.volume)}</b>kg</span>
+            {minutes != null && <span><b>{minutes}</b>min</span>}
           </div>
+          {deltaPct != null && (
+            <span className="small" style={{ fontWeight: 600 }}>
+              {deltaPct === 0 ? 'Même volume' : `${deltaPct > 0 ? '+' : '−'}${Math.abs(deltaPct)} % de volume`} par rapport au {fmtDay(prev.start)}
+            </span>
+          )}
+        </div>
 
-          {review.items.filter((i) => i.kind === 'question').map((it) => (
-            <div key={it.name} className="stack" style={{ gap: 12 }}>
-              <div className="bubble">
-                <span>{it.text}</span>
-                <div className="row" style={{ alignItems: 'flex-end', gap: 6, height: 56 }} role="img" aria-label={`Charge : ${fmtKg(it.before)} kg avant, ${fmtKg(it.now)} kg cette fois`}>
-                  <div className="grow stack" style={{ alignItems: 'center', gap: 4 }}><div style={{ width: '100%', height: 44, borderRadius: 6, background: 'var(--border)' }} /><span className="xs muted">Avant</span></div>
-                  <div className="grow stack" style={{ alignItems: 'center', gap: 4 }}><div style={{ width: '100%', height: Math.max(6, 44 * (it.now / it.before)), borderRadius: 6, background: 'var(--rest-fill)' }} /><span className="xs muted">Cette fois</span></div>
+        <div className="between" style={{ paddingTop: 12 }}>
+          <span className="label">Pour la prochaine fois</span>
+          <span className="xs muted">{rows.length} exercices</span>
+        </div>
+
+        {rows.map((r) => {
+          const [label, bg, fg] = KIND[r.kind];
+          return (
+            <section key={r.name} className="card" style={{ padding: 14, gap: 10 }} aria-label={r.name}>
+              <div className="row" style={{ alignItems: 'flex-start' }}>
+                <ExerciseImage name={r.name} size={44} />
+                <div className="grow stack" style={{ gap: 3 }}>
+                  <span className="display" style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.05 }}>{r.name}</span>
+                  <span className="xs muted">Fait : {setsText(r.sets)}</span>
                 </div>
+                <span className="xs" style={{ background: bg, color: fg, fontWeight: 700, borderRadius: 8, padding: '4px 8px', whiteSpace: 'nowrap' }}>{label}</span>
               </div>
-              {answers[it.name] ? (
-                <>
-                  <div className="bubble me">{answers[it.name]}</div>
-                  <div className="bubble">{it.replies[answers[it.name]].reply}</div>
-                </>
-              ) : (
-                <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
-                  {Object.keys(it.replies).map((k) => (
-                    <button key={k} className="reply" onClick={() => setAnswers({ ...answers, [it.name]: k })}>{k}</button>
-                  ))}
+
+              {r.pr && (
+                <span className="row xs" style={{ gap: 6, color: 'var(--ok)', fontWeight: 700 }}>
+                  <Icon name="check" size={14} width={3} />Nouveau record : {fmtKg(r.pr.kg)} kg × {r.pr.reps}
+                </span>
+              )}
+
+              {r.kind === 'question' && (
+                <div className="stack" style={{ gap: 8 }}>
+                  <span className="small">Charge en forte baisse : {fmtKg(r.before)} kg la fois d'avant, {fmtKg(r.now)} kg cette fois. Pourquoi ?</span>
+                  <div className="seg" role="group" aria-label={`Raison de la baisse sur ${r.name}`} style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+                    {Object.keys(r.replies).map((k) => (
+                      <button key={k} className={answers[r.name] === k ? 'on' : ''} aria-pressed={answers[r.name] === k} style={{ fontSize: 13, padding: '0 4px' }}
+                        onClick={() => { setAnswers({ ...answers, [r.name]: k }); setTweak({ ...tweak, [r.name]: undefined }); }}>{k}</button>
+                    ))}
+                  </div>
                 </div>
               )}
-            </div>
-          ))}
 
-          {facts.map((f) => <div key={f} className="bubble">{f}</div>)}
-          <span className="xs muted">Les conseils viennent de règles simples appliquées à ton historique (double progression), pas d'une IA en ligne.</span>
-        </div>
-
-        <div className="panel pad" style={{ paddingTop: 0 }}>
-          <div className="card" style={{ outline: '1px solid #2A2A2E', marginTop: 12 }}>
-            <div className="between">
-              <span className="display" style={{ fontSize: 17 }}>Prochaine fois · {w.title}</span>
-              <span className="xs muted">Proposé</span>
-            </div>
-            <div className="stack" style={{ gap: 10 }}>
-              {planned.map((p) => (
-                <div key={p.name} className="stack" style={{ gap: 2 }}>
-                  <div className="between" style={{ fontSize: 14 }}>
-                    <span>{p.name}</span>
-                    <span style={{ fontWeight: 700 }} className={p.pending ? 'muted' : 'accent'}>{p.pending ? 'En attente' : `${fmtKg(p.target_kg)} kg × ${p.target_reps}`}</span>
+              {r.target && (
+                <>
+                  <div className="grid2">
+                    <Stepper label="charge" value={`${fmtKg(r.target.target_kg)} kg`} name={r.name} onStep={(d) => step(r, 'target_kg', d)} />
+                    <Stepper label="reps" value={`× ${r.target.target_reps}`} name={r.name} onStep={(d) => step(r, 'target_reps', d)} />
                   </div>
-                  <span className="xs muted">{p.pending ? 'Réponds à la question à gauche' : p.reason}</span>
-                </div>
-              ))}
-            </div>
-            <button className={`btn big ${applied ? '' : 'primary'}`} style={{ height: 48, borderRadius: 14, fontSize: 15, color: applied ? 'var(--ok)' : undefined, background: applied ? 'var(--done)' : undefined }} onClick={apply} disabled={applied}>
-              {applied ? 'Ajouté au programme' : 'Appliquer à la prochaine séance'}
-            </button>
-            {err && <span className="small" style={{ color: 'var(--danger)' }}>{err}</span>}
+                  {r.isSaved && <span className="row xs" style={{ gap: 6, color: 'var(--ok)', fontWeight: 700 }}><Icon name="check" size={14} width={3} />Appliqué à la prochaine séance</span>}
+                  <span className="xs muted">{r.target.reason}</span>
+                </>
+              )}
+            </section>
+          );
+        })}
+
+        {!!facts.length && (
+          <div className="warn" style={{ marginTop: 8 }}>
+            <span className="xs" style={{ fontWeight: 700 }}>À surveiller</span>
+            {facts.map((f) => <span key={f} className="small" style={{ lineHeight: 1.4 }}>{f}</span>)}
           </div>
-        </div>
+        )}
+        <span className="xs muted">Conseils calculés à partir de ton historique (double progression) : on ajoute des reps, puis de la charge.</span>
+      </div>
+
+      <div style={{ position: 'sticky', bottom: 'calc(84px + env(safe-area-inset-bottom))', zIndex: 5, padding: '14px 20px 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <button className="btn primary big" style={{ boxShadow: '0 8px 24px rgba(10, 14, 20, 0.28)', background: allSaved ? 'var(--ok)' : undefined, color: allSaved ? 'var(--on-ok)' : undefined }} onClick={apply} disabled={saving || !ready.length || allSaved}>
+          {allSaved ? <><Icon name="check" size={18} width={3} />Appliqué à la prochaine séance</> : saving ? 'Enregistrement…' : 'Appliquer à la prochaine séance'}
+        </button>
+        {pending > 0 && !allSaved && <span className="xs muted" style={{ textAlign: 'center', background: 'var(--bg)', borderRadius: 8, padding: '2px 6px', alignSelf: 'center' }}>{pending} exercice{pending > 1 ? 's' : ''} à vérifier, non inclus pour l'instant</span>}
       </div>
     </main>
   );
