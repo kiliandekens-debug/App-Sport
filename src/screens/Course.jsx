@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { supabase } from '../supabase.js';
+import { readRunScreenshot, parseRunText } from '../lib/runocr.js';
 import { useData, saveRunProfile, saveRunLog, deleteRunLog } from '../data.jsx';
 import { useUi } from '../ui.jsx';
 import { Icon, Bars } from '../components.jsx';
@@ -110,16 +110,6 @@ function Setup({ initial, onSave, onCancel }) {
   );
 }
 
-async function toJpegBase64(file) {
-  const bmp = await createImageBitmap(file);
-  const scale = Math.min(1, 1500 / Math.max(bmp.width, bmp.height));
-  const c = document.createElement('canvas');
-  c.width = Math.round(bmp.width * scale);
-  c.height = Math.round(bmp.height * scale);
-  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
-  return c.toDataURL('image/jpeg', 0.85).split(',')[1];
-}
-
 const toLocalInput = (iso) => {
   const d = iso ? new Date(iso) : new Date();
   const pad = (n) => String(n).padStart(2, '0');
@@ -191,44 +181,50 @@ export default function Course() {
   const apple = next ? appleSteps(next) : null;
   const logs = [...data.runLogs].reverse();
 
+  const empty = () => ({ distance: '', duration: '', hr: '', cal: '', feel: null, when: toLocalInput() });
+  const fill = (r) => {
+    if (!r.found) {
+      setDraftNote('Je n\'ai pas réussi à lire les valeurs. Saisis-les à la main, ou colle le texte de la capture.');
+      setDraft(empty());
+      return;
+    }
+    setDraftNote(r.found < 2 ? 'Je n\'ai lu qu\'une partie des valeurs. Complète et vérifie avant d\'enregistrer.' : 'Vérifie les valeurs lues sur ta capture avant d\'enregistrer.');
+    setDraft({
+      distance: r.distance_km != null ? String(r.distance_km).replace('.', ',') : '',
+      duration: r.duration_s != null ? hms(r.duration_s) : '',
+      hr: r.avg_hr != null ? String(r.avg_hr) : '',
+      cal: r.calories != null ? String(r.calories) : '',
+      feel: null,
+      when: toLocalInput(r.done_at),
+    });
+  };
+
   const readCapture = async (file) => {
     if (!file) return;
     setReading(true);
     try {
-      const image = await toJpegBase64(file);
-      const { data: res, error } = await supabase.functions.invoke('read-run-screenshot', { body: { image, media_type: 'image/jpeg' } });
-      if (error || !res?.result) {
-        setDraftNote('Je n\'ai pas pu lire la capture. Saisis les valeurs à la main.');
-        setDraft({ distance: '', duration: '', hr: '', cal: '', feel: null, when: toLocalInput() });
-        return;
-      }
-      const r = res.result;
-      setDraftNote('Vérifie les valeurs lues sur ta capture avant d\'enregistrer.');
-      setDraft({
-        distance: r.distance_km != null ? String(r.distance_km).replace('.', ',') : '',
-        duration: r.duration_s != null ? hms(r.duration_s) : '',
-        hr: r.avg_hr != null ? String(r.avg_hr) : '',
-        cal: r.calories != null ? String(r.calories) : '',
-        feel: null,
-        when: toLocalInput(r.done_at),
-      });
+      fill(await readRunScreenshot(file));
     } catch {
-      setDraftNote('Je n\'ai pas pu lire la capture. Saisis les valeurs à la main.');
-      setDraft({ distance: '', duration: '', hr: '', cal: '', feel: null, when: toLocalInput() });
+      fill({ found: 0 });
     } finally {
       setReading(false);
       if (fileRef.current) fileRef.current.value = '';
     }
   };
 
-  const manual = () => { setDraftNote(null); setDraft({ distance: '', duration: '', hr: '', cal: '', feel: null, when: toLocalInput() }); };
+  const pasteText = async () => {
+    const text = await ui.prompt({ title: 'Coller le texte de la capture', message: 'Dans Photos, appuie longuement sur le texte de la capture, « Tout sélectionner », « Copier », puis colle ici.', placeholder: 'Texte copié', ok: 'Lire' });
+    if (text) fill(parseRunText(text));
+  };
+
+  const manual = () => { setDraftNote(null); setDraft(empty()); };
 
   const saveResult = async (f) => {
     try {
       await saveRunLog({
         done_at: new Date(f.when).toISOString(), session_key: next?.key || null, kind: next?.kind || null,
         distance_km: f.km, duration_s: f.secs, avg_hr: f.hr ? Number(f.hr) : null, calories: f.cal ? Number(f.cal) : null,
-        feel: f.feel, source: draftNote?.startsWith('Vérifie') ? 'screenshot' : 'manual',
+        feel: f.feel, source: draftNote && !draftNote.includes('pas réussi') ? 'screenshot' : 'manual',
       });
       await data.refresh();
       setDraft(null);
@@ -304,7 +300,11 @@ export default function Course() {
             <button className="btn primary big" disabled={reading} onClick={() => fileRef.current?.click()}>
               <Icon name="plus" size={18} />{reading ? 'Lecture de la capture…' : 'J\'ai couru : envoyer la capture'}
             </button>
-            <button className="btn" onClick={manual}>Saisir à la main</button>
+            <div className="grid2">
+              <button className="btn" onClick={pasteText}>Coller le texte</button>
+              <button className="btn" onClick={manual}>Saisir à la main</button>
+            </div>
+            <span className="xs muted" style={{ textAlign: 'center' }}>La capture est lue sur ton téléphone. Elle n'est envoyée nulle part.</span>
           </>
         )}
 
