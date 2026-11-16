@@ -6,13 +6,7 @@ import { Icon, Bars } from '../components.jsx';
 import { fmtDay } from '../lib/stats.js';
 import { GOALS, buildPlan, appleSteps, segments, intensityOf, mmss, hms, parseDuration, TYPE_LABEL, paceRange, pacesOf, structureText, goalPrediction, betterLevel, runStats } from '../lib/running.js';
 
-const FILL = {
-  warm: 'var(--rest-fill)', cool: 'var(--rest-fill)', rest: 'var(--rest-fill)',
-  easy: 'color-mix(in srgb, var(--brand) 45%, var(--card))',
-  steady: 'color-mix(in srgb, var(--brand) 65%, var(--card))',
-  tempo: 'color-mix(in srgb, var(--brand) 85%, var(--card))',
-  fast: 'var(--brand)',
-};
+const FILL = { warm: 'var(--z0)', cool: 'var(--z0)', rest: 'var(--z0)', easy: 'var(--z1)', steady: 'var(--z2)', tempo: 'var(--z3)', fast: 'var(--z4)' };
 const today = () => new Date().toISOString().slice(0, 10);
 
 // The session drawn as a profile: width = time, height = effort.
@@ -29,7 +23,7 @@ function RunChart({ session }) {
         {segs.map((s, i) => {
           const w = (s.mins / total) * W;
           const h = intensityOf(s.type) * H;
-          const rect = <rect key={i} x={x + GAP / 2} y={H - h} width={Math.max(1, w - GAP)} height={h} rx={3} fill={FILL[s.type]} opacity={s.type === 'rest' ? 0.75 : 1} />;
+          const rect = <rect key={i} x={x + GAP / 2} y={H - h} width={Math.max(1, w - GAP)} height={h} rx={3} fill={FILL[s.type]} />;
           x += w;
           return rect;
         })}

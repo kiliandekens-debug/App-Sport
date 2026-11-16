@@ -10,7 +10,7 @@ import { Icon, ExerciseImage } from '../components.jsx';
 const KIND = {
   up: ['Charge en hausse', 'var(--done)', 'var(--ok)'],
   hold: ['Même charge', 'var(--chip)', 'var(--soft)'],
-  question: ['À vérifier', 'var(--rest-bg)', 'var(--rest)'],
+  question: ['À vérifier', 'var(--warn-bg)', 'var(--warm)'],
 };
 
 const volumeOf = (w) => w.sets.filter((s) => isWork(s) && isPlausible(s)).reduce((a, s) => a + s.weight_kg * s.reps, 0);
@@ -29,7 +29,7 @@ function Stepper({ label, value, name, onStep }) {
     <div className="row" style={{ gap: 4, padding: 4, borderRadius: 12, background: 'var(--raised)' }}>
       <button className="icon-btn" style={btn} aria-label={`Moins de ${label} sur ${name}`} onClick={() => onStep(-1)}><Icon name="minus" size={16} /></button>
       <div className="grow stack" style={{ gap: 0, alignItems: 'center' }}>
-        <span className="display" style={{ fontSize: 24, fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap' }}>{value}</span>
+        <span className="display" style={{ fontSize: 22, fontWeight: 800, lineHeight: 1, whiteSpace: 'nowrap', letterSpacing: '-0.02em' }}>{value}</span>
         <span className="xs muted">{label}</span>
       </div>
       <button className="icon-btn" style={btn} aria-label={`Plus de ${label} sur ${name}`} onClick={() => onStep(1)}><Icon name="plus" size={16} /></button>
@@ -131,7 +131,7 @@ export default function Coach() {
               <div className="row" style={{ alignItems: 'flex-start' }}>
                 <ExerciseImage name={r.name} size={44} />
                 <div className="grow stack" style={{ gap: 3 }}>
-                  <span className="display" style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.05 }}>{r.name}</span>
+                  <span className="display" style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.15 }}>{r.name}</span>
                   <span className="xs muted">Fait : {setsText(r.sets)}</span>
                 </div>
                 <span className="xs" style={{ background: bg, color: fg, fontWeight: 700, borderRadius: 8, padding: '4px 8px', whiteSpace: 'nowrap' }}>{label}</span>

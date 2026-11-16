@@ -7,7 +7,7 @@ import { fmtDay, fmtInt } from '../lib/stats.js';
 import { weeklyFacts } from '../lib/coach.js';
 import { getTheme, setTheme } from '../theme.js';
 
-const COLORS = ['var(--accent)', 'var(--rest-fill)', 'var(--ok)', 'var(--drop)', 'var(--text)', 'var(--muted)', 'var(--border)', 'var(--danger)'];
+const COLORS = ['var(--accent)', 'var(--z0)', 'var(--z1)', 'var(--drop)', 'var(--z3)', 'var(--text)', 'var(--muted)', 'var(--border)'];
 
 export default function Profil({ user }) {
   const data = useData();
@@ -90,7 +90,7 @@ export default function Profil({ user }) {
 
           {!!facts.length && (
             <div className="warn" style={{ margin: '14px 20px 0' }}>
-              <span className="xs" style={{ color: 'var(--rest)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>À surveiller</span>
+              <span className="xs" style={{ color: 'var(--warm)', fontWeight: 700 }}>À surveiller</span>
               {facts.map((f) => <span key={f} className="small" style={{ lineHeight: 1.4 }}>{f}</span>)}
             </div>
           )}

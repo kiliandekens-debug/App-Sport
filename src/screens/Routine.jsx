@@ -110,7 +110,7 @@ export default function Routine() {
                     <SupersetTag letter={e.superset} />
                   </div>
                 </div>
-                <div className="row" style={{ gap: 8, fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em', padding: '0 4px' }}>
+                <div className="row" style={{ gap: 8, fontSize: 11, color: 'var(--muted)', padding: '0 4px' }}>
                   <span style={{ width: 40 }}>Série</span><span className="grow">Reps visées</span><span style={{ width: 84 }}>Kg</span>
                 </div>
                 {e.sets.map((x, k) => {
