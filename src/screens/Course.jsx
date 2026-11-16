@@ -2,9 +2,9 @@ import { useMemo, useRef, useState } from 'react';
 import { supabase } from '../supabase.js';
 import { useData, saveRunProfile, saveRunLog, deleteRunLog } from '../data.jsx';
 import { useUi } from '../ui.jsx';
-import { Icon } from '../components.jsx';
+import { Icon, Bars } from '../components.jsx';
 import { fmtDay } from '../lib/stats.js';
-import { GOALS, buildPlan, appleSteps, segments, intensityOf, mmss, hms, parseDuration, fmtMin, TYPE_LABEL, paceRange } from '../lib/running.js';
+import { GOALS, buildPlan, appleSteps, segments, intensityOf, mmss, hms, parseDuration, TYPE_LABEL, paceRange, pacesOf, structureText, goalPrediction, betterLevel, runStats } from '../lib/running.js';
 
 const FILL = {
   warm: 'var(--rest-fill)', cool: 'var(--rest-fill)', rest: 'var(--rest-fill)',
@@ -43,7 +43,22 @@ function RunChart({ session }) {
           </span>
         ))}
       </div>
+      <span className="small" style={{ lineHeight: 1.4 }}>{structureText(session)}</span>
     </div>
+  );
+}
+
+function SessionRow({ s, active, onPick }) {
+  return (
+    <button className="card row" disabled={s.done} onClick={onPick} aria-label={`${s.title}, ${s.mins} minutes${s.done ? ', faite' : ', afficher'}`}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, textAlign: 'left', width: '100%', color: 'inherit', background: s.done ? 'var(--done)' : undefined, borderColor: s.done ? 'var(--done-line)' : active ? 'var(--accent)' : undefined, borderWidth: active && !s.done ? 2 : undefined, opacity: 1 }}>
+      <span style={{ width: 26, height: 26, flexShrink: 0, borderRadius: 13, background: s.done ? 'var(--ok)' : 'var(--chip)', color: 'var(--on-ok)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{s.done && <Icon name="check" size={14} width={3} />}</span>
+      <span className="grow stack" style={{ gap: 1 }}>
+        <span style={{ fontWeight: 600 }}>{s.title}</span>
+        <span className="xs muted">{s.mins} min, ≈ {String(s.km).replace('.', ',')} km{s.blocks.length === 1 ? `, ${paceRange(s.blocks[0].pace)} /km` : ''}</span>
+      </span>
+      {!s.done && <span className="xs" style={{ color: 'var(--accent)', fontWeight: 600 }}>{active ? 'Affichée' : 'Voir'}</span>}
+    </button>
   );
 }
 
@@ -152,6 +167,8 @@ export default function Course() {
   const [draft, setDraft] = useState(null);
   const [draftNote, setDraftNote] = useState(null);
   const [reading, setReading] = useState(false);
+  const [picked, setPicked] = useState(null);
+  const [showPlan, setShowPlan] = useState(false);
   const profile = data.runProfile;
 
   const plan = useMemo(() => (profile ? buildPlan(profile, data.runLogs, data.workouts) : null), [profile, data.runLogs, data.workouts]);
@@ -162,7 +179,14 @@ export default function Course() {
 
   if (!profile || editing) return <Setup initial={profile} onSave={saveProfile} onCancel={profile ? () => setEditing(false) : null} />;
 
-  const next = plan.next;
+  const all = plan.weeks.flat();
+  const next = all.find((x) => x.key === picked && !x.done) || plan.next;
+  const isPicked = next && plan.next && next.key !== plan.next.key;
+  const paces = pacesOf(profile);
+  const stats = runStats(data.runLogs);
+  const better = betterLevel(profile, data.runLogs);
+  const plannedWeekKm = (plan.weeks[plan.current] || []).reduce((a, x) => a + x.km, 0);
+  const km1 = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
   const weekSessions = plan.weeks[plan.current] || [];
   const apple = next ? appleSteps(next) : null;
   const logs = [...data.runLogs].reverse();
@@ -208,6 +232,7 @@ export default function Course() {
       });
       await data.refresh();
       setDraft(null);
+      setPicked(null);
       ui.notify('Course enregistrée, plan mis à jour');
     } catch (e) { ui.notify(e.message || String(e)); }
   };
@@ -233,7 +258,7 @@ export default function Course() {
         {!draft && next && (
           <>
             <div className="card hero" style={{ gap: 8 }}>
-              <span className="label">Prochaine sortie</span>
+              <span className="label">{isPicked ? `Séance choisie, semaine ${next.week + 1}` : 'Prochaine sortie'}</span>
               <span className="display">{next.title}</span>
               <div className="session-stats" style={{ padding: 0 }}>
                 <span><b>{next.mins}</b>min</span>
@@ -266,7 +291,14 @@ export default function Course() {
             </section>
 
             {plan.note && <div className="warn"><span className="xs" style={{ fontWeight: 700 }}>Jambes</span><span className="small" style={{ lineHeight: 1.4 }}>{plan.note}</span></div>}
-            {plan.adj.message && <div className="card"><span className="small">{plan.adj.message}</span></div>}
+            {plan.adj.message && !isPicked && <div className="card"><span className="small">{plan.adj.message}</span></div>}
+            {better && (
+              <div className="card stack" style={{ gap: 8 }}>
+                <span style={{ fontWeight: 600 }}>Tu as progressé</span>
+                <span className="small muted">Ta course du {fmtDay(new Date(better.log.done_at))} équivaut à {hms(better.eq5)} sur 5 km, contre {hms(better.ref5)} enregistré. Je peux recalculer tes allures sur ce niveau.</span>
+                <button className="btn" onClick={() => saveProfile({ ...profile, ref_distance_km: 5, ref_time_s: Math.round(better.eq5) })}>Mettre à jour mes allures</button>
+              </div>
+            )}
 
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => readCapture(e.target.files?.[0])} />
             <button className="btn primary big" disabled={reading} onClick={() => fileRef.current?.click()}>
@@ -282,13 +314,45 @@ export default function Course() {
               <span className="label">Cette semaine</span>
               <span className="xs muted">{weekSessions.filter((s) => s.done).length} sur {weekSessions.length} faites</span>
             </div>
-            {weekSessions.map((s) => (
-              <div key={s.key} className="card row" style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, background: s.done ? 'var(--done)' : undefined, borderColor: s.done ? 'var(--done-line)' : undefined }}>
-                <span style={{ width: 26, height: 26, flexShrink: 0, borderRadius: 13, background: s.done ? 'var(--ok)' : 'var(--chip)', color: 'var(--on-ok)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{s.done && <Icon name="check" size={14} width={3} />}</span>
-                <div className="grow stack" style={{ gap: 1 }}>
-                  <span style={{ fontWeight: 600 }}>{s.title}</span>
-                  <span className="xs muted">{s.mins} min · ≈ {String(s.km).replace('.', ',')} km{s.blocks.length === 1 ? ` · ${paceRange(s.blocks[0].pace)} /km` : ''}</span>
+            {weekSessions.map((s) => <SessionRow key={s.key} s={s} active={next?.key === s.key} onPick={() => { setPicked(s.key); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}
+
+            <section className="card stack" style={{ gap: 12, marginTop: 12 }} aria-label="Tes allures">
+              <div className="between">
+                <span className="label">Tes allures</span>
+                <span className="xs muted">par km</span>
+              </div>
+              <div className="stack" style={{ gap: 8 }}>
+                {[['Facile', paces.easy * plan.adj.paceScale, 'footings, récupération'], ['Seuil', paces.tempo * plan.adj.paceScale, 'soutenu mais tenable'], ['Rapide', paces.fast * plan.adj.paceScale, 'fractionné']].map(([l, p, d]) => (
+                  <div key={l} className="between">
+                    <span><b>{l}</b> <span className="xs muted">{d}</span></span>
+                    <span className="display" style={{ fontSize: 20, fontWeight: 700 }}>{mmss(p)}</span>
+                  </div>
+                ))}
+              </div>
+              <span className="small muted">Temps estimé aujourd'hui sur {GOALS[profile.goal].label === 'Forme' ? '5 km' : GOALS[profile.goal].label} : <b style={{ color: 'var(--text)' }}>{hms(goalPrediction(profile))}</b></span>
+            </section>
+
+            {stats.count > 0 && (
+              <section className="card stack" style={{ gap: 12 }} aria-label="Ton suivi">
+                <span className="label">Ton suivi</span>
+                <div className="session-stats" style={{ padding: 0, flexWrap: 'wrap', rowGap: 6 }}>
+                  <span><b>{stats.count}</b>sortie{stats.count > 1 ? 's' : ''}</span>
+                  <span><b>{km1(stats.totalKm)}</b>km au total</span>
+                  <span><b>{mmss(stats.avgPace)}</b>/km en moyenne</span>
                 </div>
+                <Bars values={stats.weeks.map((w) => w.km)} labels={stats.weeks.map((w) => `${w.from.getDate()}/${w.from.getMonth() + 1}`)} height={72} highlight={[stats.weeks.length - 1]} label="Kilomètres par semaine sur 8 semaines" />
+                <span className="small muted">Cette semaine : {km1(stats.weekKm)} km sur {km1(plannedWeekKm)} prévus. Plus longue sortie : {km1(stats.longest)} km.</span>
+              </section>
+            )}
+
+            <button className="btn" aria-expanded={showPlan} onClick={() => setShowPlan(!showPlan)}>{showPlan ? 'Masquer le plan complet' : `Voir le plan complet (${plan.total} semaines)`}</button>
+            {showPlan && plan.weeks.map((wk, i) => (
+              <div key={i} className="stack" style={{ gap: 8 }}>
+                <div className="between" style={{ paddingTop: 8 }}>
+                  <span className="label">Semaine {i + 1}{i === plan.current ? ' (en cours)' : ''}{wk[0]?.recover ? ' · récupération' : wk[0]?.taper ? ' · affûtage' : ''}</span>
+                  <span className="xs muted">≈ {km1(wk.reduce((a, x) => a + x.km, 0))} km</span>
+                </div>
+                {wk.map((s) => <SessionRow key={s.key} s={s} active={next?.key === s.key} onPick={() => { setPicked(s.key); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}
               </div>
             ))}
 

@@ -5,6 +5,7 @@ import { useSession } from '../session.jsx';
 import { fmtDay, fmtKg, sameDay, titleKey } from '../lib/stats.js';
 import { routineFromHistory } from '../lib/routines.js';
 import { Icon, ExerciseImage } from '../components.jsx';
+import { buildPlan } from '../lib/running.js';
 
 const firstName = (user) => (user?.user_metadata?.name || '').split(' ')[0] || 'Kilian';
 
@@ -14,6 +15,7 @@ export default function Accueil({ user }) {
   const nav = useNavigate();
   const [busy, setBusy] = useState(false);
   const today = new Date();
+  const run = data.runProfile ? buildPlan(data.runProfile, data.runLogs, data.workouts) : null;
 
   // Last time each routine was done, matched on the session title.
   const lastDone = (name) => data.workouts.find((w) => titleKey(w.title) === titleKey(name))?.start || null;
@@ -88,6 +90,14 @@ export default function Accueil({ user }) {
           <button className="btn primary big" onClick={() => startRoutine(suggested)}><Icon name="play" size={18} width={2.5} />Démarrer la routine</button>
         </div>
       ) : null}
+
+      <Link to="/course" className="card row" style={{ margin: '14px 20px 0', flexDirection: 'row', alignItems: 'center', gap: 12, color: 'inherit', textDecoration: 'none' }}>
+        <Icon name="timer" size={22} />
+        <span className="grow stack" style={{ gap: 1 }}>
+          <span style={{ fontWeight: 600 }}>Course à pied</span>
+          <span className="small muted">{run ? (run.next ? `Prochaine sortie : ${run.next.title.toLowerCase()}, ${run.next.mins} min` : 'Plan terminé') : 'Crée ton plan selon ton objectif'}</span>
+        </span>
+      </Link>
 
       <div className="section">
         <div className="between">

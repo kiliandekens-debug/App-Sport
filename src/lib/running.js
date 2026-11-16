@@ -200,3 +200,51 @@ export function segments(session) {
   return out;
 }
 export const intensityOf = (type) => INTENSITY[type] ?? 0.4;
+
+// "10 min échauffement, puis 6 × (1 min rapide + 1 min 30 s récup), puis 8 min retour au calme"
+export function structureText(session) {
+  return session.blocks.map((b) => {
+    if (b.type === 'rep') return `${b.reps} × (${fmtMin(b.work.mins)} ${TYPE_LABEL[b.work.type].toLowerCase()} + ${fmtMin(b.rest.mins)} récup)`;
+    return `${fmtMin(b.mins)} ${TYPE_LABEL[b.type].toLowerCase()}`;
+  }).join(', puis ');
+}
+
+// Riegel: time over another distance from a known performance.
+export const predict = (timeS, fromKm, toKm) => timeS * Math.pow(toKm / fromKm, 1.06);
+
+export function goalPrediction(profile) {
+  const g = GOALS[profile.goal] || GOALS['5k'];
+  return predict(Number(profile.ref_time_s), Number(profile.ref_distance_km), g.km);
+}
+
+// A logged run that implies a better level than the stored one (only runs of 3 km or more count).
+export function betterLevel(profile, logs) {
+  const ref5 = predict(Number(profile.ref_time_s), Number(profile.ref_distance_km), 5);
+  let best = null;
+  for (const l of logs) {
+    const km = Number(l.distance_km);
+    if (!km || km < 3 || !l.duration_s) continue;
+    if (new Date(l.done_at) < new Date(profile.updated_at || 0)) continue;
+    const eq = predict(l.duration_s, km, 5);
+    if (eq < ref5 * 0.985 && (!best || eq < best.eq5)) best = { eq5: eq, log: l, ref5 };
+  }
+  return best;
+}
+
+const mondayOf = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+
+export function runStats(logs, weeksBack = 8, now = new Date()) {
+  const valid = logs.filter((l) => Number(l.distance_km) > 0 && l.duration_s > 0);
+  const totalKm = valid.reduce((a, l) => a + Number(l.distance_km), 0);
+  const totalS = valid.reduce((a, l) => a + l.duration_s, 0);
+  const thisMonday = mondayOf(now);
+  const weeks = [];
+  for (let i = weeksBack - 1; i >= 0; i--) {
+    const from = new Date(thisMonday); from.setDate(from.getDate() - i * 7);
+    const to = new Date(from); to.setDate(to.getDate() + 7);
+    const km = valid.filter((l) => { const d = new Date(l.done_at); return d >= from && d < to; }).reduce((a, l) => a + Number(l.distance_km), 0);
+    weeks.push({ from, km });
+  }
+  const longest = valid.reduce((a, l) => Math.max(a, Number(l.distance_km)), 0);
+  return { count: valid.length, totalKm, avgPace: totalKm ? totalS / totalKm : null, weeks, longest, weekKm: weeks[weeks.length - 1].km };
+}
