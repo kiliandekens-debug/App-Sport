@@ -37,7 +37,7 @@ export function applyWarmups(sets) {
   return sets.map((x) => {
     if (x.type !== 'warmup') return x;
     const step = scheme[Math.min(i++, scheme.length - 1)];
-    return x.auto && !x.done ? { ...x, kg: String(round05(base * step[0])) } : x;
+    return x.auto && !x.done ? { ...x, kg: String(round05(base * step[0])).replace('.', ',') } : x;
   });
 }
 
@@ -119,6 +119,37 @@ function restOverAlert() {
   });
 }
 
+// Value shown in grey for set j: same rank among warm-ups or working sets, last time.
+export function prevOf(e, j) {
+  const type = e.sets[j].type || 'normal';
+  const rank = e.sets.slice(0, j).filter((x) => (x.type === 'warmup') === (type === 'warmup')).length;
+  const pool = e.prev.filter((p) => (p.type === 'warmup') === (type === 'warmup'));
+  return pool[rank] || null;
+}
+
+function fillFromPrev(e, j) {
+  const x = e.sets[j];
+  const p = prevOf(e, j);
+  return {
+    ...x,
+    kg: x.kg === '' && p ? String(p.kg).replace('.', ',') : x.kg === '' ? '0' : x.kg,
+    reps: x.reps === '' && p ? String(p.reps) : x.reps,
+  };
+}
+
+// A superset must stay a block of neighbours; members cut off by a move leave the group.
+function splitBrokenSupersets(exercises) {
+  const out = exercises.map((e) => ({ ...e }));
+  const seen = new Set();
+  for (let i = 0; i < out.length; i++) {
+    const l = out[i].superset;
+    if (!l) continue;
+    if (seen.has(l) && out[i - 1]?.superset !== l) out[i].superset = null;
+    seen.add(l);
+  }
+  return cleanSupersets(out);
+}
+
 export function SessionProvider({ children }) {
   const data = useData();
   const [s, setS] = useState(() => readJson(KEY));
@@ -126,10 +157,14 @@ export function SessionProvider({ children }) {
   const wasResting = useRef(false);
 
   useEffect(() => { writeJson(KEY, s); }, [s]);
+  // The clock only runs during a session: otherwise it would re-render every screen twice a second.
+  const active = Boolean(s);
   useEffect(() => {
+    if (!active) return undefined;
+    setNow(Date.now());
     const t = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(t);
-  }, []);
+  }, [active]);
 
   const resting = Boolean(s?.restUntil && s.restUntil > now);
   useEffect(() => {
@@ -178,7 +213,11 @@ export function SessionProvider({ children }) {
       const { data: w, error } = await supabase.from('workouts').insert({ title: c.title, started_at: c.startedAt, ended_at: ended, source: 'app' }).select('id').single();
       if (error) throw error;
       const { error: e2 } = await supabase.from('sets').insert(done.map((d) => ({ ...d, workout_id: w.id })));
-      if (e2) throw e2;
+      if (e2) {
+        // Without this, the half-saved workout would block every retry (same start time).
+        await supabase.from('workouts').delete().eq('id', w.id);
+        throw e2;
+      }
       const used = [...new Set(done.map((d) => d.exercise))];
       await supabase.from('coach_plans').delete().in('exercise', used);
     }
@@ -231,10 +270,15 @@ export function SessionProvider({ children }) {
         ...e,
         sets: e.sets.map((x, j) => (j === si ? { ...x, type: SET_TYPES[(SET_TYPES.indexOf(x.type || 'normal') + 1) % SET_TYPES.length] } : x)),
       })),
+      // Empty fields take the values shown in grey (last time), as in Hevy. Returns false if reps are still missing.
       validate: (ei, si) => {
+        const target = s.exercises[ei]?.sets[si];
+        if (!target) return false;
+        const filled = fillFromPrev(s.exercises[ei], si);
+        if (!(num(filled.reps) > 0)) return false;
         unlockAudio();
         update((c) => {
-          const exercises = c.exercises.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((x, j) => (j === si ? { ...x, done: true } : x)) }));
+          const exercises = c.exercises.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((x, j) => (j === si ? { ...fillFromPrev(e, j), done: true } : x)) }));
           const e = exercises[ei];
           const open = (x) => x.sets.some((y) => !y.done);
           let current = ei;
@@ -264,6 +308,7 @@ export function SessionProvider({ children }) {
             restTotal: rest,
           };
         });
+        return true;
       },
       unvalidate: (ei, si) => mapEx(ei, (e) => ({ ...e, sets: e.sets.map((x, j) => (j === si ? { ...x, done: false } : x)) })),
       addSet: (ei) => mapEx(ei, (e) => {
@@ -279,8 +324,9 @@ export function SessionProvider({ children }) {
       moveExercise: (ei, d) => update((c) => {
         const j = ei + d;
         if (j < 0 || j >= c.exercises.length) return c;
-        const exercises = [...c.exercises];
+        let exercises = [...c.exercises];
         [exercises[ei], exercises[j]] = [exercises[j], exercises[ei]];
+        exercises = splitBrokenSupersets(exercises);
         return { ...c, exercises, current: c.current === ei ? j : c.current === j ? ei : c.current };
       }),
       setRest: (ei, sec) => {

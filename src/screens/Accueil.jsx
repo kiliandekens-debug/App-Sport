@@ -2,10 +2,16 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useData, saveRoutine } from '../data.jsx';
 import { useSession } from '../session.jsx';
-import { fmtDay, fmtKg, sameDay, titleKey } from '../lib/stats.js';
+import { fmtDay, fmtKg, fmtInt, sameDay, titleKey, isWork, isPlausible } from '../lib/stats.js';
 import { routineFromHistory } from '../lib/routines.js';
 import { Icon, ExerciseImage } from '../components.jsx';
-import { buildPlan } from '../lib/running.js';
+import { buildPlan, segments, intensityOf } from '../lib/running.js';
+
+// "aujourd'hui", "hier", "il y a 3 jours", then the date.
+const ago = (d) => {
+  const days = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86400000);
+  return days <= 0 ? "aujourd'hui" : days === 1 ? 'hier' : days < 7 ? `il y a ${days} jours` : `le ${fmtDay(new Date(d))}`;
+};
 
 const firstName = (user) => (user?.user_metadata?.name || '').split(' ')[0] || 'Kilian';
 
@@ -23,8 +29,19 @@ export default function Accueil({ user }) {
   const suggested = routines.length
     ? [...routines].sort((a, b) => (a.last?.getTime() || 0) - (b.last?.getTime() || 0))[0]
     : null;
+  // Without routines, the next session is guessed from the usual rotation in the history.
+  const fromHistory = !suggested && data.nextProgram
+    ? { ...routineFromHistory(data, data.nextProgram.title), name: data.nextProgram.title, last: data.nextProgram.last }
+    : null;
+  const next = suggested || fromHistory;
+  const last = data.workouts[0] || null;
+  const lastWork = last ? last.sets.filter((x) => isWork(x) && isPlausible(x)) : [];
+  const runDays = data.runLogs.map((l) => new Date(l.done_at));
+  const weekDays = data.weekDays.map((d) => ({ ...d, run: runDays.some((r) => sameDay(r, d.date)) }));
+  const weekKm = data.runLogs.filter((l) => new Date(l.done_at) >= weekDays[0].date).reduce((a, l) => a + Number(l.distance_km || 0), 0);
 
   const startRoutine = (r) => { session.startRoutine(r); nav('/seance'); };
+  const startProgram = (title) => { session.start(title); nav('/seance'); };
   const importFromHistory = async () => {
     setBusy(true);
     try {
@@ -47,18 +64,21 @@ export default function Accueil({ user }) {
 
       <div className="pad stack" style={{ paddingTop: 12, gap: 14 }}>
         <div className="week">
-          {data.weekDays.map((d) => (
+          {weekDays.map((d) => (
             <div key={d.date.toISOString()}>
               <span style={d.today ? { color: 'var(--text)', fontWeight: 700 } : null}>{d.letter}</span>
-              <div className={`dot ${d.done ? 'on' : d.today ? 'today' : ''}`} aria-label={`${d.date.toLocaleDateString('fr-FR', { weekday: 'long' })} : ${d.done ? 'séance faite' : 'pas de séance'}`} />
+              <div className={`dot ${d.done ? 'on' : d.run ? 'run-only' : d.today ? 'today' : ''}`} aria-label={`${d.date.toLocaleDateString('fr-FR', { weekday: 'long' })} : ${[d.done && 'salle', d.run && 'course'].filter(Boolean).join(' et ') || 'rien'}`}>
+                {d.run && <span className="dot-run" aria-hidden="true" />}
+              </div>
             </div>
           ))}
         </div>
-        {data.summary.sessions > 0 && (
-          <div className="row" style={{ gap: 18, fontSize: 13, color: 'var(--muted)', flexWrap: 'wrap' }}>
-            <span><b className="display" style={{ color: 'var(--text)', fontSize: 17, marginRight: 5 }}>{data.week.sessions}</b>séance{data.week.sessions > 1 ? 's' : ''} cette semaine</span>
-            <span><b className="display" style={{ color: 'var(--text)', fontSize: 17, marginRight: 5 }}>{fmtKg(data.week.kg / 1000)} t</b>soulevées</span>
-            {data.week.streak > 1 && <span className="row" style={{ gap: 5, color: 'var(--ok)' }}><Icon name="flame" size={16} /><b className="display" style={{ fontSize: 17 }}>{data.week.streak}</b>semaines d'affilée</span>}
+        {(data.summary.sessions > 0 || weekKm > 0) && (
+          <div className="row week-stats">
+            {(data.week.sessions > 0 || !weekKm) && <span><b className="display">{data.week.sessions}</b>séance{data.week.sessions > 1 ? 's' : ''} de salle</span>}
+            {data.week.kg > 0 && <span><b className="display">{fmtKg(data.week.kg / 1000)} t</b>soulevées</span>}
+            {weekKm > 0 && <span><b className="display">{fmtKg(weekKm)} km</b>courus</span>}
+            {data.week.streak > 1 && <span className="row" style={{ gap: 5, color: 'var(--ok)' }}><Icon name="flame" size={16} /><b className="display" style={{ color: 'var(--ok)' }}>{data.week.streak}</b>semaines d'affilée</span>}
           </div>
         )}
       </div>
@@ -70,34 +90,56 @@ export default function Accueil({ user }) {
           <span className="small muted">{session.done} / {session.total} séries validées</span>
           <Link to="/seance" className="btn primary big"><Icon name="play" size={18} width={2.5} />Reprendre</Link>
         </div>
-      ) : suggested ? (
+      ) : next ? (
         <div className="card lg hero" style={{ margin: '24px 20px 0' }}>
           <div className="stack" style={{ gap: 6 }}>
-            <span className="label">À faire ensuite</span>
-            <span className="display" style={{ fontSize: 26 }}>{suggested.name}</span>
-            <span className="small muted">{suggested.exercises.length} exercices · {sets(suggested)} séries{suggested.last ? ` · dernière fois le ${fmtDay(suggested.last)}` : ''}</span>
+            <span className="label">Salle, à faire ensuite</span>
+            <span className="display" style={{ fontSize: 26 }}>{next.name}</span>
+            <span className="small muted">{next.exercises.length} exercices, {sets(next)} séries{next.last ? `, ${ago(next.last)}` : ''}</span>
           </div>
           <div className="stack" style={{ gap: 8 }}>
-            {suggested.exercises.slice(0, 3).map((e) => (
+            {next.exercises.slice(0, 3).map((e) => (
               <div key={e.name} className="row" style={{ gap: 10, fontSize: 14 }}>
                 <ExerciseImage name={e.name} size={36} radius={8} />
                 <span className="grow">{e.name}</span>
-                <span className="muted">{e.sets.filter((s) => s.type !== 'warmup').length} × {e.sets[e.sets.length - 1]?.reps ?? '?'}</span>
+                <span className="muted">{e.sets.filter((x) => x.type !== 'warmup').length} × {e.sets[e.sets.length - 1]?.reps ?? '?'}</span>
               </div>
             ))}
-            {suggested.exercises.length > 3 && <span className="small muted">+ {suggested.exercises.length - 3} autres</span>}
+            {next.exercises.length > 3 && <span className="small muted">+ {next.exercises.length - 3} autre{next.exercises.length - 3 > 1 ? 's' : ''}</span>}
           </div>
-          <button className="btn primary big" onClick={() => startRoutine(suggested)}><Icon name="play" size={18} width={2.5} />Démarrer la routine</button>
+          <button className="btn primary big" onClick={() => (next.id ? startRoutine(next) : startProgram(next.name))}><Icon name="play" size={18} width={2.5} />Démarrer</button>
         </div>
       ) : null}
 
-      <Link to="/course" className="card row" style={{ margin: '14px 20px 0', flexDirection: 'row', alignItems: 'center', gap: 12, color: 'inherit', textDecoration: 'none' }}>
-        <Icon name="timer" size={22} />
-        <span className="grow stack" style={{ gap: 1 }}>
-          <span style={{ fontWeight: 600 }}>Course à pied</span>
-          <span className="small muted">{run ? (run.next ? `Prochaine sortie : ${run.next.title.toLowerCase()}, ${run.next.mins} min` : 'Plan terminé') : 'Crée ton plan selon ton objectif'}</span>
+      <Link to="/course" className="card tile" style={{ margin: '12px 20px 0' }}>
+        <span className="row" style={{ gap: 10 }}>
+          <span className="tile-icon"><Icon name="timer" size={20} /></span>
+          <span className="grow stack" style={{ gap: 1 }}>
+            <span className="xs muted">Course à pied</span>
+            <span style={{ fontWeight: 600 }}>{run ? (run.next ? `${run.next.title}, ${run.next.mins} min` : 'Plan terminé') : 'Crée ton plan de course'}</span>
+          </span>
+          <Icon name="chevron" size={18} />
         </span>
+        {run?.next && (
+          <span className="mini-run" aria-hidden="true">
+            {segments(run.next).map((g, i) => <span key={i} className={`seg-${g.type}`} style={{ flexGrow: g.mins, height: `${Math.round(intensityOf(g.type) * 100)}%` }} />)}
+          </span>
+        )}
       </Link>
+
+      {last && (
+        <Link to="/coach" className="card tile" style={{ margin: '12px 20px 0' }}>
+          <span className="row" style={{ gap: 10 }}>
+            <span className="tile-icon"><Icon name="spark" size={20} /></span>
+            <span className="grow stack" style={{ gap: 1 }}>
+              <span className="xs muted">Dernière séance, {ago(last.start)}</span>
+              <span style={{ fontWeight: 600 }}>{last.title}</span>
+              <span className="xs muted">{lastWork.length} séries, {fmtInt(lastWork.reduce((a, x) => a + x.weight_kg * x.reps, 0))} kg. Voir le bilan du coach</span>
+            </span>
+            <Icon name="chevron" size={18} />
+          </span>
+        </Link>
+      )}
 
       <div className="section">
         <div className="between">

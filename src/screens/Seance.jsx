@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useSession, mmss, num, SET_LABEL, SET_NAME, REST_OPTIONS, sessionToRoutine } from '../session.jsx';
+import { useSession, mmss, num, prevOf, SET_LABEL, SET_NAME, REST_OPTIONS, sessionToRoutine } from '../session.jsx';
 import { useData, saveRoutine } from '../data.jsx';
 import { useUi } from '../ui.jsx';
 import { fmtKg, fmtInt, titleKey } from '../lib/stats.js';
@@ -86,7 +86,7 @@ function ExerciseCard({ e, ei, s, best, isCurrent, onOpen, cardRef }) {
               {typeBtn}<span className="muted small">{prev}</span>
               <input aria-label={`Charge en kg, série ${i + 1}`} inputMode="decimal" value={x.kg} placeholder={p ? fmtKg(p.kg) : 'kg'} onFocus={(ev) => ev.target.select()} onChange={(ev) => s.setSet(ei, i, { kg: ev.target.value })} />
               <input aria-label={`Répétitions, série ${i + 1}`} inputMode="numeric" value={x.reps} placeholder={p ? String(p.reps) : 'reps'} onFocus={(ev) => ev.target.select()} onChange={(ev) => s.setSet(ei, i, { reps: ev.target.value })} />
-              <button className="check outline" aria-label={`Valider la série ${i + 1}`} onClick={() => s.validate(ei, i)}><Icon name="check" size={18} width={2.5} /></button>
+              <button className="check outline" aria-label={`Valider la série ${i + 1}`} onClick={() => { if (!s.validate(ei, i)) ui.notify('Indique le nombre de répétitions'); }}><Icon name="check" size={18} width={2.5} /></button>
             </div>
           );
         })}
@@ -260,9 +260,9 @@ export default function Seance() {
             <div className="row">
               <button className="grow stack" style={{ gap: 2, background: 'none', border: 'none', color: 'inherit', textAlign: 'left', padding: 0 }} onClick={() => refs.current[ex.name]?.scrollIntoView({ behavior: 'smooth', block: 'start' })} aria-label={`Aller à ${ex.name}`}>
                 <span className="xs muted">À toi : {ex.name}</span>
-                <span className="display" style={{ fontSize: 22 }}>{ex.sets[s.activeSet].kg ? fmtKg(num(ex.sets[s.activeSet].kg)) : '?'} kg × {ex.sets[s.activeSet].reps || '?'}</span>
+                <span className="display" style={{ fontSize: 22 }}>{(() => { const x = ex.sets[s.activeSet]; const pv = prevOf(ex, s.activeSet); const kg = x.kg !== '' ? num(x.kg) : pv?.kg; const reps = x.reps !== '' ? x.reps : pv?.reps; return `${kg != null ? fmtKg(kg) : '?'} kg × ${reps ?? '?'}`; })()}</span>
               </button>
-              <button className="btn primary" style={{ height: 56, borderRadius: 16, padding: '0 24px', fontSize: 16 }} onClick={() => s.validate(ei, s.activeSet)}>Valider</button>
+              <button className="btn primary" style={{ height: 56, borderRadius: 16, padding: '0 24px', fontSize: 16 }} onClick={() => { if (!s.validate(ei, s.activeSet)) ui.notify('Indique le nombre de répétitions'); }}>Valider</button>
             </div>
           ) : (
             <div className="row">

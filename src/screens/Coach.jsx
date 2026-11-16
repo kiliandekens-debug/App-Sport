@@ -178,7 +178,7 @@ export default function Coach() {
         <span className="xs muted">Conseils calculés à partir de ton historique (double progression) : on ajoute des reps, puis de la charge.</span>
       </div>
 
-      <div style={{ position: 'sticky', bottom: 'calc(84px + env(safe-area-inset-bottom))', zIndex: 5, padding: '14px 20px 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div className="float-cta" style={{ position: 'sticky', bottom: 'calc(84px + env(safe-area-inset-bottom))', zIndex: 5, padding: '24px 20px 8px', display: 'flex', flexDirection: 'column', gap: 6 }}>
         <button className="btn primary big" style={{ boxShadow: '0 8px 24px rgba(10, 14, 20, 0.28)', background: allSaved ? 'var(--ok)' : undefined, color: allSaved ? 'var(--on-ok)' : undefined }} onClick={apply} disabled={saving || !ready.length || allSaved}>
           {allSaved ? <><Icon name="check" size={18} width={3} />Appliqué à la prochaine séance</> : saving ? 'Enregistrement…' : 'Appliquer à la prochaine séance'}
         </button>

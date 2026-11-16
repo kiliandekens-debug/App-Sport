@@ -12,6 +12,11 @@ export function applyTheme(t = getTheme()) {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#14161A' : '#E9ECEF');
 }
 
+// In automatic mode, keep the status bar colour in step when the phone switches theme.
+try {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (getTheme() === 'auto') applyTheme('auto'); });
+} catch { /* old browser */ }
+
 export function setTheme(t) {
   try { if (t === 'auto') localStorage.removeItem(KEY); else localStorage.setItem(KEY, t); } catch { /* private mode */ }
   applyTheme(t);

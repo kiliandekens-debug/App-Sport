@@ -53,17 +53,18 @@ export function analyse(workouts) {
     for (const [name, sets] of perEx) {
       if (!exercises.has(name)) exercises.set(name, { name, muscle: muscleOf(name), history: [], best: null });
       const ex = exercises.get(name);
-      let maxKg = 0, bestE = 0, vol = 0, maxReps = 0, bestSet = null;
+      let maxKg = 0, bestE = 0, vol = 0, maxReps = 0, bestSet = sets[0];
       for (const s of sets) {
         const e = e1rm(s.weight_kg, s.reps);
         vol += s.weight_kg * s.reps;
         maxReps = Math.max(maxReps, s.reps);
         if (s.weight_kg > maxKg) maxKg = s.weight_kg;
-        if (e > bestE) { bestE = e; bestSet = s; }
+        // Bodyweight sets (0 kg) all have an e1RM of 0: the best one is the one with most reps.
+        if (e > bestE || (e === bestE && s.reps > bestSet.reps)) { bestE = e; bestSet = s; }
       }
       const allSets = w.sets.filter((s) => s.exercise === name);
       ex.history.push({ date: w.start, workoutId: w.id, maxKg, e1rm: bestE, vol, maxReps, sets, allSets });
-      if (!ex.best || bestE > ex.best.e1rm) ex.best = { e1rm: bestE, kg: bestSet.weight_kg, reps: bestSet.reps, date: w.start };
+      if (!ex.best || bestE > ex.best.e1rm || (bestE === ex.best.e1rm && bestSet.reps > ex.best.reps)) ex.best = { e1rm: bestE, kg: bestSet.weight_kg, reps: bestSet.reps, date: w.start };
     }
   }
   for (const ex of exercises.values()) ex.history.reverse(); // oldest → newest

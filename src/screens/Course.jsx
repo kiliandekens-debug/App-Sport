@@ -19,7 +19,8 @@ const today = () => new Date().toISOString().slice(0, 10);
 function RunChart({ session }) {
   const segs = segments(session);
   const total = segs.reduce((a, s) => a + s.mins, 0);
-  const W = 320, H = 110, GAP = 1.5;
+  // A steady run is one block: a short band is enough, no need for a big empty chart.
+  const W = 320, H = segs.length === 1 ? 34 : 110, GAP = 1.5;
   let x = 0;
   const kinds = [...new Set(segs.map((s) => s.type))];
   return (
