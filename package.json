@@ -7,7 +7,8 @@
     "ocr": "node scripts/copy-ocr.mjs",
     "dev": "npm run ocr && vite",
     "build": "npm run ocr && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postinstall": "node scripts/copy-ocr.mjs"
   },
   "dependencies": {
     "@fontsource/barlow": "^5.3.0",
