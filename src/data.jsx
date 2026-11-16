@@ -5,23 +5,25 @@ import { analyse } from './lib/stats.js';
 const DataCtx = createContext(null);
 
 export function DataProvider({ children }) {
-  const [raw, setRaw] = useState({ workouts: [], custom: [], plans: [], routines: [] });
+  const [raw, setRaw] = useState({ workouts: [], custom: [], plans: [], routines: [], runProfile: null, runLogs: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const refresh = useCallback(async () => {
     try {
-      const [workouts, sets, custom, plans, routines] = await Promise.all([
+      const [workouts, sets, custom, plans, routines, runLogs, runProfileRes] = await Promise.all([
         fetchAll('workouts', 'id,title,started_at,ended_at', 'started_at'),
         fetchAll('sets', 'workout_id,exercise,position,set_index,set_type,weight_kg,reps,duration_seconds,distance_km,superset_id', 'id'),
         fetchAll('custom_exercises', '*', 'created_at'),
         fetchAll('coach_plans', '*', 'created_at'),
         fetchAll('routines', '*', 'position'),
+        fetchAll('run_logs', '*', 'done_at'),
+        supabase.from('run_profile').select('*').maybeSingle(),
       ]);
       const byId = new Map(workouts.map((w) => [w.id, { ...w, sets: [] }]));
       for (const s of sets) byId.get(s.workout_id)?.sets.push({ ...s, weight_kg: s.weight_kg == null ? null : Number(s.weight_kg) });
       for (const w of byId.values()) w.sets.sort((a, b) => a.position - b.position || a.set_index - b.set_index);
-      setRaw({ workouts: [...byId.values()], custom, plans, routines });
+      setRaw({ workouts: [...byId.values()], custom, plans, routines, runLogs, runProfile: runProfileRes.data || null });
       setError(null);
     } catch (e) {
       setError(e.message || String(e));
@@ -35,7 +37,7 @@ export function DataProvider({ children }) {
   const value = useMemo(() => {
     const data = analyse(raw.workouts);
     const plans = new Map(raw.plans.map((p) => [p.exercise, p]));
-    return { ...data, custom: raw.custom, routines: raw.routines, plans, loading, error, refresh };
+    return { ...data, custom: raw.custom, routines: raw.routines, runProfile: raw.runProfile, runLogs: raw.runLogs, plans, loading, error, refresh };
   }, [raw, loading, error, refresh]);
 
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;
@@ -87,5 +89,20 @@ export async function deleteRoutine(id) {
 
 export async function savePlan(exercise, plan) {
   const { error } = await supabase.from('coach_plans').upsert({ exercise, ...plan }, { onConflict: 'user_id,exercise' });
+  if (error) throw error;
+}
+
+export async function saveRunProfile(profile) {
+  const { error } = await supabase.from('run_profile').upsert({ ...profile, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+  if (error) throw error;
+}
+
+export async function saveRunLog(log) {
+  const { error } = await supabase.from('run_logs').insert(log);
+  if (error) throw error;
+}
+
+export async function deleteRunLog(id) {
+  const { error } = await supabase.from('run_logs').delete().eq('id', id);
   if (error) throw error;
 }

@@ -56,3 +56,25 @@ create policy "own workouts" on public.workouts for all to authenticated using (
 create policy "own sets" on public.sets for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 create policy "own custom exercises" on public.custom_exercises for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 create policy "own coach plans" on public.coach_plans for all to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+
+-- Added later (applied as migrations "routines_and_supersets" and "running")
+alter table public.sets add column if not exists superset_id text;
+
+create table if not exists public.run_profile (
+  user_id uuid primary key default auth.uid() references auth.users on delete cascade,
+  goal text not null, target_date date, days_per_week int not null default 3,
+  ref_distance_km numeric not null default 5, ref_time_s int not null,
+  started_on date not null default current_date, updated_at timestamptz not null default now()
+);
+create table if not exists public.run_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  done_at timestamptz not null, session_key text, kind text, distance_km numeric, duration_s int,
+  avg_hr int, calories int, feel int check (feel between 1 and 5), notes text,
+  source text not null default 'manual', created_at timestamptz not null default now()
+);
+alter table public.run_profile enable row level security;
+alter table public.run_logs enable row level security;
+create policy "own rows" on public.run_profile for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "own rows" on public.run_logs for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+-- routines table: see the app's earlier migration (id, user_id, name, exercises jsonb, position, updated_at)

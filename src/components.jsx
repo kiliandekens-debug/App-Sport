@@ -81,6 +81,7 @@ const TABS = [
   ['/', 'home', 'Accueil'],
   ['/exercices', 'dumbbell', 'Exercices'],
   ['/progres', 'chart', 'Progrès'],
+  ['/course', 'timer', 'Course'],
   ['/coach', 'spark', 'Coach'],
   ['/profil', 'user', 'Profil'],
 ];
