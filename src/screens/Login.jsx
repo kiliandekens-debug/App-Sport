@@ -11,7 +11,7 @@ export default function Login() {
 
   const fail = (err) => {
     const m = err?.message || String(err);
-    setError(/invalid login credentials/i.test(m) ? 'E-mail ou mot de passe incorrect.' : /email not confirmed/i.test(m) ? 'Adresse e-mail pas encore confirmée.' : m);
+    setError(/invalid login credentials/i.test(m) ? 'E-mail ou mot de passe incorrect.' : /email not confirmed/i.test(m) ? 'Adresse e-mail pas encore confirmée.' : /rate limit/i.test(m) ? 'Trop d\'e-mails envoyés en peu de temps. Réessaie dans une heure, ou connecte-toi avec ton mot de passe.' : m);
     setState('idle');
   };
 
