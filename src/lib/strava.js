@@ -5,10 +5,16 @@ import { parseHevyDate } from './csv.js';
 // with an activities.csv inside. Runs are read from it; rides, swims, gym sessions are ignored.
 
 const MON = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+const MOIS = { janv: 0, 'févr': 1, fevr: 1, mars: 2, avr: 3, mai: 4, juin: 5, juil: 6, 'août': 7, aout: 7, sept: 8, oct: 9, nov: 10, 'déc': 11, dec: 11 };
 
-// "Nov 14, 2026, 7:05:12 AM" (UTC in Strava exports), or a French date, or ISO.
+// Strava exports dates in UTC: "Nov 14, 2026, 7:05:12 AM" (English account) or
+// "14 nov. 2026, 08:43:12" (French account).
 export function parseStravaDate(s) {
   const t = String(s || '').trim();
+  const f = t.match(/^(\d{1,2}) ([a-zéû]+)\.? (\d{4}),? (\d{1,2}):(\d{2})(?::(\d{2}))?/i);
+  if (f && MOIS[f[2].toLowerCase()] != null) {
+    return new Date(Date.UTC(Number(f[3]), MOIS[f[2].toLowerCase()], Number(f[1]), Number(f[4]), Number(f[5]), Number(f[6] || 0)));
+  }
   const m = t.match(/^([A-Za-z]{3})[a-z]*\.? (\d{1,2}), (\d{4}),? (\d{1,2}):(\d{2})(?::(\d{2}))? ?(AM|PM)?/i);
   if (m && MON[m[1].toLowerCase()] != null) {
     let h = Number(m[4]);
@@ -33,8 +39,8 @@ export function parseStravaCsv(text) {
   const iType = one('activity type', 'type d\'activité', 'type');
   const iName = one('activity name', 'nom de l\'activité', 'nom');
   const dists = all('distance');
-  const elapsed = all('elapsed time');
-  const iMoving = one('moving time');
+  const elapsed = [...all('elapsed time'), ...all('temps écoulé')];
+  const iMoving = one('moving time', 'durée de déplacement');
   const iHr = one('average heart rate', 'fréquence cardiaque moyenne');
   const iCal = one('calories');
   if (iDate < 0 || iType < 0 || !dists.length) throw new Error('Ce fichier ne ressemble pas à un export Strava (activities.csv).');
@@ -42,7 +48,7 @@ export function parseStravaCsv(text) {
   const out = [];
   for (const r of data.slice(1)) {
     const type = String(r[iType] || '');
-    if (!/run|course|trail/i.test(type)) continue;
+    if (!/run|course à pied|trail/i.test(type)) continue;
     const date = parseStravaDate(r[iDate]);
     if (!date || Number.isNaN(date.getTime())) continue;
     // The second "Distance" column is in metres; the first one is in km (or miles).
