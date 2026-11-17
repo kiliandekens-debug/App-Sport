@@ -118,11 +118,11 @@ export default function Exercices() {
       </div>
 
       <ExerciseSheet exercise={open} onClose={() => setOpen(null)}>
-        <div className="grid2">
-          <button className="btn" style={{ borderRadius: 14 }} onClick={() => variant(open)}>Créer une variante</button>
+        <div className="stack" style={{ gap: 8 }}>
           {inSession.has(open?.name)
-            ? <Link className="btn primary" style={{ borderRadius: 14 }} to="/seance">Dans la séance</Link>
-            : <button className="btn primary" style={{ borderRadius: 14 }} onClick={() => { add(open); setOpen(null); }}>Ajouter à la séance</button>}
+            ? <Link className="btn primary big" to="/seance">Déjà dans la séance, y retourner</Link>
+            : <button className="btn primary big" onClick={() => { add(open); setOpen(null); }}><Icon name="plus" size={18} width={2.5} />Ajouter à la séance</button>}
+          <button className="btn" onClick={() => variant(open)}>Créer une variante de cet exercice</button>
         </div>
       </ExerciseSheet>
     </main>

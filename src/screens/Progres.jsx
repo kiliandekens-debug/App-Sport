@@ -51,7 +51,7 @@ export default function Progres() {
                 <div className="stack" style={{ gap: 4 }}>
                   <span className="small muted">{label}, dernière séance</span>
                   <span className="display" style={{ fontSize: 34, lineHeight: 1.1 }}>{fmt(last[metric])}</span>
-                  <span className="xs" style={{ color: delta > 0 ? 'var(--ok)' : delta < 0 ? 'var(--danger)' : 'var(--muted)' }}>
+                  <span className="xs" style={{ color: delta > 0 ? 'var(--ok)' : 'var(--muted)' }}>
                     {delta === 0 ? 'Stable' : `${delta > 0 ? '+' : '−'}${fmt(Math.abs(delta))}`} depuis le {fmtDay(hist[0].date)}
                   </span>
                 </div>

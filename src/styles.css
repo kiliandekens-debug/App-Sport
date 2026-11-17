@@ -349,3 +349,50 @@ html, body { overflow-x: clip; }
 @media (prefers-reduced-transparency: reduce) {
   .glass, .nav-in { background: var(--card); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
+
+/* ---- Design audit fixes ---- */
+/* Disabled buttons read as unavailable, not as a muddy version of the action colour. */
+.btn:disabled, .btn:disabled.primary { opacity: 1; filter: none; background: var(--chip); color: var(--muted); box-shadow: none; }
+
+/* Hero: neutral dark with the light of the action colour pooling in one corner. */
+.hero { background: radial-gradient(120% 100% at 0% 0%, color-mix(in srgb, var(--brand) 24%, transparent), transparent 55%), #1B1E23; }
+
+/* Orange is for actions: big statistics are ink, not accent. */
+.tile .v.accent { color: var(--text); }
+
+/* Sheets: three statistics side by side must fit on one line each. */
+.sheet .tile .v { font-size: 20px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Session and sub-screen headers join the glass family. */
+.session-head {
+  margin: calc(-1 * env(safe-area-inset-top)) 0 0; padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
+  background: none; -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.session-head > .row, .session-head > .session-stats {
+  padding-left: 14px; padding-right: 14px;
+}
+.session-head::before {
+  content: ''; position: absolute; inset: calc(env(safe-area-inset-top) + 2px) 12px 4px; z-index: -1; border-radius: 26px;
+  background: var(--glass-bg); -webkit-backdrop-filter: blur(24px) saturate(190%); backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid var(--glass-rim); box-shadow: inset 0 1px 0 var(--glass-hi), var(--glass-shadow);
+}
+.session-head { isolation: isolate; }
+.session-head > .row { padding-top: 8px; }
+.session-head .display { font-size: 21px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.session-head .session-bar { margin: 0 14px 6px; border-radius: 2px; overflow: hidden; }
+
+.head-row {
+  position: sticky; top: max(8px, env(safe-area-inset-top)); z-index: 9; margin: 8px 12px 6px; padding: 10px 12px; border-radius: 24px;
+  background: var(--glass-bg); -webkit-backdrop-filter: blur(24px) saturate(190%); backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid var(--glass-rim); box-shadow: inset 0 1px 0 var(--glass-hi), var(--glass-shadow);
+}
+.head-row .title-s { font-size: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* A floating glass bar for "done" actions outside a workout. */
+.glass-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 11; padding: 0 12px calc(10px + env(safe-area-inset-bottom)); pointer-events: none; }
+.glass-dock .dock-in { pointer-events: auto; padding: 8px; border-radius: 26px; background: var(--glass-bg); -webkit-backdrop-filter: blur(24px) saturate(190%); backdrop-filter: blur(24px) saturate(190%); border: 1px solid var(--glass-rim); box-shadow: inset 0 1px 0 var(--glass-hi), var(--glass-shadow); }
+.glass-dock .btn.big { border-radius: 20px; }
+
+/* Login gets the same ambient light as the app. */
+.login { background: radial-gradient(80% 360px at 0% 0%, color-mix(in srgb, var(--brand) 22%, transparent), transparent 70%), radial-gradient(70% 320px at 100% 30%, color-mix(in srgb, var(--z0) 22%, transparent), transparent 70%); min-height: 100dvh; }
+.session-head .session-stats { gap: 14px; }

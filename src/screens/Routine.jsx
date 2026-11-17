@@ -76,8 +76,8 @@ export default function Routine() {
           <h1 className="title-s grow">Ajouter des exercices</h1>
         </div>
         <ExercisePicker selected={new Set(r.exercises.map((e) => e.name))} onAdd={addEx} />
-        <div className="dock"><div className="dock-in">
-          <button className="btn primary big" onClick={() => setPicking(false)}>Terminé · {r.exercises.length} exercice{r.exercises.length > 1 ? 's' : ''}</button>
+        <div className="glass-dock"><div className="dock-in">
+          <button className="btn primary big" onClick={() => setPicking(false)}>{r.exercises.length ? `Terminé, ${r.exercises.length} exercice${r.exercises.length > 1 ? 's' : ''}` : 'Retour à la routine'}</button>
         </div></div>
       </main>
     );

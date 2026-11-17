@@ -109,7 +109,7 @@ export default function Profil({ user }) {
         </button>
         {status && <span className="small soft">{status}</span>}
         <span className="xs muted">Les séances déjà présentes (même date et heure) sont ignorées, tu peux réimporter sans doublons.</span>
-        <button className="btn" style={{ borderRadius: 14, height: 48, background: 'transparent', border: '1px solid var(--border)' }} onClick={() => supabase.auth.signOut()}>Se déconnecter</button>
+        <button className="btn" style={{ color: 'var(--danger)' }} onClick={() => supabase.auth.signOut()}>Se déconnecter</button>
         <span className="xs muted" style={{ paddingBottom: 12 }}>Connecté : {user?.email}</span>
       </div>
     </main>

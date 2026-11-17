@@ -187,12 +187,12 @@ export default function Seance() {
             <span className="display" style={{ fontSize: 20, lineHeight: 1.15 }}>{s.title}</span>
           </button>
           <Link to="/montre" aria-label="Vue montre" className="icon-btn"><Icon name="watch" /></Link>
-          <button className="btn primary" onClick={finish} disabled={saving}>{saving ? '…' : 'Terminer'}</button>
         </div>
-        <div className="session-stats">
+        <div className="session-stats" style={{ alignItems: 'center' }}>
           <span><b className="accent" style={{ color: 'var(--accent)' }}>{mmss(s.elapsed)}</b>durée</span>
           <span><b>{fmtInt(s.volume)}</b>kg</span>
           <span><b>{s.done}/{s.total}</b>séries</span>
+          <button className="btn primary" style={{ height: 38, padding: "0 16px", borderRadius: 19, fontSize: 15, marginLeft: "auto" }} onClick={finish} disabled={saving}>{saving ? '…' : 'Terminer'}</button>
         </div>
         <div className="session-bar"><div style={{ width: `${s.total ? (s.done / s.total) * 100 : 0}%` }} /></div>
       </header>
