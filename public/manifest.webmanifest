@@ -1,7 +1,7 @@
 {
-  "name": "Salle",
-  "short_name": "Salle",
-  "description": "Suivi d'entraînement",
+  "name": "Kadeon Sport",
+  "short_name": "Kadeon",
+  "description": "Muscu et course à pied, avec ton coach",
   "lang": "fr",
   "start_url": "/",
   "display": "standalone",

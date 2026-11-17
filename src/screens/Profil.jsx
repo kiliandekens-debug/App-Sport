@@ -32,7 +32,7 @@ export default function Profil({ user }) {
     const blob = new Blob(['\ufeff' + exportCsv(data.workouts)], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `salle-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `kadeon-sport-export-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
@@ -173,7 +173,7 @@ export default function Profil({ user }) {
         <button className="btn" style={{ height: 52, justifyContent: 'flex-start', marginTop: 10 }} onClick={() => setNews(true)}>
           <Icon name="spark" size={18} /><span className="grow" style={{ textAlign: 'left' }}>Nouveautés</span><span className="xs muted">v{VERSION}</span>
         </button>
-        <span className="xs muted" style={{ paddingBottom: 12, textAlign: 'center' }}>Salle {VERSION}, build {BUILD}, publiée le {new Date(BUILT_AT).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+        <span className="xs muted" style={{ paddingBottom: 12, textAlign: 'center' }}>Kadeon Sport {VERSION}, build {BUILD}, publiée le {new Date(BUILT_AT).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
       </div>
       <WhatsNew open={news} onClose={() => setNews(false)} />
     </main>

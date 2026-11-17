@@ -22,7 +22,7 @@ export default function Login() {
       <div className="center" style={{ alignItems: 'stretch', textAlign: 'left', maxWidth: 400, margin: '0 auto', width: '100%', gap: 20 }}>
         <img src="/icon.svg" alt="" width="64" height="64" style={{ borderRadius: 18, boxShadow: '0 10px 30px rgba(232, 80, 14, 0.25)' }} />
         <div className="stack" style={{ gap: 8 }}>
-          <h1 className="title" style={{ fontSize: 40 }}>Salle</h1>
+          <h1 className="title" style={{ fontSize: 40 }}>Kadeon Sport</h1>
           <p className="muted" style={{ margin: 0, fontSize: 17, lineHeight: 1.45 }}>Ta muscu et ta course au même endroit. Entre ton e-mail, tu recevras un lien de connexion.</p>
         </div>
         {state === 'sent' ? (
