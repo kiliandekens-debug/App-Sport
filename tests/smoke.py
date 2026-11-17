@@ -112,6 +112,24 @@ with sync_playwright() as p:
     check('/coach' in pg.url, 'redirected to coach after session')
     pg.screenshot(path=f'{SHOTS}/flow-coach.png', full_page=True)
 
+    # Regression 1.5.3: a routine using library names must pick up the coach plan
+    # and history stored under the imported (Hevy) names.
+    T['coach_plans'] = [{'id': 'cp1', 'exercise': 'Développé Couché (Haltère)', 'target_kg': 77, 'target_reps': 7, 'reason': 'test'}]
+    T['routines'] = [{'id': 'rlib', 'name': 'Pecs bibliothèque', 'position': 0, 'exercises': [
+        {'name': 'Développé couché (haltères)', 'sets': [{'type': 'normal'}, {'type': 'normal'}]},
+        {'name': 'Pec deck (machine)', 'sets': [{'type': 'normal'}]}]}]
+    pg.goto(BASE + '/'); pg.wait_for_timeout(1200)
+    pg.get_by_role('button', name='Démarrer Pecs bibliothèque').click(); pg.wait_for_timeout(800)
+    body = pg.locator('main').inner_text()
+    check('Développé Couché (Haltère)' in body, 'library routine name resolved to history name')
+    check('Butterfly (Pec Deck)' in body, 'pec deck resolved to Butterfly history')
+    kg = pg.locator('.wex, .ex-card, main').locator('input').first.input_value()
+    check(kg.replace(',', '.') in ('77', '77.0'), f'coach plan load applied ({kg})')
+    pg.screenshot(path=f'{SHOTS}/flow-library-routine.png', full_page=True)
+    pg.locator('.session-head').get_by_role('button', name='Terminer').click(); pg.wait_for_timeout(300)
+    d = pg.locator('.sheet').get_by_role('button', name='Abandonner')
+    if d.count(): d.click(); pg.wait_for_timeout(500)
+
     # Running plan creation from history.
     pg.goto(BASE + '/course'); pg.wait_for_timeout(1200)
     check(pg.get_by_label('Temps de référence').input_value() != '', 'running level prefilled from history')

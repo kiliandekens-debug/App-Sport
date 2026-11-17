@@ -3,6 +3,7 @@ import { supabase } from './supabase.js';
 import { syncRestPush } from './push.js';
 import { useData } from './data.jsx';
 import { templateFor, lastSetsOf } from './lib/stats.js';
+import { exactImageId } from './lib/images.js';
 import { defaultRest, routineFromHistory, toggleSuperset as toggleSS, cleanSupersets } from './lib/routines.js';
 
 const KEY = 'app-sport-session';
@@ -63,8 +64,27 @@ function restFor(name) {
 
 // routineEx: { name, rest, superset, sets: [{ type, kg, reps }] } (all optional but name).
 // Loads not fixed by the routine come from the coach plan, then from the last session.
+// A routine built from the library may name a movement differently from the
+// history ("Développé couché (haltères)" vs "Développé Couché (Haltère)").
+// Without history or a coach plan under its own name, take the most recently
+// trained name for the same movement, so plan, previous sets and records follow.
+export function resolveName(data, name) {
+  if (data.exercises.get(name)?.history.length || data.plans.has(name)) return name;
+  const id = exactImageId(name);
+  if (!id) return name;
+  let best = null, when = -1;
+  for (const [n, ex] of data.exercises) {
+    if (n === name || exactImageId(n) !== id || !ex.history.length) continue;
+    const t = new Date(ex.history[ex.history.length - 1].date).getTime() || 0;
+    if (t > when) { best = n; when = t; }
+  }
+  if (best) return best;
+  for (const n of data.plans.keys()) if (exactImageId(n) === id) return n;
+  return name;
+}
+
 function buildExercise(data, routineEx) {
-  const { name } = routineEx;
+  const name = resolveName(data, routineEx.name);
   const prev = lastSetsOf(data, name).filter((s) => s.weight_kg != null).map((s) => ({ kg: s.weight_kg, reps: s.reps, type: s.set_type }));
   const prevWork = prev.filter((p) => p.type !== 'warmup');
   const prevWarm = prev.filter((p) => p.type === 'warmup');
@@ -77,7 +97,7 @@ function buildExercise(data, routineEx) {
     const usePlan = plan && type !== 'warmup';
     const kg = t.kg ?? (usePlan ? plan.target_kg : p?.kg);
     const reps = usePlan && t.kg == null ? plan.target_reps : t.reps ?? p?.reps;
-    return { kg: kg == null ? '' : String(kg), reps: reps == null ? '' : String(reps), type, done: false, auto: type === 'warmup' && t.kg == null };
+    return { kg: kg == null ? '' : String(kg).replace('.', ','), reps: reps == null ? '' : String(reps), type, done: false, auto: type === 'warmup' && t.kg == null };
   });
   return {
     name,
@@ -225,7 +245,8 @@ export function SessionProvider({ children }) {
     begin(h < 12 ? 'Entraînement du matin' : h < 18 ? "Entraînement d'après-midi" : 'Entraînement du soir', []);
   }, []);
 
-  const addExercise = useCallback((name) => {
+  const addExercise = useCallback((picked) => {
+    const name = resolveName(data, picked);
     setS((cur) => {
       const base = cur || { title: 'Séance libre', startedAt: new Date().toISOString(), exercises: [], current: 0, restUntil: null, restTotal: 0 };
       if (base.exercises.some((e) => e.name === name)) return { ...base, current: base.exercises.findIndex((e) => e.name === name) };

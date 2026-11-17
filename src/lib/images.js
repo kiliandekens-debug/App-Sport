@@ -143,6 +143,13 @@ export function imageId(name, base) {
   return null;
 }
 
+// Same movement under another name (Hevy import vs. app library), via the exact
+// image table only: keyword rules are too loose to decide identity.
+export function exactImageId(name) {
+  const n = name?.toLowerCase().trim();
+  return (n && (EXACT[n] || LIBRARY_IMAGES[n])) || null;
+}
+
 export function imagesOf(name, base) {
   const id = imageId(name, base);
   return id ? [`${BASE}${id}/0.jpg`, `${BASE}${id}/1.jpg`] : [];

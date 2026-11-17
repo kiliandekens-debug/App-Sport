@@ -6,6 +6,12 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.5.3', date: '2026-11-17', title: 'Le coach s\'applique vraiment',
+    items: [
+      'Une routine créée avec les noms de la bibliothèque (« Développé couché (haltères) ») retrouve maintenant ton historique importé (« Développé Couché (Haltère) ») : charges du coach, séries précédentes et records sont repris.',
+    ],
+  },
+  {
     version: '1.5.2', date: '2026-11-17', title: 'Accessibilité et finitions (Web Interface Guidelines)',
     items: [
       'Fiches : Échap ferme, la page derrière ne défile plus, le focus entre dans la fiche et revient au bon endroit.',
