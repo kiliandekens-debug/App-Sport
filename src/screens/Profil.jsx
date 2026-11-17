@@ -9,7 +9,7 @@ import { WhatsNew } from '../update.jsx';
 import { PasswordForm } from '../password.jsx';
 import { pushSupported, pushEnabled, enablePush, disablePush, testPush, isIos, isStandalone, pushEvery, setPushEvery } from '../push.js';
 import { buildPlan } from '../lib/running.js';
-import { useSession } from '../session.jsx';
+import { useSession, keepAwake, setKeepAwake } from '../session.jsx';
 import { useUi } from '../ui.jsx';
 import { parseHevyCsv } from '../lib/csv.js';
 import { Bars, Icon, GlassHeader } from '../components.jsx';
@@ -29,6 +29,7 @@ export default function Profil({ user }) {
   const [push, setPush] = useState(pushEnabled);
   const [pushMsg, setPushMsg] = useState('');
   const [every, setEvery] = useState(pushEvery);
+  const [awake, setAwake] = useState(keepAwake);
   const togglePush = async () => {
     setPushMsg('');
     try {
@@ -179,6 +180,13 @@ export default function Profil({ user }) {
             <span className="xs muted" style={{ lineHeight: 1.4 }}>{every ? `Une notification toutes les ${every} secondes avec le temps restant, qui remplace la précédente (une légère vibration sur la montre à chaque fois), puis « Repos terminé ».` : 'Une seule notification, à la fin du repos.'}</span>
           </div>
         )}
+        <div className="card row" style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <span className="grow stack" style={{ gap: 2 }}>
+            <span style={{ fontWeight: 600 }}>Garder l'écran allumé pendant la séance</span>
+            <span className="xs muted" style={{ lineHeight: 1.4 }}>{awake ? 'Les notifications arrivent sur la montre seulement si tu verrouilles l\'iPhone (bouton latéral) : c\'est une règle d\'iOS.' : 'L\'iPhone se verrouille selon ton réglage habituel, et les notifications passent alors sur la montre.'}</span>
+          </span>
+          <button className="switch" role="switch" aria-checked={awake} aria-label="Garder l'écran allumé pendant la séance" onClick={() => { setKeepAwake(!awake); setAwake(!awake); ui.notify(!awake ? 'Écran allumé pendant la séance' : 'L\'écran pourra se verrouiller (effet à la prochaine séance)'); }}><span /></button>
+        </div>
         {push && <button className="btn" onClick={async () => { try { await testPush(); ui.notify('Notification de test dans 5 secondes'); } catch (e) { ui.notify(e.message || String(e)); } }}>Envoyer une notification de test</button>}
       </div>
 

@@ -6,6 +6,10 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.5.1', date: '2026-11-17', title: 'Écran allumé ou montre',
+    items: ['Réglage « Garder l\'écran allumé pendant la séance » : désactivé, l\'iPhone se verrouille et les notifications de repos passent sur la montre.'],
+  },
+  {
     version: '1.5.0', date: '2026-11-17', title: 'Compte à rebours du repos sur la montre',
     items: ['Option de notifications toutes les 15 ou 30 secondes pendant le repos, avec le temps restant ; chacune remplace la précédente.'],
   },

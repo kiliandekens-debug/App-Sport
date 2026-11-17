@@ -16,6 +16,11 @@ const writeJson = (k, v) => {
   try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ }
 };
 
+// Setting: keep the screen on during a session (default yes). Off lets the iPhone lock, so notifications go to the watch.
+const AWAKE = 'app-sport-keep-awake';
+export const keepAwake = () => { try { return localStorage.getItem(AWAKE) !== '0'; } catch { return true; } };
+export const setKeepAwake = (v) => { try { localStorage.setItem(AWAKE, v ? '1' : '0'); } catch { /* private mode */ } };
+
 export const num = (v) => parseFloat(String(v ?? '').replace(',', '.')) || 0;
 
 // Set types, as in Hevy: tap the set number to cycle through them.
@@ -169,7 +174,7 @@ export function SessionProvider({ children }) {
 
   // Keep the screen on during a session (rest timer visible without unlocking the phone).
   useEffect(() => {
-    if (!active || !('wakeLock' in navigator)) return undefined;
+    if (!active || !('wakeLock' in navigator) || !keepAwake()) return undefined;
     let lock = null;
     let stopped = false;
     const get = async () => { try { lock = await navigator.wakeLock.request('screen'); if (stopped) lock.release(); } catch { /* refused or unsupported */ } };
