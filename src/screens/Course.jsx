@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { readRunScreenshot, parseRunText } from '../lib/runocr.js';
 import { useData, saveRunProfile, saveRunLog, deleteRunLog, deleteRunProfile } from '../data.jsx';
 import { useUi } from '../ui.jsx';
@@ -195,7 +196,8 @@ export default function Course() {
   const [draft, setDraft] = useState(null);
   const [draftNote, setDraftNote] = useState(null);
   const [reading, setReading] = useState(false);
-  const [picked, setPicked] = useState(null);
+  const location = useLocation();
+  const [picked, setPicked] = useState(location.state?.pick || null);
   // The plan's paces include the coach's current adjustment.
   const [showPlan, setShowPlan] = useState(false);
   const profile = data.runProfile;

@@ -42,6 +42,8 @@ export function SupersetTag({ letter }) {
 const P = {
   home: <path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" />,
   dumbbell: <path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11" />,
+  run: <><circle cx="14.5" cy="4.5" r="1.9" /><path d="M13 8l-3 5 3.5 2.5-1.5 5.5M10 13l-4 1.5M13 8l3.5 3.5 3-1M13 8l-4.5 1-2 3" /></>,
+  moon: <path d="M20 14.2A8 8 0 1 1 9.8 4a6.4 6.4 0 0 0 10.2 10.2z" />,
   chart: <path d="M4 19V5M4 19h16M8 15l4-4 3 3 5-6" />,
   user: <><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></>,
   spark: <><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" /><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" /></>,

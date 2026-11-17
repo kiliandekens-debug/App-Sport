@@ -397,3 +397,22 @@ html, body { overflow-x: clip; }
 .login { background: radial-gradient(80% 360px at 0% 0%, color-mix(in srgb, var(--brand) 22%, transparent), transparent 70%), radial-gradient(70% 320px at 100% 30%, color-mix(in srgb, var(--z0) 22%, transparent), transparent 70%); min-height: 100dvh; }
 .session-head .session-stats { gap: 14px; }
 .session-head .display { font-size: 19px !important; font-stretch: 100%; }
+
+/* Week strip: one tappable tile per day with what it was (or will be). */
+.week .day { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--muted); background: none; border: none; padding: 0; }
+.week .dot { display: flex; align-items: center; justify-content: center; color: var(--muted); position: relative; transition: box-shadow 0.15s; }
+.week .dot.k-gym { background: var(--accent); color: var(--accent-ink); }
+.week .dot.k-run { background: var(--z1); color: #06210F; }
+.week .dot.k-planned { background: color-mix(in srgb, var(--z1) 16%, var(--chip)); color: var(--z1); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--z1) 55%, transparent); }
+.week .dot.k-rest { color: color-mix(in srgb, var(--muted) 70%, transparent); }
+.week .dot.today { box-shadow: inset 0 0 0 2px var(--text); }
+.week .dot.sel { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text); }
+.week .dot.k-planned.sel { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--z1) 55%, transparent), 0 0 0 2px var(--bg), 0 0 0 4px var(--text); }
+.dot-badge { position: absolute; right: -4px; bottom: -4px; width: 18px; height: 18px; border-radius: 9px; background: var(--z1); color: #06210F; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg); }
+
+.day-detail { padding: 12px 14px; gap: 8px; }
+.day-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 4px 0; background: none; border: none; color: inherit; text-align: left; }
+.day-ic { width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--chip); color: var(--muted); }
+.day-ic.k-gym { background: var(--accent); color: var(--accent-ink); }
+.day-ic.k-run { background: var(--z1); color: #06210F; }
+.day-ic.k-planned { background: color-mix(in srgb, var(--z1) 16%, var(--chip)); color: var(--z1); }

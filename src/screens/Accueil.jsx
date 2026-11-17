@@ -5,13 +5,63 @@ import { useSession } from '../session.jsx';
 import { fmtDay, fmtKg, fmtInt, sameDay, titleKey, isWork, isPlausible } from '../lib/stats.js';
 import { routineFromHistory } from '../lib/routines.js';
 import { Icon, ExerciseImage, GlassHeader } from '../components.jsx';
-import { buildPlan, segments, intensityOf } from '../lib/running.js';
+import { buildPlan, segments, intensityOf, mmss, hms } from '../lib/running.js';
 
 // "aujourd'hui", "hier", "il y a 3 jours", then the date.
 const ago = (d) => {
   const days = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86400000);
   return days <= 0 ? "aujourd'hui" : days === 1 ? 'hier' : days < 7 ? `il y a ${days} jours` : `le ${fmtDay(new Date(d))}`;
 };
+
+// The selected day of the week strip: what was done, or what is planned.
+function DayDetail({ d, onRun, onGym }) {
+  if (!d) return null;
+  const title = d.today ? "Aujourd'hui" : d.date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const empty = !d.gym.length && !d.runs.length && !(d.plan && !d.past);
+  return (
+    <div className="card day-detail" aria-live="polite">
+      <span className="xs muted" style={{ textTransform: 'capitalize', fontWeight: 600 }}>{title}</span>
+      {d.gym.map((w) => {
+        const work = w.sets.filter((x) => isWork(x) && isPlausible(x));
+        return (
+          <button key={w.id} className="day-row" onClick={() => onGym(w.id)}>
+            <span className="day-ic k-gym"><Icon name="dumbbell" size={18} /></span>
+            <span className="grow stack" style={{ gap: 1 }}>
+              <span style={{ fontWeight: 650 }}>{w.title}</span>
+              <span className="xs muted">{work.length} série{work.length > 1 ? "s" : ""}, {fmtInt(work.reduce((a, x) => a + x.weight_kg * x.reps, 0))} kg{w.end ? `, ${Math.round((w.end - w.start) / 60000)} min` : ''}</span>
+            </span>
+            <Icon name="chevron" size={18} />
+          </button>
+        );
+      })}
+      {d.runs.map((l) => (
+        <div key={l.id} className="day-row">
+          <span className="day-ic k-run"><Icon name="run" size={18} /></span>
+          <span className="grow stack" style={{ gap: 1 }}>
+            <span style={{ fontWeight: 650 }}>Course, {fmtKg(Number(l.distance_km))} km</span>
+            <span className="xs muted">{hms(l.duration_s)}, {mmss(l.duration_s / Number(l.distance_km))} /km{l.avg_hr ? `, ${l.avg_hr} bpm` : ''}</span>
+          </span>
+        </div>
+      ))}
+      {d.plan && !d.past && (
+        <button className="day-row" onClick={() => onRun(d.plan.key)}>
+          <span className="day-ic k-planned"><Icon name="run" size={18} /></span>
+          <span className="grow stack" style={{ gap: 1 }}>
+            <span style={{ fontWeight: 650 }}>{d.plan.title}</span>
+            <span className="xs muted">Course prévue : {d.plan.mins} min, environ {fmtKg(d.plan.km)} km</span>
+          </span>
+          <span className="xs" style={{ color: 'var(--accent)', fontWeight: 650 }}>Voir</span>
+        </button>
+      )}
+      {empty && (
+        <div className="day-row">
+          <span className="day-ic k-rest"><Icon name="moon" size={17} /></span>
+          <span className="small muted">{d.past ? 'Jour de repos.' : d.today ? 'Rien de prévu aujourd\'hui. Repos, ou une séance de salle si tu en as envie.' : 'Rien de prévu : jour de repos.'}</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const firstName = (user) => (user?.user_metadata?.name || '').split(' ')[0] || 'Kilian';
 
@@ -36,8 +86,17 @@ export default function Accueil({ user }) {
   const next = suggested || fromHistory;
   const last = data.workouts[0] || null;
   const lastWork = last ? last.sets.filter((x) => isWork(x) && isPlausible(x)) : [];
-  const runDays = data.runLogs.map((l) => new Date(l.done_at));
-  const weekDays = data.weekDays.map((d) => ({ ...d, run: runDays.some((r) => sameDay(r, d.date)) }));
+  // What happened, or is planned, on each day of the week: gym, run, or rest.
+  const planned = run ? run.weeks.flat() : [];
+  const weekDays = data.weekDays.map((d) => {
+    const gym = data.workouts.filter((w) => sameDay(w.start, d.date));
+    const runs = data.runLogs.filter((l) => sameDay(new Date(l.done_at), d.date));
+    const plan = planned.find((s) => sameDay(s.date, d.date) && !s.done) || null;
+    const past = d.date < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    return { ...d, gym, runs, plan, past, run: runs.length > 0 };
+  });
+  const [selDay, setSelDay] = useState(() => Math.max(0, data.weekDays.findIndex((d) => d.today)));
+  const sel = weekDays[selDay];
   const weekKm = data.runLogs.filter((l) => new Date(l.done_at) >= weekDays[0].date).reduce((a, l) => a + Number(l.distance_km || 0), 0);
 
   const startRoutine = (r) => { session.startRoutine(r); nav('/seance'); };
@@ -61,15 +120,23 @@ export default function Accueil({ user }) {
 
       <div className="pad stack" style={{ paddingTop: 12, gap: 14 }}>
         <div className="week">
-          {weekDays.map((d) => (
-            <div key={d.date.toISOString()}>
-              <span style={d.today ? { color: 'var(--text)', fontWeight: 700 } : null}>{d.letter}</span>
-              <div className={`dot ${d.done ? 'on' : d.run ? 'run-only' : d.today ? 'today' : ''}`} aria-label={`${d.date.toLocaleDateString('fr-FR', { weekday: 'long' })} : ${[d.done && 'salle', d.run && 'course'].filter(Boolean).join(' et ') || 'rien'}`}>
-                {d.run && <span className="dot-run" aria-hidden="true" />}
-              </div>
-            </div>
-          ))}
+          {weekDays.map((d, i) => {
+            const gym = d.gym.length > 0;
+            const kind = gym ? 'gym' : d.run ? 'run' : d.plan && !d.past ? 'planned' : 'rest';
+            const what = [gym && 'muscu', d.run && 'course', !gym && !d.run && d.plan && !d.past && `course prévue`].filter(Boolean).join(' et ') || 'repos';
+            return (
+              <button key={d.date.toISOString()} className="day" onClick={() => setSelDay(i)} aria-pressed={selDay === i}
+                aria-label={`${d.date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' })} : ${what}`}>
+                <span style={d.today ? { color: 'var(--text)', fontWeight: 800 } : null}>{d.letter}</span>
+                <span className={`dot k-${kind}${d.today ? ' today' : ''}${selDay === i ? ' sel' : ''}`}>
+                  <Icon name={kind === 'gym' ? 'dumbbell' : kind === 'rest' ? 'moon' : 'run'} size={kind === 'rest' ? 15 : 19} width={kind === 'rest' ? 1.8 : 2.2} />
+                  {gym && d.run && <span className="dot-badge"><Icon name="run" size={11} width={2.4} /></span>}
+                </span>
+              </button>
+            );
+          })}
         </div>
+        <DayDetail d={sel} onRun={(key) => nav('/course', { state: { pick: key } })} onGym={(id) => nav('/historique', { state: { open: id } })} />
         {(data.summary.sessions > 0 || weekKm > 0) && (
           <div className="row week-stats">
             {(data.week.sessions > 0 || !weekKm) && <span><b className="display">{data.week.sessions}</b>séance{data.week.sessions > 1 ? 's' : ''} de salle</span>}

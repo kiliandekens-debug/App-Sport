@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useData, deleteWorkout, renameWorkout } from '../data.jsx';
 import { useUi } from '../ui.jsx';
 import { GlassHeader, Icon, ExerciseImage } from '../components.jsx';
@@ -13,7 +14,8 @@ const volume = (w) => w.sets.filter((s) => isWork(s) && isPlausible(s)).reduce((
 export default function Historique() {
   const data = useData();
   const ui = useUi();
-  const [open, setOpen] = useState(null);
+  const location = useLocation();
+  const [open, setOpen] = useState(location.state?.open ? { kind: 'gym', id: location.state.open } : null);
   const [busy, setBusy] = useState(false);
 
   const items = useMemo(() => {
