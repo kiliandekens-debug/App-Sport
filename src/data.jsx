@@ -134,3 +134,14 @@ export async function deleteRunProfile() {
   const { error } = await supabase.from('run_profile').delete().not('user_id', 'is', null);
   if (error) throw error;
 }
+
+// Adds runs from Strava, skipping those already logged (same start within 3 minutes).
+export async function importRuns(runs, existing) {
+  const known = existing.map((l) => new Date(l.done_at).getTime());
+  const todo = runs.filter((r) => !known.some((t) => Math.abs(t - new Date(r.done_at).getTime()) < 3 * 60000));
+  for (let i = 0; i < todo.length; i += 200) {
+    const { error } = await supabase.from('run_logs').insert(todo.slice(i, i + 200));
+    if (error) throw error;
+  }
+  return { added: todo.length, skipped: runs.length - todo.length };
+}

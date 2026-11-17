@@ -446,3 +446,19 @@ input, select, textarea { font-size: max(16px, 1em); }
 .wset.warm b { color: var(--soft); }
 .wsheet .wset .display { font-size: 16px !important; }
 .wsheet .wstats .display { font-size: 22px !important; }
+
+/* Month calendar */
+.cal { padding: 14px; gap: 12px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.cal-h { text-align: center; font-size: 12px; font-weight: 700; color: var(--muted); padding-bottom: 2px; }
+.cal-d { position: relative; aspect-ratio: 1; border-radius: 12px; border: none; background: var(--raised); color: var(--soft); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 0; font-size: 14px; font-weight: 600; }
+.cal-d .cal-n { line-height: 1; }
+.cal-d .cal-i { display: flex; line-height: 0; }
+.cal-d.k-gym { background: var(--accent); color: var(--accent-ink); }
+.cal-d.k-run { background: var(--z1); color: #06210F; }
+.cal-d.k-planned { background: color-mix(in srgb, var(--z1) 14%, var(--raised)); color: var(--z1); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--z1) 50%, transparent); }
+.cal-d.k-rest .cal-n { color: var(--muted); }
+.cal-d.today { box-shadow: inset 0 0 0 2px var(--text); }
+.cal-d.sel { outline: 2px solid var(--text); outline-offset: 2px; }
+.cal-d .cal-b { position: absolute; right: 3px; top: 3px; width: 8px; height: 8px; border-radius: 4px; background: var(--z1); border: 1.5px solid var(--accent); }
+.day-row:disabled { opacity: 1; cursor: default; }

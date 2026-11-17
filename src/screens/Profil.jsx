@@ -1,7 +1,10 @@
 import { useRef, useState } from 'react';
 import { supabase } from '../supabase.js';
 import { Link } from 'react-router-dom';
-import { useData, importWorkouts, exportCsv } from '../data.jsx';
+import { useData, importWorkouts, exportCsv, importRuns } from '../data.jsx';
+import { readStravaFile } from '../lib/strava.js';
+import { MonthCalendar } from '../day.jsx';
+import { buildPlan } from '../lib/running.js';
 import { useSession } from '../session.jsx';
 import { useUi } from '../ui.jsx';
 import { parseHevyCsv } from '../lib/csv.js';
@@ -15,6 +18,8 @@ const COLORS = ['var(--accent)', 'var(--z0)', 'var(--z1)', 'var(--drop)', 'var(-
 export default function Profil({ user }) {
   const data = useData();
   const fileRef = useRef(null);
+  const stravaRef = useRef(null);
+  const [stravaStatus, setStravaStatus] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [theme, setThemeState] = useState(getTheme);
@@ -56,6 +61,26 @@ export default function Profil({ user }) {
       e.target.value = '';
     }
   };
+
+  const onStrava = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    setStravaStatus('Lecture de l\'export Strava…');
+    try {
+      const runs = await readStravaFile(file);
+      if (!runs.length) throw new Error('Aucune course trouvée dans ce fichier.');
+      const res = await importRuns(runs, data.runLogs);
+      await data.refresh();
+      setStravaStatus(`${res.added} course${res.added > 1 ? 's' : ''} ajoutée${res.added > 1 ? 's' : ''}${res.skipped ? `, ${res.skipped} déjà présente${res.skipped > 1 ? 's' : ''}` : ''}.`);
+    } catch (err) {
+      setStravaStatus(`Échec de l'import : ${err.message || err}`);
+    } finally {
+      setBusy(false);
+      e.target.value = '';
+    }
+  };
+  const planned = data.runProfile ? buildPlan(data.runProfile, data.runLogs, data.workouts).weeks.flat() : [];
 
   return (
     <main className="screen">
@@ -111,6 +136,11 @@ export default function Profil({ user }) {
       )}
 
       <div className="section">
+        <span className="label">Calendrier</span>
+        <MonthCalendar planned={planned} />
+      </div>
+
+      <div className="section">
         <span className="label">Apparence</span>
         <div className="seg" role="group" aria-label="Apparence" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
           {[['auto', 'Automatique'], ['light', 'Clair'], ['dark', 'Sombre']].map(([k, l]) => (
@@ -129,6 +159,12 @@ export default function Profil({ user }) {
         {status && <span className="small soft">{status}</span>}
         {s.sessions > 0 && <button className="btn" style={{ height: 52 }} onClick={download}><Icon name="upload" size={18} />Exporter mes séances de salle (.csv)</button>}
         <span className="xs muted">Les séances déjà présentes (même date et heure) sont ignorées, tu peux réimporter sans doublons.</span>
+        <input ref={stravaRef} type="file" accept=".zip,.csv,application/zip,text/csv" hidden onChange={onStrava} />
+        <button className="btn" style={{ height: 52, marginTop: 6 }} disabled={busy} onClick={() => stravaRef.current?.click()}>
+          <Icon name="run" size={18} />Importer mes courses Strava
+        </button>
+        {stravaStatus && <span className="small soft">{stravaStatus}</span>}
+        <span className="xs muted" style={{ lineHeight: 1.45 }}>Sur strava.com (pas dans l'app) : Paramètres, Mon compte, « Télécharger ou supprimer votre compte », puis « Demander une archive ». Strava t'envoie un lien par e-mail : choisis ici le fichier .zip reçu, ou le fichier activities.csv qu'il contient. Seules les courses à pied sont importées, sans doublon.</span>
         <button className="btn" style={{ color: 'var(--danger)' }} onClick={signOut}>Se déconnecter</button>
         <span className="xs muted" style={{ paddingBottom: 12 }}>Connecté : {user?.email}</span>
       </div>
