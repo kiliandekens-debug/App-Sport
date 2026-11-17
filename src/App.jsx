@@ -16,15 +16,18 @@ import Montre from './screens/Montre.jsx';
 import Routine from './screens/Routine.jsx';
 import Course from './screens/Course.jsx';
 import Historique from './screens/Historique.jsx';
+import Admin from './screens/Admin.jsx';
+import { PasswordForm } from './password.jsx';
 import { UpdateBanner, WhatsNew, useFreshVersion } from './update.jsx';
 
 export default function App() {
   const [session, setSession] = useState(undefined);
+  const [recovery, setRecovery] = useState(false);
 
   useEffect(() => {
     if (!configured) return;
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    const { data } = supabase.auth.onAuthStateChange((e, s) => { setSession(s); if (e === 'PASSWORD_RECOVERY') setRecovery(true); });
     return () => data.subscription.unsubscribe();
   }, []);
 
@@ -33,6 +36,14 @@ export default function App() {
   }
   if (session === undefined) return <Loading text="Connexion…" />;
   if (!session) return <Login />;
+  if (recovery) {
+    return (
+      <div className="screen login"><div className="center" style={{ alignItems: 'stretch', maxWidth: 400, margin: '0 auto', width: '100%' }}>
+        <h1 className="title-s">Nouveau mot de passe</h1>
+        <div className="glass stack" style={{ padding: 18, alignItems: 'stretch' }}><PasswordForm onDone={() => setRecovery(false)} /></div>
+      </div></div>
+    );
+  }
 
   return (
     <DataProvider>
@@ -62,6 +73,7 @@ function Shell({ user }) {
         <Route path="/coach" element={<Coach />} />
         <Route path="/course" element={<Course />} />
         <Route path="/historique" element={<Historique />} />
+        <Route path="/admin" element={<Admin user={user} />} />
         <Route path="/profil" element={<Profil user={user} />} />
         <Route path="/montre" element={<Montre />} />
         <Route path="/routines/:id" element={<Routine key={pathname} />} />

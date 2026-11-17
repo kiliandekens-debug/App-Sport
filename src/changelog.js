@@ -6,6 +6,14 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.3.0', date: '2026-11-17', title: 'Mot de passe et administration',
+    items: [
+      'Connexion par e-mail et mot de passe, en plus du lien par e-mail, avec « Mot de passe oublié ».',
+      'Profil : définir ou changer son mot de passe.',
+      'Rôle superadmin et écran Administration (comptes, activité, rôles).',
+    ],
+  },
+  {
     version: '1.2.0', date: '2026-11-17', title: 'Kadeon Sport',
     items: ['L\'app s\'appelle maintenant Kadeon Sport et a sa propre adresse : sport.kadeon.be.'],
   },

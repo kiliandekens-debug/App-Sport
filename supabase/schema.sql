@@ -83,3 +83,5 @@ alter table public.run_profile add column if not exists schedule jsonb;
 alter table public.run_profile add column if not exists weekly_km numeric;
 -- Migration "run_profile_reentry": return-to-running protocol on or off.
 alter table public.run_profile add column if not exists reentry boolean not null default true;
+-- Migration "roles_superadmin": app_roles (superadmin / admin / user), is_superadmin(),
+-- admin_users() and admin_set_role() as security definer functions checked against the caller's role.

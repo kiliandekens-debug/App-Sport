@@ -5,13 +5,13 @@ import { analyse } from './lib/stats.js';
 const DataCtx = createContext(null);
 
 export function DataProvider({ children }) {
-  const [raw, setRaw] = useState({ workouts: [], custom: [], plans: [], routines: [], runProfile: null, runLogs: [] });
+  const [raw, setRaw] = useState({ workouts: [], custom: [], plans: [], routines: [], runProfile: null, runLogs: [], superadmin: false });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const refresh = useCallback(async () => {
     try {
-      const [workouts, sets, custom, plans, routines, runLogs, runProfileRes] = await Promise.all([
+      const [workouts, sets, custom, plans, routines, runLogs, runProfileRes, adminRes] = await Promise.all([
         fetchAll('workouts', 'id,title,started_at,ended_at', 'started_at'),
         fetchAll('sets', 'workout_id,exercise,position,set_index,set_type,weight_kg,reps,duration_seconds,distance_km,superset_id', 'id'),
         fetchAll('custom_exercises', '*', 'created_at'),
@@ -19,11 +19,12 @@ export function DataProvider({ children }) {
         fetchAll('routines', '*', 'position'),
         fetchAll('run_logs', '*', 'done_at'),
         supabase.from('run_profile').select('*').maybeSingle(),
+        supabase.rpc('is_superadmin'),
       ]);
       const byId = new Map(workouts.map((w) => [w.id, { ...w, sets: [] }]));
       for (const s of sets) byId.get(s.workout_id)?.sets.push({ ...s, weight_kg: s.weight_kg == null ? null : Number(s.weight_kg) });
       for (const w of byId.values()) w.sets.sort((a, b) => a.position - b.position || a.set_index - b.set_index);
-      setRaw({ workouts: [...byId.values()], custom, plans, routines, runLogs, runProfile: runProfileRes.data || null });
+      setRaw({ workouts: [...byId.values()], custom, plans, routines, runLogs, runProfile: runProfileRes.data || null, superadmin: adminRes.data === true });
       setError(null);
     } catch (e) {
       setError(e.message || String(e));
@@ -37,7 +38,7 @@ export function DataProvider({ children }) {
   const value = useMemo(() => {
     const data = analyse(raw.workouts);
     const plans = new Map(raw.plans.map((p) => [p.exercise, p]));
-    return { ...data, custom: raw.custom, routines: raw.routines, runProfile: raw.runProfile, runLogs: raw.runLogs, plans, loading, error, refresh };
+    return { ...data, custom: raw.custom, routines: raw.routines, runProfile: raw.runProfile, runLogs: raw.runLogs, superadmin: raw.superadmin, plans, loading, error, refresh };
   }, [raw, loading, error, refresh]);
 
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;
@@ -144,4 +145,15 @@ export async function importRuns(runs, existing) {
     if (error) throw error;
   }
   return { added: todo.length, skipped: runs.length - todo.length };
+}
+
+// Superadmin only (checked again in the database).
+export async function adminUsers() {
+  const { data, error } = await supabase.rpc('admin_users');
+  if (error) throw error;
+  return data || [];
+}
+export async function adminSetRole(target, role) {
+  const { error } = await supabase.rpc('admin_set_role', { target, new_role: role });
+  if (error) throw error;
 }

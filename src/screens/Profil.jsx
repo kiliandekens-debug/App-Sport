@@ -6,6 +6,7 @@ import { readStravaFile } from '../lib/strava.js';
 import { MonthCalendar } from '../day.jsx';
 import { VERSION, BUILD, BUILT_AT } from '../changelog.js';
 import { WhatsNew } from '../update.jsx';
+import { PasswordForm } from '../password.jsx';
 import { buildPlan } from '../lib/running.js';
 import { useSession } from '../session.jsx';
 import { useUi } from '../ui.jsx';
@@ -23,6 +24,7 @@ export default function Profil({ user }) {
   const stravaRef = useRef(null);
   const [stravaStatus, setStravaStatus] = useState('');
   const [news, setNews] = useState(false);
+  const [pwd, setPwd] = useState(false);
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [theme, setThemeState] = useState(getTheme);
@@ -168,6 +170,14 @@ export default function Profil({ user }) {
         </button>
         {stravaStatus && <span className="small soft">{stravaStatus}</span>}
         <span className="xs muted" style={{ lineHeight: 1.45 }}>Sur strava.com (pas dans l'app) : Paramètres, Mon compte, « Télécharger ou supprimer votre compte », puis « Demander une archive ». Strava t'envoie un lien par e-mail : choisis ici le fichier .zip reçu, ou le fichier activities.csv qu'il contient. Seules les courses à pied sont importées, sans doublon.</span>
+        <span className="label" style={{ paddingTop: 18 }}>Compte</span>
+        {data.superadmin && (
+          <Link to="/admin" className="btn" style={{ height: 52, justifyContent: 'flex-start' }}><Icon name="user" size={18} /><span className="grow" style={{ textAlign: 'left' }}>Administration</span><span className="tag">Superadmin</span></Link>
+        )}
+        <button className="btn" style={{ height: 52, justifyContent: 'flex-start' }} aria-expanded={pwd} onClick={() => setPwd(!pwd)}>
+          <Icon name="edit" size={18} /><span className="grow" style={{ textAlign: 'left' }}>Définir ou changer mon mot de passe</span>
+        </button>
+        {pwd && <div className="card"><PasswordForm onDone={() => setPwd(false)} /></div>}
         <button className="btn" style={{ color: 'var(--danger)' }} onClick={signOut}>Se déconnecter</button>
         <span className="xs muted">Connecté : {user?.email}</span>
         <button className="btn" style={{ height: 52, justifyContent: 'flex-start', marginTop: 10 }} onClick={() => setNews(true)}>
