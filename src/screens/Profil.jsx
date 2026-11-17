@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { supabase } from '../supabase.js';
 import { useData, importWorkouts } from '../data.jsx';
 import { parseHevyCsv } from '../lib/csv.js';
-import { Bars, Icon } from '../components.jsx';
+import { Bars, Icon, GlassHeader } from '../components.jsx';
 import { fmtDay, fmtInt } from '../lib/stats.js';
 import { weeklyFacts } from '../lib/coach.js';
 import { getTheme, setTheme } from '../theme.js';
@@ -41,13 +41,8 @@ export default function Profil({ user }) {
 
   return (
     <main className="screen">
-      <div className="row" style={{ padding: '24px 20px 8px', gap: 14 }}>
-        <div className="display accent" style={{ width: 56, height: 56, borderRadius: 28, background: 'var(--brand)', color: 'var(--on-brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30 }}>{name[0]}</div>
-        <div className="stack" style={{ gap: 2 }}>
-          <h1 className="title" style={{ fontSize: 28 }}>{name}</h1>
-          <span className="small muted">{s.since ? `Membre depuis le ${fmtDay(s.since)} ${s.since.getFullYear()}` : user?.email}</span>
-        </div>
-      </div>
+      <GlassHeader eyebrow={s.since ? `Membre depuis le ${fmtDay(s.since)} ${s.since.getFullYear()}` : user?.email} title={name}
+        lead={<div className="glass-avatar display" aria-hidden="true">{name[0]}</div>} />
 
       <div className="pad grid2" style={{ paddingTop: 8 }}>
         <div className="tile" style={{ borderRadius: 16, padding: '12px 14px' }}><span className="xs muted">Séances</span><span className="v accent" style={{ fontSize: 24, fontWeight: 700 }}>{s.sessions}</span></div>

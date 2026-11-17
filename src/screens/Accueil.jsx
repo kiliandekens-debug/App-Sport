@@ -4,7 +4,7 @@ import { useData, saveRoutine } from '../data.jsx';
 import { useSession } from '../session.jsx';
 import { fmtDay, fmtKg, fmtInt, sameDay, titleKey, isWork, isPlausible } from '../lib/stats.js';
 import { routineFromHistory } from '../lib/routines.js';
-import { Icon, ExerciseImage } from '../components.jsx';
+import { Icon, ExerciseImage, GlassHeader } from '../components.jsx';
 import { buildPlan, segments, intensityOf } from '../lib/running.js';
 
 // "aujourd'hui", "hier", "il y a 3 jours", then the date.
@@ -57,10 +57,7 @@ export default function Accueil({ user }) {
 
   return (
     <main className="screen">
-      <div className="head">
-        <span className="small muted" style={{ textTransform: 'capitalize' }}>{today.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-        <h1 className="title">Salut {firstName(user)}</h1>
-      </div>
+      <GlassHeader eyebrow={<span style={{ textTransform: 'capitalize' }}>{today.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>} title={`Salut ${firstName(user)}`} />
 
       <div className="pad stack" style={{ paddingTop: 12, gap: 14 }}>
         <div className="week">

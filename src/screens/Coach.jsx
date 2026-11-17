@@ -5,7 +5,7 @@ import { useUi } from '../ui.jsx';
 import { reviewLastSession, weeklyFacts } from '../lib/coach.js';
 import { fmtKg, fmtInt, fmtDay, sameDay, titleKey, isWork, isPlausible } from '../lib/stats.js';
 import { incrementOf } from '../lib/exercises.js';
-import { Icon, ExerciseImage } from '../components.jsx';
+import { Icon, ExerciseImage, GlassHeader } from '../components.jsx';
 
 const KIND = {
   up: ['Charge en hausse', 'var(--done)', 'var(--ok)'],
@@ -51,7 +51,7 @@ export default function Coach() {
   if (!review) {
     return (
       <main className="screen">
-        <div className="head"><h1 className="title">Coach</h1></div>
+        <GlassHeader title="Coach" />
         <div className="pad"><div className="card"><span className="muted">Termine une première séance : le coach te proposera ensuite les charges de la suivante.</span></div></div>
       </main>
     );
@@ -98,10 +98,7 @@ export default function Coach() {
 
   return (
     <main className="screen">
-      <div className="head">
-        <span className="small muted">Bilan et charges conseillées</span>
-        <h1 className="title">Coach</h1>
-      </div>
+      <GlassHeader eyebrow="Bilan et charges conseillées" title="Coach" />
 
       <div className="pad stack" style={{ gap: 12, paddingTop: 10 }}>
         <div className="card hero" style={{ gap: 8 }}>

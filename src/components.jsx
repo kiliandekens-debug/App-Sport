@@ -86,6 +86,32 @@ const TABS = [
   ['/profil', 'user', 'Profil'],
 ];
 
+// Screen header: a floating pane of liquid glass. Large title at rest, compact once the page scrolls.
+export function GlassHeader({ eyebrow, title, lead = null, right = null }) {
+  const [compact, setCompact] = useState(() => typeof window !== 'undefined' && window.scrollY > 24);
+  useEffect(() => {
+    let raf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => setCompact(window.scrollY > 24));
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => { window.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf); };
+  }, []);
+  return (
+    <header className={`glass-head${compact ? ' compact' : ''}`}>
+      <div className="glass">
+        {lead}
+        <div className="grow glass-text">
+          {eyebrow && <span className="glass-eyebrow">{eyebrow}</span>}
+          <h1 className="glass-title">{title}</h1>
+        </div>
+        {right}
+      </div>
+    </header>
+  );
+}
+
 export function Nav() {
   return (
     <nav className="nav" aria-label="Navigation principale">

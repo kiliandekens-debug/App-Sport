@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useData } from '../data.jsx';
 import { useSession } from '../session.jsx';
 import { LIBRARY, MUSCLES, EQUIPS, muscleOf, equipOf } from '../lib/exercises.js';
-import { Icon, ExerciseImage } from '../components.jsx';
+import { Icon, ExerciseImage, GlassHeader } from '../components.jsx';
 import { VarianteForm } from './Variante.jsx';
 import ExerciseSheet from './ExerciseSheet.jsx';
 
@@ -105,13 +105,8 @@ export default function Exercices() {
       )}
       <div className="split">
         <div className="panel">
-          <div className="head" style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-            <div className="stack" style={{ gap: 4 }}>
-              <span className="small muted">{all.length} exercices{session.active ? ` · ajout à « ${session.title} »` : ''}</span>
-              <h1 className="title">Exercices</h1>
-            </div>
-            <Link to="/variante" aria-label="Créer un exercice ou une variante" className="icon-btn accent only-narrow"><Icon name="plus" width={2.5} /></Link>
-          </div>
+          <GlassHeader eyebrow={`${all.length} exercices${session.active ? `, ajout à « ${session.title} »` : ''}`} title="Exercices"
+            right={<Link to="/variante" aria-label="Créer un exercice ou une variante" className="icon-btn accent only-narrow"><Icon name="plus" width={2.5} /></Link>} />
           <ExercisePicker selected={inSession} onAdd={add} onOpen={setOpen} bottomPad={session.active ? 72 : 0} />
           <div className="pad only-narrow" style={{ paddingTop: 8 }}>
             <Link to="/variante" className="btn dashed" style={{ height: 52, width: '100%' }}>Il manque ma version ? Créer une variante</Link>

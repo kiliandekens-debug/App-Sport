@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { readRunScreenshot, parseRunText } from '../lib/runocr.js';
 import { useData, saveRunProfile, saveRunLog, deleteRunLog } from '../data.jsx';
 import { useUi } from '../ui.jsx';
-import { Icon, Bars } from '../components.jsx';
+import { Icon, Bars, GlassHeader } from '../components.jsx';
 import { fmtDay } from '../lib/stats.js';
 import { GOALS, buildPlan, appleSteps, segments, intensityOf, mmss, hms, parseDuration, TYPE_LABEL, paceRange, pacesOf, structureText, goalPrediction, betterLevel, runStats } from '../lib/running.js';
 
@@ -69,7 +69,7 @@ function Setup({ initial, onSave, onCancel }) {
 
   return (
     <main className="screen">
-      <div className="head"><span className="small muted">Plan de course</span><h1 className="title">Ton objectif</h1></div>
+      <GlassHeader eyebrow="Plan de course" title="Ton objectif" />
       <div className="pad stack" style={{ gap: 16, paddingTop: 10 }}>
         <div className="stack" style={{ gap: 6 }}>
           <span className="label">Objectif</span>
@@ -230,10 +230,7 @@ export default function Course() {
 
   return (
     <main className="screen">
-      <div className="head">
-        <span className="small muted">{GOALS[profile.goal].label} · semaine {Math.min(plan.current + 1, plan.total)} sur {plan.total}</span>
-        <h1 className="title">Course</h1>
-      </div>
+      <GlassHeader eyebrow={`${GOALS[profile.goal].label}, semaine ${Math.min(plan.current + 1, plan.total)} sur ${plan.total}`} title="Course" />
 
       <div className="pad stack" style={{ gap: 12, paddingTop: 10 }}>
         {draft && <ResultForm draft={draft} session={next} note={draftNote} onSave={saveResult} onCancel={() => setDraft(null)} />}
