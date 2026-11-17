@@ -7,7 +7,7 @@ import { MonthCalendar } from '../day.jsx';
 import { VERSION, BUILD, BUILT_AT } from '../changelog.js';
 import { WhatsNew } from '../update.jsx';
 import { PasswordForm } from '../password.jsx';
-import { pushSupported, pushEnabled, enablePush, disablePush, testPush, isIos, isStandalone } from '../push.js';
+import { pushSupported, pushEnabled, enablePush, disablePush, testPush, isIos, isStandalone, pushEvery, setPushEvery } from '../push.js';
 import { buildPlan } from '../lib/running.js';
 import { useSession } from '../session.jsx';
 import { useUi } from '../ui.jsx';
@@ -28,6 +28,7 @@ export default function Profil({ user }) {
   const [pwd, setPwd] = useState(false);
   const [push, setPush] = useState(pushEnabled);
   const [pushMsg, setPushMsg] = useState('');
+  const [every, setEvery] = useState(pushEvery);
   const togglePush = async () => {
     setPushMsg('');
     try {
@@ -167,6 +168,17 @@ export default function Profil({ user }) {
         {isIos() && !isStandalone() && !push && <span className="xs muted" style={{ lineHeight: 1.45 }}>Sur iPhone, les notifications ne marchent que depuis l'app ajoutée à l'écran d'accueil (Safari › Partager › Sur l'écran d'accueil), ouverte depuis son icône.</span>}
         {!pushSupported() && !isIos() && <span className="xs muted">Ce navigateur ne gère pas les notifications.</span>}
         {pushMsg && <span className="small" style={{ color: 'var(--danger)', lineHeight: 1.4 }}>{pushMsg}</span>}
+        {push && (
+          <div className="stack" style={{ gap: 6 }}>
+            <span className="small" style={{ fontWeight: 600 }}>Pendant le repos</span>
+            <div className="seg" role="group" aria-label="Rappels pendant le repos" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+              {[[0, 'À la fin'], [30, 'Toutes les 30 s'], [15, 'Toutes les 15 s']].map(([v, l]) => (
+                <button key={v} className={every === v ? 'on' : ''} aria-pressed={every === v} onClick={() => { setPushEvery(v); setEvery(v); }}>{l}</button>
+              ))}
+            </div>
+            <span className="xs muted" style={{ lineHeight: 1.4 }}>{every ? `Une notification toutes les ${every} secondes avec le temps restant, qui remplace la précédente (une légère vibration sur la montre à chaque fois), puis « Repos terminé ».` : 'Une seule notification, à la fin du repos.'}</span>
+          </div>
+        )}
         {push && <button className="btn" onClick={async () => { try { await testPush(); ui.notify('Notification de test dans 5 secondes'); } catch (e) { ui.notify(e.message || String(e)); } }}>Envoyer une notification de test</button>}
       </div>
 

@@ -9,6 +9,11 @@ export const pushSupported = () => typeof window !== 'undefined' && 'serviceWork
 export const isStandalone = () => window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
 export const isIos = () => /iPhone|iPad|iPod/.test(navigator.userAgent);
 export const pushEnabled = () => { try { return localStorage.getItem(FLAG) === '1'; } catch { return false; } };
+// Countdown reminders during the rest: 0 (end only), 15 or 30 seconds.
+const EVERY = 'app-sport-push-every';
+export const pushEvery = () => { try { return Number(localStorage.getItem(EVERY) || 0); } catch { return 0; } };
+export const setPushEvery = (s) => { try { localStorage.setItem(EVERY, String(s)); } catch { /* private mode */ } };
+const mmssOf = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 
 const b64ToBytes = (s) => {
   const pad = '='.repeat((4 - (s.length % 4)) % 4);
@@ -59,7 +64,17 @@ export async function syncRestPush(restUntil, body) {
   try {
     await supabase.from('scheduled_pushes').delete().is('sent_at', null).eq('tag', 'rest');
     if (restUntil && restUntil > Date.now() + 3000) {
-      await supabase.from('scheduled_pushes').insert({ send_at: new Date(restUntil).toISOString(), tag: 'rest', title: 'Repos terminé', body, url: '/seance' });
+      // One notification per step, all with the same tag: each one replaces the previous on the iPhone and the watch.
+      const rows = [];
+      const every = pushEvery();
+      if (every > 0) {
+        for (let t = restUntil - every * 1000; t > Date.now() + 4000; t -= every * 1000) {
+          const left = Math.round((restUntil - t) / 1000);
+          rows.push({ send_at: new Date(t).toISOString(), tag: 'rest', title: `Repos : encore ${mmssOf(left)}`, body: `Ensuite : ${body}`, url: '/seance' });
+        }
+      }
+      rows.push({ send_at: new Date(restUntil).toISOString(), tag: 'rest', title: 'Repos terminé', body, url: '/seance' });
+      await supabase.from('scheduled_pushes').insert(rows);
     }
   } catch { /* offline: the in-app beep still works */ }
 }

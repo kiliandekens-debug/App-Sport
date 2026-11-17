@@ -6,6 +6,10 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.5.0', date: '2026-11-17', title: 'Compte à rebours du repos sur la montre',
+    items: ['Option de notifications toutes les 15 ou 30 secondes pendant le repos, avec le temps restant ; chacune remplace la précédente.'],
+  },
+  {
     version: '1.4.0', date: '2026-11-17', title: 'Fin de repos sur la montre',
     items: [
       'Notifications de fin de repos, avec la série suivante : sur l\'iPhone et, quand il est verrouillé, sur l\'Apple Watch.',
