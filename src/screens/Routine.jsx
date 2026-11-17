@@ -143,7 +143,7 @@ export default function Routine() {
                   <span style={{ color: 'var(--rest)' }}><Icon name="timer" size={18} /></span>
                   <span className="grow small">Repos</span>
                   <select aria-label={`Repos pour ${e.name}`} value={e.rest ?? 0} onChange={(ev) => setEx(i, (ex) => ({ ...ex, rest: Number(ev.target.value) }))}
-                    style={{ background: 'transparent', border: 'none', color: 'var(--rest)', fontWeight: 700, fontSize: 15 }}>
+                    style={{ background: 'transparent', border: 'none', color: 'var(--rest)', fontWeight: 700, fontSize: 16 }}>
                     {REST_OPTIONS.map((o) => <option key={o} value={o}>{restLabel(o)}</option>)}
                   </select>
                 </label>

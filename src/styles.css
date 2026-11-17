@@ -54,7 +54,9 @@ a { color: var(--accent); -webkit-tap-highlight-color: transparent; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 ::placeholder { color: var(--muted); opacity: 0.8; }
 button, .btn, .icon-btn, .chip, .prog-item { transition: transform 0.08s, background-color 0.15s, opacity 0.15s; }
-button:active:not(:disabled), a.btn:active { transform: scale(0.97); }
+/* Press feedback: small controls shrink a little; large rows and cards only dim, so nothing around them moves. */
+.btn:active:not(:disabled), .icon-btn:active:not(:disabled), .chip:active, .check:active, .seg button:active, .rest-btn:active, .step:active { transform: scale(0.97); }
+.day-row:active, .list > button:active, .tile:active, .prog-item:active, button.card:active, .week .day:active { opacity: 0.7; }
 .num, .display, b { font-variant-numeric: tabular-nums; }
 
 /* Layout */
@@ -118,7 +120,7 @@ button:active:not(:disabled), a.btn:active { transform: scale(0.97); }
 .input { width: 100%; height: 48px; padding: 0 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); color: var(--text); }
 .input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .search { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 14px; border-radius: 14px; background: var(--chip); border: none; color: var(--muted); }
-.search input { flex: 1; min-width: 0; background: transparent; border: none; outline: none; color: var(--text); font-size: 15px; }
+.search input { flex: 1; min-width: 0; background: transparent; border: none; outline: none; color: var(--text); font-size: 16px; }
 .seg { display: grid; gap: 2px; padding: 3px; border-radius: 13px; background: var(--chip); }
 .seg button { height: 40px; border-radius: 10px; border: none; font-size: 14px; background: transparent; color: var(--soft); }
 .seg button.on { background: var(--card); color: var(--text); font-weight: 700; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
@@ -176,7 +178,7 @@ button:active:not(:disabled), a.btn:active { transform: scale(0.97); }
 .ex-menu button:last-child { border-bottom: none; }
 .ex-menu button:disabled { opacity: 0.4; }
 .rest-row { display: flex; align-items: center; gap: 8px; align-self: flex-start; height: 34px; padding: 0 6px 0 12px; border-radius: 17px; background: var(--rest-bg); color: var(--rest); font-size: 14px; font-weight: 600; }
-.rest-row select { background: transparent; border: none; color: var(--rest); font-weight: 700; font-size: 15px; height: 36px; }
+.rest-row select { background: transparent; border: none; color: var(--rest); font-weight: 700; font-size: 16px; height: 36px; }
 .prog-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 18px; background: var(--card); border: 1px solid transparent; box-shadow: var(--shadow); color: var(--text); text-align: left; width: 100%; min-height: 56px; }
 .prog-item.cur { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
 .ring { width: 28px; height: 28px; border-radius: 14px; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
@@ -248,7 +250,6 @@ html, body { overflow-x: clip; }
 .dot.run-only { background: color-mix(in srgb, var(--ok) 26%, var(--chip)); }
 .dot-run { position: absolute; left: 50%; bottom: -9px; width: 14px; height: 4px; margin-left: -7px; border-radius: 2px; background: var(--ok); }
 .tile { color: inherit; text-decoration: none; padding: 14px 16px; gap: 10px; }
-.tile:active { transform: scale(0.985); }
 .tile-icon { width: 40px; height: 40px; border-radius: 12px; background: var(--chip); color: var(--text); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .mini-run { display: flex; align-items: flex-end; gap: 2px; height: 26px; }
 .mini-run > span { flex-basis: 0; border-radius: 2px; min-width: 2px; }
@@ -416,3 +417,32 @@ html, body { overflow-x: clip; }
 .day-ic.k-gym { background: var(--accent); color: var(--accent-ink); }
 .day-ic.k-run { background: var(--z1); color: #06210F; }
 .day-ic.k-planned { background: color-mix(in srgb, var(--z1) 16%, var(--chip)); color: var(--z1); }
+
+/* iPhone: no automatic zoom when a field gets focus (it happens below 16 px), no double-tap zoom. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: manipulation; }
+input, select, textarea { font-size: max(16px, 1em); }
+
+/* The header keeps the same height in the layout whether it is large or compact:
+   otherwise the page jumps when it shrinks, and can bounce between the two states. */
+.glass-head { height: 102px; }
+.glass-head .glass { position: absolute; left: 12px; right: 12px; top: 8px; }
+.day-detail { min-height: 112px; }
+
+/* Past workout sheet */
+.wsheet { gap: 16px; }
+.wsheet .display { font-size: 26px !important; }
+.wstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
+.wstats > div { display: flex; flex-direction: column; gap: 1px; padding: 10px 12px; border-radius: 16px; background: var(--raised); }
+.wstats b { font-size: 22px !important; line-height: 1.1; }
+.wstats span { font-size: 12.5px; color: var(--muted); }
+.wstats .pr { background: var(--done); }
+.wstats .pr b, .wstats .pr span { color: var(--ok); }
+.wex { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 18px; background: var(--raised); }
+.wsets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.wset { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 12px; background: var(--card); font-size: 13px; color: var(--muted); white-space: nowrap; }
+.wset b { font-size: 16px !important; color: var(--text); }
+.wset .wn { width: 18px; text-align: center; font-weight: 800; color: var(--soft); }
+.wset.warm .wn { color: var(--warm); }
+.wset.warm b { color: var(--soft); }
+.wsheet .wset .display { font-size: 16px !important; }
+.wsheet .wstats .display { font-size: 22px !important; }

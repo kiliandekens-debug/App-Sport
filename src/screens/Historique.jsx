@@ -34,6 +34,8 @@ export default function Historique() {
   const w = open?.kind === 'gym' ? data.workouts.find((x) => x.id === open.id) : null;
   const exercises = w ? [...new Set(w.sets.map((s) => s.exercise))].map((name) => ({ name, sets: w.sets.filter((s) => s.exercise === name) })) : [];
 
+  const records = w ? exercises.filter((e) => { const st = data.exercises.get(e.name); return st?.best && st.best.date.getTime() === w.start.getTime() && st.history.length > 1; }).length : 0;
+
   const remove = async () => {
     if (!(await ui.confirm({ title: 'Supprimer cette séance ?', message: `${w.title}, ${dayLabel(w.start)}. Ses séries disparaissent aussi de tes progrès et records.`, ok: 'Supprimer', danger: true }))) return;
     setBusy(true);
@@ -75,27 +77,58 @@ export default function Historique() {
 
       {w && (
         <div className="overlay" onClick={() => setOpen(null)}>
-          <div className="sheet" role="dialog" aria-modal="true" aria-label={w.title} onClick={(e) => e.stopPropagation()}>
+          <div className="sheet wsheet" role="dialog" aria-modal="true" aria-label={w.title} onClick={(e) => e.stopPropagation()}>
             <span className="sheet-grip" />
-            <div className="row">
-              <div className="grow stack" style={{ gap: 2 }}>
+            <div className="row" style={{ alignItems: 'flex-start' }}>
+              <div className="grow stack" style={{ gap: 4 }}>
+                <span className="xs muted" style={{ textTransform: 'capitalize', fontWeight: 600 }}>{w.start.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
                 <span className="display">{w.title}</span>
-                <span className="small muted">{w.start.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}{w.end ? `, ${Math.round((w.end - w.start) / 60000)} min` : ''}</span>
               </div>
               <button className="icon-btn" aria-label="Fermer" onClick={() => setOpen(null)}><Icon name="close" /></button>
             </div>
-            {exercises.map((e) => (
-              <div key={e.name} className="row" style={{ alignItems: 'flex-start', gap: 12 }}>
-                <ExerciseImage name={e.name} size={40} radius={10} />
-                <div className="grow stack" style={{ gap: 2 }}>
-                  <span style={{ fontWeight: 600 }}>{e.name}</span>
-                  <span className="small muted" style={{ lineHeight: 1.45 }}>{e.sets.map((s) => `${s.set_type === 'warmup' ? 'É ' : ''}${fmtKg(s.weight_kg)} × ${s.reps}`).join(', ')}</span>
-                </div>
-              </div>
-            ))}
-            <div className="grid2">
-              <button className="btn" onClick={rename}><Icon name="edit" size={16} />Renommer</button>
-              <button className="btn" style={{ color: 'var(--danger)' }} disabled={busy} onClick={remove}><Icon name="trash" size={16} />Supprimer</button>
+
+            <div className="wstats">
+              {w.end && <div><b className="display">{Math.round((w.end - w.start) / 60000)}</b><span>min</span></div>}
+              <div><b className="display">{w.sets.filter((x) => isWork(x)).length}</b><span>séries</span></div>
+              <div><b className="display">{fmtInt(volume(w))}</b><span>kg</span></div>
+              {records > 0 && <div className="pr"><b className="display">{records}</b><span>record{records > 1 ? 's' : ''}</span></div>}
+            </div>
+
+            <div className="stack" style={{ gap: 10 }}>
+              {exercises.map((e) => {
+                const stat = data.exercises.get(e.name);
+                const pr = stat?.best && stat.best.date.getTime() === w.start.getTime() && stat.history.length > 1;
+                let n = 0;
+                return (
+                  <section key={e.name} className="wex">
+                    <div className="row" style={{ gap: 12 }}>
+                      <ExerciseImage name={e.name} size={44} radius={12} />
+                      <div className="grow stack" style={{ gap: 2, minWidth: 0 }}>
+                        <span style={{ fontWeight: 650, lineHeight: 1.25 }}>{e.name}</span>
+                        <span className="xs muted">{e.sets.filter((x) => isWork(x)).length} séries{pr ? '' : stat?.best ? `, record ${fmtKg(stat.best.kg)} kg × ${stat.best.reps}` : ''}</span>
+                      </div>
+                      {pr && <span className="tag" style={{ background: 'var(--ok)', color: 'var(--on-ok)' }}>Record</span>}
+                    </div>
+                    <div className="wsets">
+                      {e.sets.map((x, i) => {
+                        const warm = x.set_type === 'warmup';
+                        const label = warm ? 'É' : String(++n);
+                        return (
+                          <div key={i} className={`wset${warm ? ' warm' : ''}`}>
+                            <span className="wn">{label}</span>
+                            <span><b className="display">{fmtKg(x.weight_kg)}</b> kg × <b className="display">{x.reps}</b></span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+
+            <div className="row" style={{ gap: 8, paddingTop: 4 }}>
+              <button className="btn grow" onClick={rename}><Icon name="edit" size={16} />Renommer</button>
+              <button className="btn grow" style={{ color: 'var(--danger)', background: 'var(--danger-bg)' }} disabled={busy} onClick={remove}><Icon name="trash" size={16} />Supprimer</button>
             </div>
           </div>
         </div>

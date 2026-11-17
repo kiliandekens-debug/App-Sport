@@ -90,12 +90,13 @@ const TABS = [
 
 // Screen header: a floating pane of liquid glass. Large title at rest, compact once the page scrolls.
 export function GlassHeader({ eyebrow, title, lead = null, right = null }) {
-  const [compact, setCompact] = useState(() => typeof window !== 'undefined' && window.scrollY > 24);
+  const [compact, setCompact] = useState(() => typeof window !== 'undefined' && window.scrollY > 48);
   useEffect(() => {
     let raf = 0;
     const onScroll = () => {
       cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => setCompact(window.scrollY > 24));
+      // Hysteresis: shrink past 48 px, grow back only near the top, so it never flickers.
+      raf = requestAnimationFrame(() => setCompact((c) => (c ? window.scrollY > 12 : window.scrollY > 48)));
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => { window.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf); };
