@@ -124,6 +124,7 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
   const [refTime, setRefTime] = useState(initial ? hms(initial.ref_time_s) : auto ? hms(auto) : '');
   const [weekly, setWeekly] = useState(initial?.weekly_km != null ? String(initial.weekly_km) : fit?.startKm ? String(fit.startKm) : '');
   const [date, setDate] = useState(initial?.target_date || '');
+  const [reentry, setReentry] = useState(initial ? initial.reentry !== false : true);
   const [start, setStart] = useState(initial?.started_on ? String(initial.started_on).slice(0, 10) : today());
   const dateIssue = date && start && date <= start ? 'La date de la course doit être après le début du programme.' : null;
   const [busy, setBusy] = useState(false);
@@ -184,6 +185,17 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
           {!!issues.length && <div className="warn">{issues.map((t) => <span key={t} className="small" style={{ lineHeight: 1.4 }}>{t}</span>)}</div>}
         </div>
 
+        {fit?.protocol && (
+          <div className="stack" style={{ gap: 6 }}>
+            <span className="label">Reprise progressive</span>
+            <span className="small muted" style={{ lineHeight: 1.45 }}>Recommandée après {fit.break.days} jours sans entraînement régulier : volume réduit les premières semaines, et tes jours de qualité en version allégée pendant {fit.protocol.easyWeeks} semaine{fit.protocol.easyWeeks > 1 ? 's' : ''}.</span>
+            <div className="seg" role="group" aria-label="Reprise progressive" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+              <button className={reentry ? 'on' : ''} aria-pressed={reentry} onClick={() => setReentry(true)}>Oui (conseillé)</button>
+              <button className={!reentry ? 'on' : ''} aria-pressed={!reentry} onClick={() => setReentry(false)}>Non, plan normal</button>
+            </div>
+          </div>
+        )}
+
         <div className="stack" style={{ gap: 6 }}>
           <span className="label">Début du programme</span>
           <span className="small muted">La première semaine commence ce jour-là. Par défaut aujourd'hui.</span>
@@ -201,7 +213,7 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
         <button className="btn primary big" disabled={bad || busy} onClick={async () => {
           setBusy(true);
           try {
-            await onSave({ goal, schedule, days_per_week: count, weekly_km: weekly === '' ? null : Number(String(weekly).replace(',', '.')) || 0, ref_distance_km: Number(refKm), ref_time_s: secs, target_date: date || null, started_on: start });
+            await onSave({ goal, schedule, days_per_week: count, weekly_km: weekly === '' ? null : Number(String(weekly).replace(',', '.')) || 0, ref_distance_km: Number(refKm), ref_time_s: secs, target_date: date || null, started_on: start, reentry });
           } finally { setBusy(false); }
         }}>{initial ? 'Mettre à jour le plan' : 'Créer mon plan'}</button>
         {onCancel && <button className="btn" onClick={onCancel}>Annuler les modifications</button>}
@@ -413,7 +425,7 @@ export default function Course() {
             {plan.reentry && plan.reentry.weeks.length > 0 && (
               <div className="warn" style={{ gap: 4 }}>
                 <span className="xs" style={{ fontWeight: 700 }}>Reprise après {plan.reentry.gap} jours</span>
-                <span className="small" style={{ lineHeight: 1.45 }}>Volume à {plan.reentry.weeks.map((x) => `${Math.round(x * 100)} %`).join(', puis ')} sur les prochaines semaines{plan.reentry.easyWeeks ? `, footing uniquement pendant ${plan.reentry.easyWeeks} semaine${plan.reentry.easyWeeks > 1 ? 's' : ''}` : ''}. Les tendons reprennent moins vite que le souffle : même si c'est facile, ne force pas.</span>
+                <span className="small" style={{ lineHeight: 1.45 }}>Volume à {plan.reentry.weeks.map((x) => `${Math.round(x * 100)} %`).join(', puis ')} sur les prochaines semaines.{plan.reentry.easyWeeks ? ` Tes jours de qualité restent en place mais allégés (lignes droites, puis fartlek doux) ; les vraies séances reviennent ${plan.reentry.backOn}.` : ''} Tu peux désactiver la reprise dans « Modifier ».</span>
               </div>
             )}
             {plan.note && <div className="warn"><span className="xs" style={{ fontWeight: 700 }}>Jambes</span><span className="small" style={{ lineHeight: 1.4 }}>{plan.note}</span></div>}

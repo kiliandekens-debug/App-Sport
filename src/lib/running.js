@@ -254,7 +254,14 @@ function buildWeek(profile, w, total, adj, qualityCount, opts = {}) {
   let slot = 0;
   for (let d = 0; d < 7; d++) {
     if (schedule[d] !== 'quality' || d === raceDay) continue;
-    if (opts.noQuality) { out.push({ d, kind: 'easy' }); continue; } // back from a break: easy running only
+    if (opts.noQuality) {
+      // Back from a break: the quality day stays a quality day, in a light form (Daniels: strides first, then short pick-ups).
+      const light = opts.reentryWeek < Math.ceil(opts.easyWeeks / 2)
+        ? { family: 'reentry', title: 'Qualité en reprise : lignes droites', blocks: [B('easy', 25, p.easy), R(6, B('stride', 1 / 3, p.rep), B('rest', 1, p.recovery)), B('cool', 5, p.easy)] }
+        : { family: 'reentry', title: 'Qualité en reprise : fartlek doux', blocks: [B('warm', 15, p.easy), R(6, B('fast', 0.5, p.interval), B('rest', 1.5, p.easy)), B('cool', 10, p.easy)] };
+      out.push({ d, kind: 'quality', ...light, why: `Ton jour de qualité, en version allégée : tu reprends après une pause, et les tendons se réadaptent moins vite que le souffle. Les vraies séances (fractionné, seuil) reviennent ${opts.backOn}.` });
+      continue;
+    }
     if (raceWeek && d > raceDay) continue;
     if (raceWeek && raceDay - d < 2) { out.push({ d, kind: 'easy' }); continue; } // no hard work 2 days before the race
     const s = qualityFor(goal, phase, qualityCount.n++, slot++, p, light);
@@ -296,11 +303,14 @@ function buildWeek(profile, w, total, adj, qualityCount, opts = {}) {
     const prevHard = out.some((x) => (x.d === (d + 6) % 7) && (x.kind === 'quality' || x.kind === 'long'));
     const recovery = prevHard && easyDays.length >= 2;
     const pace = recovery ? p.recovery : p.easy;
-    const mins = Math.min(r5(((recovery ? share * 0.75 : share) * pace) / 60), 70);
+    // An easy run stays under an hour (Daniels); beyond that it would be a long run the athlete did not ask for.
+    const mins = Math.min(r5(((recovery ? share * 0.75 : share) * pace) / 60), 60);
     const m = Math.max(20, mins);
+    const strides0 = !recovery && !stridesGiven && phase !== 'taper' && (phase === 'base' || phase === 'dev' || raceWeek);
+    const mEasy = strides0 ? Math.min(m, 50) : m;
     const strides = !recovery && !stridesGiven && phase !== 'taper' && (phase === 'base' || phase === 'dev' || raceWeek);
     if (strides) stridesGiven = true;
-    const blocks = strides ? [B('easy', m, pace), R(6, B('stride', 1 / 3, p.rep), B('rest', 1, p.recovery))] : [B(recovery ? 'recovery' : 'easy', m, pace)];
+    const blocks = strides ? [B('easy', mEasy, pace), R(6, B('stride', 1 / 3, p.rep), B('rest', 1, p.recovery))] : [B(recovery ? 'recovery' : 'easy', m, pace)];
     const idx = out.findIndex((x) => x.d === d);
     const s = recovery
       ? { family: 'recovery', title: 'Footing de récupération', why: 'Fait circuler le sang après la séance dure de la veille, sans ajouter de fatigue. Ralentis franchement.', blocks }
@@ -357,20 +367,22 @@ export function buildPlan(profile, logs, workouts = [], now = new Date()) {
   const todayStr = ymd(now);
   // Back from a break (Daniels): the weeks from the return on follow the return protocol.
   const fit = fitnessFromHistory(logs, workouts, now);
-  const reentry = fit.protocol || null;
+  const reentry = profile.reentry === false ? null : (fit.protocol || null);
   const startMonday = mondayOf(new Date(profile.started_on));
   // If the level was entered before the break, paces are slowed for the lost fitness; if after, it is already current.
   const levelBeforeBreak = !!(reentry && fit.break && new Date(profile.updated_at || profile.started_on) < fit.break.from);
   // The return protocol starts at the return (or now), but never before the plan itself starts.
   const anchor = reentry && reentry.start > startMonday ? reentry.start : startMonday;
   const returnWeek = reentry ? Math.floor((mondayOf(anchor) - startMonday) / (7 * 86400000)) : 0;
+  const back = reentry ? addDays(startMonday, (returnWeek + reentry.easyWeeks) * 7) : null;
+  const backOnLabel = back ? `la semaine du ${back.getDate()} ${['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'][back.getMonth()]}` : '';
   const flat = (adj) => {
     const qc = { n: 0 };
     const weeks = [];
     for (let w = 0; w < total; w++) {
       const k = w - returnWeek;
       const opts = reentry && k >= 0 && k < reentry.weeks.length
-        ? { volMul: reentry.weeks[k], noQuality: k < reentry.easyWeeks, paceMul: levelBeforeBreak ? reentry.paceMul : 1 } : {};
+        ? { volMul: reentry.weeks[k], noQuality: k < reentry.easyWeeks, paceMul: levelBeforeBreak ? reentry.paceMul : 1, reentryWeek: k, easyWeeks: reentry.easyWeeks, backOn: backOnLabel } : {};
       weeks.push(buildWeek(profile, w, total, adj, qc, opts));
     }
     return weeks;
@@ -405,7 +417,7 @@ export function buildPlan(profile, logs, workouts = [], now = new Date()) {
   // 80/20 measured on time actually spent at each intensity (warm-ups and recoveries count as easy).
   let easyMin = 0, totalMin = 0;
   for (const s of all) for (const g of segments(s)) { totalMin += g.mins; if (relaxed(g.type)) easyMin += g.mins; }
-  return { total, weeks, current, next, adj, note, reentry: reentry && { ...reentry, gap: fit.breakDays }, fit, finished: !next, phases, easyShare: totalMin ? easyMin / totalMin : 0, phase: weeks[current]?.[0]?.phase || 'base' };
+  return { total, weeks, current, next, adj, note, reentry: reentry && { ...reentry, gap: fit.breakDays, backOn: backOnLabel }, fit, finished: !next, phases, easyShare: totalMin ? easyMin / totalMin : 0, phase: weeks[current]?.[0]?.phase || 'base' };
 }
 
 // "5:10 – 5:30"

@@ -81,3 +81,5 @@ create policy "own rows" on public.run_logs for all using (user_id = auth.uid())
 -- Migration "run_profile_schedule": the athlete's week (Monday first) and current volume.
 alter table public.run_profile add column if not exists schedule jsonb;
 alter table public.run_profile add column if not exists weekly_km numeric;
+-- Migration "run_profile_reentry": return-to-running protocol on or off.
+alter table public.run_profile add column if not exists reentry boolean not null default true;

@@ -6,6 +6,14 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.1.1', date: '2026-11-17', title: 'Tes jours de course respectés pendant la reprise',
+    items: [
+      'Pendant la reprise après une pause, un jour « Qualité » reste une séance de qualité, en version allégée (lignes droites, puis fartlek doux), au lieu de devenir un simple footing sans explication.',
+      'La date de retour des vraies séances est indiquée, et la reprise progressive peut être désactivée.',
+      'Un footing facile ne dépasse plus une heure quand aucune sortie longue n\'est prévue.',
+    ],
+  },
+  {
     version: '1.1.0', date: '2026-11-17', title: 'Date de début du programme',
     items: [
       'Course : choisis la date de début de ton programme, aujourd\'hui ou plus tard, et modifie-la ensuite.',
