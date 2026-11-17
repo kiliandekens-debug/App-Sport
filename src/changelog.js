@@ -6,6 +6,13 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.4.0', date: '2026-11-17', title: 'Fin de repos sur la montre',
+    items: [
+      'Notifications de fin de repos, avec la série suivante : sur l\'iPhone et, quand il est verrouillé, sur l\'Apple Watch.',
+      'À activer dans Profil › Notifications, depuis l\'app ajoutée à l\'écran d\'accueil.',
+    ],
+  },
+  {
     version: '1.3.1', date: '2026-11-17', title: 'Message clair quand trop d\'e-mails sont envoyés',
     items: ['La limite d\'envoi d\'e-mails est expliquée en français, avec la solution.'],
   },

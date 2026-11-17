@@ -7,6 +7,7 @@ import { MonthCalendar } from '../day.jsx';
 import { VERSION, BUILD, BUILT_AT } from '../changelog.js';
 import { WhatsNew } from '../update.jsx';
 import { PasswordForm } from '../password.jsx';
+import { pushSupported, pushEnabled, enablePush, disablePush, testPush, isIos, isStandalone } from '../push.js';
 import { buildPlan } from '../lib/running.js';
 import { useSession } from '../session.jsx';
 import { useUi } from '../ui.jsx';
@@ -25,6 +26,15 @@ export default function Profil({ user }) {
   const [stravaStatus, setStravaStatus] = useState('');
   const [news, setNews] = useState(false);
   const [pwd, setPwd] = useState(false);
+  const [push, setPush] = useState(pushEnabled);
+  const [pushMsg, setPushMsg] = useState('');
+  const togglePush = async () => {
+    setPushMsg('');
+    try {
+      if (push) { await disablePush(); setPush(false); ui.notify('Notifications désactivées'); }
+      else { await enablePush(); setPush(true); ui.notify('Notifications activées'); }
+    } catch (e) { setPushMsg(e.message || String(e)); }
+  };
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [theme, setThemeState] = useState(getTheme);
@@ -143,6 +153,21 @@ export default function Profil({ user }) {
       <div className="section">
         <span className="label">Calendrier</span>
         <MonthCalendar planned={planned} />
+      </div>
+
+      <div className="section">
+        <span className="label">Notifications</span>
+        <div className="card row" style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <span className="grow stack" style={{ gap: 2 }}>
+            <span style={{ fontWeight: 600 }}>Fin de repos sur l'iPhone et la montre</span>
+            <span className="xs muted" style={{ lineHeight: 1.4 }}>Une notification à la fin de chaque repos, avec la série suivante. iPhone verrouillé, elle arrive sur l'Apple Watch.</span>
+          </span>
+          <button className="switch" role="switch" aria-checked={push} aria-label="Notifications de fin de repos" onClick={togglePush}><span /></button>
+        </div>
+        {isIos() && !isStandalone() && !push && <span className="xs muted" style={{ lineHeight: 1.45 }}>Sur iPhone, les notifications ne marchent que depuis l'app ajoutée à l'écran d'accueil (Safari › Partager › Sur l'écran d'accueil), ouverte depuis son icône.</span>}
+        {!pushSupported() && !isIos() && <span className="xs muted">Ce navigateur ne gère pas les notifications.</span>}
+        {pushMsg && <span className="small" style={{ color: 'var(--danger)', lineHeight: 1.4 }}>{pushMsg}</span>}
+        {push && <button className="btn" onClick={async () => { try { await testPush(); ui.notify('Notification de test dans 5 secondes'); } catch (e) { ui.notify(e.message || String(e)); } }}>Envoyer une notification de test</button>}
       </div>
 
       <div className="section">

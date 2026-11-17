@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './supabase.js';
+import { syncRestPush } from './push.js';
 import { useData } from './data.jsx';
 import { templateFor, lastSetsOf } from './lib/stats.js';
 import { defaultRest, routineFromHistory, toggleSuperset as toggleSS, cleanSupersets } from './lib/routines.js';
@@ -177,6 +178,22 @@ export function SessionProvider({ children }) {
     document.addEventListener('visibilitychange', onVis);
     return () => { stopped = true; document.removeEventListener('visibilitychange', onVis); lock?.release?.().catch(() => {}); };
   }, [active]);
+
+  // End-of-rest notification (iPhone and Apple Watch), kept in step with the timer.
+  useEffect(() => {
+    if (!s?.restUntil) { syncRestPush(null); return; }
+    const ex = s.exercises[s.current];
+    const i = ex ? ex.sets.findIndex((x) => !x.done) : -1;
+    let body = 'C\'est reparti.';
+    if (ex && i >= 0) {
+      const x = ex.sets[i];
+      const p = prevOf(ex, i);
+      const kg = x.kg !== '' ? x.kg : p ? String(p.kg).replace('.', ',') : '?';
+      const reps = x.reps !== '' ? x.reps : p ? p.reps : '?';
+      body = `${ex.name} : ${kg} kg × ${reps}`;
+    } else if (s.exercises.some((e) => e.sets.some((x) => !x.done))) body = 'Exercice suivant.';
+    syncRestPush(s.restUntil, body);
+  }, [s?.restUntil, s?.current]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const resting = Boolean(s?.restUntil && s.restUntil > now);
   useEffect(() => {

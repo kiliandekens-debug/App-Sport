@@ -85,3 +85,5 @@ alter table public.run_profile add column if not exists weekly_km numeric;
 alter table public.run_profile add column if not exists reentry boolean not null default true;
 -- Migration "roles_superadmin": app_roles (superadmin / admin / user), is_superadmin(),
 -- admin_users() and admin_set_role() as security definer functions checked against the caller's role.
+-- Migration "web_push": push_subscriptions, scheduled_pushes, push_config (server only),
+-- kick_due_pushes() run by pg_cron every 5 s, which calls the send-due-pushes edge function.

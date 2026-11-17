@@ -6,8 +6,10 @@ import { UiProvider } from './ui.jsx';
 import '@fontsource-variable/archivo/wdth.css';
 import './styles.css';
 import { applyTheme } from './theme.js';
+import { registerSw } from './push.js';
 
 applyTheme();
+registerSw();
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
