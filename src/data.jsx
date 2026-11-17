@@ -128,3 +128,9 @@ export function exportCsv(workouts) {
   }
   return rows.join('\n');
 }
+
+// Stops the running plan. Logged runs are kept (history, stats).
+export async function deleteRunProfile() {
+  const { error } = await supabase.from('run_profile').delete().not('user_id', 'is', null);
+  if (error) throw error;
+}

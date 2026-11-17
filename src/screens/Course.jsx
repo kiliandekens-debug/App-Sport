@@ -1,13 +1,15 @@
 import { useMemo, useRef, useState } from 'react';
 import { readRunScreenshot, parseRunText } from '../lib/runocr.js';
-import { useData, saveRunProfile, saveRunLog, deleteRunLog } from '../data.jsx';
+import { useData, saveRunProfile, saveRunLog, deleteRunLog, deleteRunProfile } from '../data.jsx';
 import { useUi } from '../ui.jsx';
 import { Icon, Bars, GlassHeader } from '../components.jsx';
 import { fmtDay } from '../lib/stats.js';
-import { GOALS, buildPlan, appleSteps, segments, intensityOf, mmss, hms, parseDuration, TYPE_LABEL, paceRange, pacesOf, structureText, goalPrediction, betterLevel, runStats } from '../lib/running.js';
+import { GOALS, DAYS, DAY_SHORT, SLOT, DEFAULT_SCHEDULE, PHASES, FEEL, buildPlan, appleSteps, segments, intensityOf, mmss, hms, parseDuration, TYPE_LABEL, paceRange, pacesOf, structureText, goalPrediction, betterLevel, runStats, scheduleOf, scheduleIssues, mainType, raceTime, vdotOfProfile } from '../lib/running.js';
 
-const FILL = { warm: 'var(--z0)', cool: 'var(--z0)', rest: 'var(--z0)', easy: 'var(--z1)', steady: 'var(--z2)', tempo: 'var(--z3)', fast: 'var(--z4)' };
-const today = () => new Date().toISOString().slice(0, 10);
+const FILL = { warm: 'var(--z0)', cool: 'var(--z0)', rest: 'var(--z0)', recovery: 'var(--z0)', easy: 'var(--z1)', steady: 'var(--z1)', race: 'var(--z2)', tempo: 'var(--z3)', fast: 'var(--z4)', rep: 'var(--z4)', hill: 'var(--z4)', stride: 'var(--z4)' };
+const localYmd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const today = () => localYmd(new Date());
+const whenLabel = (s) => (s.today ? "Aujourd'hui" : s.ymd === localYmd(new Date(Date.now() + 86400000)) ? 'Demain' : `${DAY_SHORT[(s.date.getDay() + 6) % 7]} ${fmtDay(s.date)}`);
 
 // The session drawn as a profile: width = time, height = effort.
 function RunChart({ session }) {
@@ -44,62 +46,103 @@ function RunChart({ session }) {
 }
 
 function SessionRow({ s, active, onPick }) {
+  const status = s.done ? 'Faite' : s.missed ? 'Non faite' : active ? 'Affichée' : 'Voir';
   return (
-    <button className="card row" disabled={s.done} onClick={onPick} aria-label={`${s.title}, ${s.mins} minutes${s.done ? ', faite' : ', afficher'}`}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, textAlign: 'left', width: '100%', color: 'inherit', background: s.done ? 'var(--done)' : undefined, borderColor: s.done ? 'var(--done-line)' : active ? 'var(--accent)' : undefined, borderWidth: active && !s.done ? 2 : undefined, opacity: 1 }}>
-      <span style={{ width: 26, height: 26, flexShrink: 0, borderRadius: 13, background: s.done ? 'var(--ok)' : 'var(--chip)', color: 'var(--on-ok)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{s.done && <Icon name="check" size={14} width={3} />}</span>
-      <span className="grow stack" style={{ gap: 1 }}>
+    <button className="card row" disabled={s.done} onClick={onPick} aria-label={`${whenLabel(s)}, ${s.title}, ${s.mins} minutes, ${status}`}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, textAlign: 'left', width: '100%', color: 'inherit', background: s.done ? 'var(--done)' : undefined, borderColor: s.done ? 'var(--done-line)' : active ? 'var(--accent)' : undefined, borderWidth: active && !s.done ? 2 : undefined, opacity: s.missed ? 0.6 : 1 }}>
+      <span className="stack" style={{ width: 44, flexShrink: 0, alignItems: 'center', gap: 0 }}>
+        <span className="xs muted">{DAY_SHORT[(s.date.getDay() + 6) % 7]}</span>
+        <span className="display" style={{ fontSize: 20, lineHeight: 1.1 }}>{s.date.getDate()}</span>
+      </span>
+      <span style={{ width: 4, alignSelf: 'stretch', borderRadius: 2, background: s.kind === 'quality' || s.kind === 'race' ? 'var(--z4)' : s.kind === 'long' ? 'var(--z2)' : 'var(--z1)' }} />
+      <span className="grow stack" style={{ gap: 1, minWidth: 0 }}>
         <span style={{ fontWeight: 600 }}>{s.title}</span>
         <span className="xs muted">{s.mins} min, ≈ {String(s.km).replace('.', ',')} km{s.blocks.length === 1 ? `, ${paceRange(s.blocks[0].pace)} /km` : ''}</span>
       </span>
-      {!s.done && <span className="xs" style={{ color: 'var(--accent)', fontWeight: 600 }}>{active ? 'Affichée' : 'Voir'}</span>}
+      {s.done ? <span style={{ width: 26, height: 26, flexShrink: 0, borderRadius: 13, background: 'var(--ok)', color: 'var(--on-ok)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="check" size={14} width={3} /></span>
+        : <span className="xs" style={{ color: s.missed ? 'var(--muted)' : 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>{s.today && !active ? "Aujourd'hui" : status}</span>}
     </button>
   );
 }
 
-function Setup({ initial, onSave, onCancel }) {
+function Setup({ initial, onSave, onCancel, onStop }) {
   const [goal, setGoal] = useState(initial?.goal || '10k');
-  const [days, setDays] = useState(initial?.days_per_week || 3);
+  const [schedule, setSchedule] = useState(() => (initial ? scheduleOf(initial) : DEFAULT_SCHEDULE[3]));
   const [refKm, setRefKm] = useState(initial?.ref_distance_km || 5);
   const [refTime, setRefTime] = useState(initial ? hms(initial.ref_time_s) : '');
+  const [weekly, setWeekly] = useState(initial?.weekly_km != null ? String(initial.weekly_km) : '');
   const [date, setDate] = useState(initial?.target_date || '');
   const [busy, setBusy] = useState(false);
   const secs = parseDuration(refTime);
-  const bad = !secs || secs < 600 || secs > 20000;
+  const count = schedule.filter(Boolean).length;
+  const issues = scheduleIssues(schedule);
+  const blocking = count < 2 || schedule.filter((x) => x === 'quality').length > 2 || schedule.filter((x) => x === 'long').length > 1;
+  const bad = !secs || secs < 600 || secs > 20000 || blocking;
+  const preview = secs ? raceTime(vdotOfProfile({ ref_distance_km: refKm, ref_time_s: secs }), GOALS[goal].km) : null;
+  const setDay = (i, v) => setSchedule(schedule.map((x, j) => (j === i ? v : x)));
 
   return (
     <main className="screen">
-      <GlassHeader eyebrow="Plan de course" title="Ton objectif" />
-      <div className="pad stack" style={{ gap: 16, paddingTop: 10 }}>
+      <GlassHeader eyebrow="Plan de course" title={initial ? 'Modifier le plan' : 'Ton objectif'} />
+      <div className="pad stack" style={{ gap: 18, paddingTop: 10 }}>
         <div className="stack" style={{ gap: 6 }}>
           <span className="label">Objectif</span>
-          <div className="seg" role="group" aria-label="Objectif" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-            {Object.entries(GOALS).map(([k, g]) => <button key={k} className={goal === k ? 'on' : ''} aria-pressed={goal === k} onClick={() => setGoal(k)}>{g.label}</button>)}
+          <div className="seg" role="group" aria-label="Objectif" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+            {Object.entries(GOALS).map(([k, g]) => <button key={k} className={goal === k ? 'on' : ''} aria-pressed={goal === k} onClick={() => setGoal(k)}>{g.label === 'Semi-marathon' ? 'Semi' : g.label}</button>)}
           </div>
         </div>
-        <div className="stack" style={{ gap: 6 }}>
-          <span className="label">Séances par semaine</span>
-          <div className="seg" role="group" aria-label="Séances par semaine" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-            {[2, 3, 4].map((n) => <button key={n} className={days === n ? 'on' : ''} aria-pressed={days === n} onClick={() => setDays(n)}>{n}</button>)}
-          </div>
-        </div>
+
         <div className="stack" style={{ gap: 6 }}>
           <span className="label">Ton niveau actuel</span>
-          <span className="small muted">Un temps récent sur une distance, même approximatif. Il sert à calculer tes allures.</span>
+          <span className="small muted">Un temps récent sur une distance, même approximatif. Il fixe toutes tes allures (méthode VDOT de Jack Daniels).</span>
           <div className="seg" role="group" aria-label="Distance de référence" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
             {[[3, '3 km'], [5, '5 km'], [10, '10 km']].map(([k, l]) => <button key={k} className={Number(refKm) === k ? 'on' : ''} aria-pressed={Number(refKm) === k} onClick={() => setRefKm(k)}>{l}</button>)}
           </div>
           <input className="input" inputMode="text" placeholder={Number(refKm) === 10 ? 'Temps, par exemple 58:30' : 'Temps, par exemple 28:30'} value={refTime} onChange={(e) => setRefTime(e.target.value)} aria-label="Temps de référence" />
+          {preview && goal !== 'forme' && <span className="small muted">Temps estimé aujourd'hui sur {GOALS[goal].label.toLowerCase()} : <b style={{ color: 'var(--text)' }}>{hms(preview)}</b></span>}
         </div>
+
+        <label className="stack" style={{ gap: 6 }}>
+          <span className="label">Kilomètres par semaine en ce moment</span>
+          <span className="small muted">Le volume démarre de là et monte d'environ 8 % par semaine, jamais plus.</span>
+          <input className="input" inputMode="decimal" placeholder="Par exemple 15 (0 si tu reprends)" value={weekly} onChange={(e) => setWeekly(e.target.value)} />
+        </label>
+
+        <div className="stack" style={{ gap: 8 }}>
+          <span className="label">Tes jours de course</span>
+          <span className="small muted">Choisis un modèle, puis ajuste jour par jour : facile, qualité (fractionné, seuil, côtes) ou sortie longue.</span>
+          <div className="seg" role="group" aria-label="Nombre de sorties par semaine" style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}>
+            {[2, 3, 4, 5, 6].map((n) => <button key={n} className={count === n ? 'on' : ''} aria-pressed={count === n} onClick={() => setSchedule(DEFAULT_SCHEDULE[n])}>{n} j</button>)}
+          </div>
+          <div className="list" style={{ marginTop: 4 }}>
+            {DAYS.map((d, i) => (
+              <div key={d} style={{ padding: '8px 8px 8px 14px', gap: 10 }}>
+                <span style={{ width: 76, fontWeight: 600, fontSize: 15 }}>{d}</span>
+                <div className="seg grow" role="group" aria-label={`Sortie du ${d.toLowerCase()}`} style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', background: 'var(--raised)' }}>
+                  {[[null, 'Repos'], ['easy', SLOT.easy], ['quality', SLOT.quality], ['long', SLOT.long]].map(([v, l]) => (
+                    <button key={l} className={schedule[i] === v ? 'on' : ''} aria-pressed={schedule[i] === v} onClick={() => setDay(i, v)} style={{ fontSize: 12.5, height: 36, padding: 0 }}>{l}</button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          {!!issues.length && <div className="warn">{issues.map((t) => <span key={t} className="small" style={{ lineHeight: 1.4 }}>{t}</span>)}</div>}
+        </div>
+
         <div className="stack" style={{ gap: 6 }}>
-          <span className="label">Date de l'objectif (facultatif)</span>
-          <input className="input" type="date" min={today()} value={date} onChange={(e) => setDate(e.target.value)} aria-label="Date de l'objectif" />
+          <span className="label">Date de la course (facultatif)</span>
+          <span className="small muted">Avec une date, le plan se cale dessus et finit par l'affûtage puis le jour J.</span>
+          <input className="input" type="date" min={today()} value={date} onChange={(e) => setDate(e.target.value)} aria-label="Date de la course" />
         </div>
+
         <button className="btn primary big" disabled={bad || busy} onClick={async () => {
           setBusy(true);
-          try { await onSave({ goal, days_per_week: days, ref_distance_km: Number(refKm), ref_time_s: secs, target_date: date || null, started_on: initial?.started_on || today() }); } finally { setBusy(false); }
+          try {
+            await onSave({ goal, schedule, days_per_week: count, weekly_km: weekly === '' ? null : Number(String(weekly).replace(',', '.')) || 0, ref_distance_km: Number(refKm), ref_time_s: secs, target_date: date || null, started_on: initial?.started_on || today() });
+          } finally { setBusy(false); }
         }}>{initial ? 'Mettre à jour le plan' : 'Créer mon plan'}</button>
-        {onCancel && <button className="btn" onClick={onCancel}>Annuler</button>}
+        {onCancel && <button className="btn" onClick={onCancel}>Annuler les modifications</button>}
+        {onStop && <button className="btn" style={{ color: 'var(--danger)' }} onClick={onStop}><Icon name="trash" size={16} />Arrêter ce programme</button>}
       </div>
     </main>
   );
@@ -153,6 +196,7 @@ export default function Course() {
   const [draftNote, setDraftNote] = useState(null);
   const [reading, setReading] = useState(false);
   const [picked, setPicked] = useState(null);
+  // The plan's paces include the coach's current adjustment.
   const [showPlan, setShowPlan] = useState(false);
   const profile = data.runProfile;
 
@@ -162,12 +206,17 @@ export default function Course() {
     try { await saveRunProfile(p); await data.refresh(); setEditing(false); ui.notify('Plan enregistré'); } catch (e) { ui.notify(e.message || String(e)); }
   };
 
-  if (!profile || editing) return <Setup initial={profile} onSave={saveProfile} onCancel={profile ? () => setEditing(false) : null} />;
+  const stopPlan = async () => {
+    if (!(await ui.confirm({ title: 'Arrêter ce programme ?', message: 'Le plan est supprimé. Tes courses déjà enregistrées restent dans ton historique et tes statistiques.', ok: 'Arrêter', danger: true }))) return;
+    try { await deleteRunProfile(); await data.refresh(); setEditing(false); setPicked(null); window.scrollTo(0, 0); ui.notify('Programme arrêté'); } catch (e) { ui.notify(e.message || String(e)); }
+  };
+
+  if (!profile || editing) return <Setup initial={profile} onSave={saveProfile} onCancel={profile ? () => setEditing(false) : null} onStop={profile ? stopPlan : null} />;
 
   const all = plan.weeks.flat();
   const next = all.find((x) => x.key === picked && !x.done) || plan.next;
   const isPicked = next && plan.next && next.key !== plan.next.key;
-  const paces = pacesOf(profile);
+  const paces = pacesOf(profile, plan.adj.paceScale);
   const stats = runStats(data.runLogs);
   const better = betterLevel(profile, data.runLogs);
   const plannedWeekKm = (plan.weeks[plan.current] || []).reduce((a, x) => a + x.km, 0);
@@ -230,7 +279,7 @@ export default function Course() {
 
   return (
     <main className="screen">
-      <GlassHeader eyebrow={`${GOALS[profile.goal].label}, semaine ${Math.min(plan.current + 1, plan.total)} sur ${plan.total}`} title="Course" />
+      <GlassHeader eyebrow={`${GOALS[profile.goal]?.label || 'Course'}, semaine ${Math.min(plan.current + 1, plan.total)} sur ${plan.total}, ${PHASES[plan.phase].label.toLowerCase()}`} title="Course" />
 
       <div className="pad stack" style={{ gap: 12, paddingTop: 10 }}>
         {draft && <ResultForm draft={draft} session={next} note={draftNote} onSave={saveResult} onCancel={() => setDraft(null)} />}
@@ -246,14 +295,23 @@ export default function Course() {
         {!draft && next && (
           <>
             <div className="card hero" style={{ gap: 8 }}>
-              <span className="label">{isPicked ? `Séance choisie, semaine ${next.week + 1}` : 'Prochaine sortie'}</span>
+              <span className="label">{isPicked ? `Séance choisie : ${whenLabel(next).toLowerCase()}` : `Prochaine sortie : ${whenLabel(next).toLowerCase()}`}</span>
               <span className="display">{next.title}</span>
               <div className="session-stats" style={{ padding: 0 }}>
                 <span><b>{next.mins}</b>min</span>
                 <span><b>≈ {String(next.km).replace('.', ',')}</b>km</span>
               </div>
-              {(next.recover || next.taper) && <span className="small" style={{ fontWeight: 600 }}>{next.taper ? 'Semaine d\'affûtage : on garde les jambes fraîches.' : 'Semaine de récupération : volume réduit.'}</span>}
+              {(next.recover || next.taper) && <span className="small" style={{ fontWeight: 600 }}>{next.taper ? 'Semaine d\'affûtage : on garde les jambes fraîches.' : 'Semaine allégée : volume réduit de 20 % pour assimiler.'}</span>}
             </div>
+
+            <section className="card stack" style={{ gap: 10 }} aria-label="Le mot du coach">
+              <span className="label">Pourquoi cette séance</span>
+              <span className="small" style={{ lineHeight: 1.5 }}>{next.why}</span>
+              <div className="row" style={{ alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 14, background: 'var(--raised)' }}>
+                <span style={{ width: 10, height: 10, borderRadius: 5, marginTop: 5, flexShrink: 0, background: FILL[mainType(next)] }} />
+                <span className="small" style={{ lineHeight: 1.45 }}><b>Ressenti visé :</b> {FEEL[mainType(next)] || FEEL.easy}</span>
+              </div>
+            </section>
 
             <section className="card stack" style={{ gap: 10 }} aria-label="Profil de la séance">
               <span className="label">La séance en un coup d'œil</span>
@@ -308,20 +366,46 @@ export default function Course() {
             </div>
             {weekSessions.map((s) => <SessionRow key={s.key} s={s} active={next?.key === s.key} onPick={() => { setPicked(s.key); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}
 
-            <section className="card stack" style={{ gap: 12, marginTop: 12 }} aria-label="Tes allures">
+            <section className="card stack" style={{ gap: 12, marginTop: 12 }} aria-label="Ton programme">
+              <div className="between"><span className="label">Ton programme</span><span className="xs muted">{plan.total} semaines</span></div>
+              <div className="row" style={{ gap: 3 }} aria-hidden="true">
+                {plan.phases.map((ph) => <div key={ph.key} style={{ flexGrow: ph.weeks, flexBasis: 0, height: 8, borderRadius: 4, background: ph.key === plan.phase ? 'var(--accent)' : 'var(--chip)' }} />)}
+              </div>
+              <span className="xs muted" style={{ lineHeight: 1.5 }}>
+                {plan.phases.map((ph, i) => (
+                  <span key={ph.key}>{i ? ', puis ' : ''}<b style={{ color: ph.key === plan.phase ? 'var(--text)' : 'inherit' }}>{PHASES[ph.key].label}</b> ({ph.weeks} sem.)</span>
+                ))}
+              </span>
+              <span className="small" style={{ lineHeight: 1.45 }}>{PHASES[plan.phase].tip}</span>
+              <span className="xs muted">{Math.round(plan.easyShare * 100)} % du temps de course en facile sur l'ensemble du plan (cible 80 %).</span>
+            </section>
+
+            <section className="card stack" style={{ gap: 12 }} aria-label="Tes allures">
               <div className="between">
                 <span className="label">Tes allures</span>
-                <span className="xs muted">par km</span>
+                <span className="xs muted">VDOT {Math.round(paces.vdot * 10) / 10}, par km</span>
               </div>
-              <div className="stack" style={{ gap: 8 }}>
-                {[['Facile', paces.easy * plan.adj.paceScale, 'footings, récupération'], ['Seuil', paces.tempo * plan.adj.paceScale, 'soutenu mais tenable'], ['Rapide', paces.fast * plan.adj.paceScale, 'fractionné']].map(([l, p, d]) => (
-                  <div key={l} className="between">
-                    <span><b>{l}</b> <span className="xs muted">{d}</span></span>
-                    <span className="display" style={{ fontSize: 20, fontWeight: 700 }}>{mmss(p)}</span>
+              <div className="stack" style={{ gap: 9 }}>
+                {[['Facile (E)', `${mmss(paces.easyFast)} – ${mmss(paces.easySlow)}`, 'footings, sortie longue', 'var(--z1)'],
+                  [`Objectif ${GOALS[profile.goal]?.label === 'Forme' ? '5 km' : GOALS[profile.goal]?.label.toLowerCase()}`, mmss(paces.race), 'allure de course', 'var(--z2)'],
+                  ['Seuil (T)', mmss(paces.threshold), 'tenable environ 1 h', 'var(--z3)'],
+                  ['VMA (I)', mmss(paces.interval), 'blocs de 3 à 5 min', 'var(--z4)'],
+                  ['Vitesse (R)', mmss(paces.rep), 'courts et relâchés', 'var(--z4)']].map(([l, v, d, c]) => (
+                  <div key={l} className="row" style={{ gap: 10 }}>
+                    <span style={{ width: 4, height: 30, borderRadius: 2, background: c, flexShrink: 0 }} />
+                    <span className="grow stack" style={{ gap: 0 }}><b style={{ fontSize: 15 }}>{l}</b><span className="xs muted">{d}</span></span>
+                    <span className="display" style={{ fontSize: 19, fontWeight: 700, whiteSpace: 'nowrap' }}>{v}</span>
                   </div>
                 ))}
               </div>
-              <span className="small muted">Temps estimé aujourd'hui sur {GOALS[profile.goal].label === 'Forme' ? '5 km' : GOALS[profile.goal].label} : <b style={{ color: 'var(--text)' }}>{hms(goalPrediction(profile))}</b></span>
+              <div className="grid2" style={{ gap: 6 }}>
+                {[['5 km', 5], ['10 km', 10], ['Semi', 21.0975], ['Marathon', 42.195]].map(([l, k]) => (
+                  <div key={l} className="between" style={{ padding: '8px 10px', borderRadius: 12, background: 'var(--raised)' }}>
+                    <span className="xs muted">{l}</span><b className="display" style={{ fontSize: 15 }}>{hms(raceTime(paces.vdot, k) * plan.adj.paceScale)}</b>
+                  </div>
+                ))}
+              </div>
+              <span className="xs muted">Temps possibles aujourd'hui avec la préparation adaptée à chaque distance.</span>
             </section>
 
             {stats.count > 0 && (
@@ -341,7 +425,7 @@ export default function Course() {
             {showPlan && plan.weeks.map((wk, i) => (
               <div key={i} className="stack" style={{ gap: 8 }}>
                 <div className="between" style={{ paddingTop: 8 }}>
-                  <span className="label">Semaine {i + 1}{i === plan.current ? ' (en cours)' : ''}{wk[0]?.recover ? ' · récupération' : wk[0]?.taper ? ' · affûtage' : ''}</span>
+                  <span className="label">Semaine {i + 1}{i === plan.current ? ' (en cours)' : ''}, {PHASES[wk[0]?.phase]?.label.toLowerCase()}{wk[0]?.recover ? ', allégée' : ''}</span>
                   <span className="xs muted">≈ {km1(wk.reduce((a, x) => a + x.km, 0))} km</span>
                 </div>
                 {wk.map((s) => <SessionRow key={s.key} s={s} active={next?.key === s.key} onPick={() => { setPicked(s.key); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}
@@ -365,7 +449,10 @@ export default function Course() {
                 ))}
               </>
             )}
-            <button className="btn" style={{ marginTop: 8 }} onClick={() => setEditing(true)}>Modifier mon objectif</button>
+            <div className="grid2" style={{ marginTop: 8 }}>
+              <button className="btn" onClick={() => setEditing(true)}><Icon name="edit" size={16} />Modifier</button>
+              <button className="btn" style={{ color: 'var(--danger)' }} onClick={stopPlan}><Icon name="trash" size={16} />Arrêter</button>
+            </div>
           </>
         )}
       </div>

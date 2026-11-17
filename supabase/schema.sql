@@ -78,3 +78,6 @@ alter table public.run_logs enable row level security;
 create policy "own rows" on public.run_profile for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "own rows" on public.run_logs for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 -- routines table: see the app's earlier migration (id, user_id, name, exercises jsonb, position, updated_at)
+-- Migration "run_profile_schedule": the athlete's week (Monday first) and current volume.
+alter table public.run_profile add column if not exists schedule jsonb;
+alter table public.run_profile add column if not exists weekly_km numeric;
