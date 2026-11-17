@@ -52,7 +52,7 @@ export function parseDuration(text) {
   if (parts.length === 2) return Math.round(parts[0] * 60 + parts[1]) || null;
   return Math.round(parts[0] * 3600 + parts[1] * 60 + parts[2]) || null;
 }
-export const fmtMin = (m) => (m % 1 ? `${Math.floor(m)} min ${Math.round((m % 1) * 60)} s` : `${m} min`);
+export const fmtMin = (m) => (m < 1 ? `${Math.round(m * 60)} s` : m % 1 ? `${Math.floor(m)} min ${Math.round((m % 1) * 60)} s` : `${m} min`);
 
 /* ---------- Daniels & Gilbert ---------- */
 const vo2Of = (v) => -4.6 + 0.182258 * v + 0.000104 * v * v; // v in m/min
@@ -237,13 +237,13 @@ function weekVolume(profile, w, total, phase) {
   return { km: v, light: phase !== 'taper' && (w + 1) % 4 === 0 };
 }
 
-function buildWeek(profile, w, total, adj, qualityCount) {
+function buildWeek(profile, w, total, adj, qualityCount, opts = {}) {
   const goal = profile.goal in GOALS ? profile.goal : '10k';
   const g = GOALS[goal];
-  const p = pacesOf(profile, adj.paceScale);
+  const p = pacesOf(profile, adj.paceScale * (opts.paceMul ?? 1));
   const phase = phaseOf(goal, w, total);
   const { km: vol0, light } = weekVolume(profile, w, total, phase);
-  const vol = vol0 * adj.volScale;
+  const vol = vol0 * adj.volScale * (opts.volMul ?? 1);
   const schedule = scheduleOf(profile);
   const monday = addDays(mondayOf(new Date(profile.started_on)), w * 7);
   const raceWeek = !!profile.target_date && w === total - 1 && goal !== 'forme';
@@ -254,6 +254,7 @@ function buildWeek(profile, w, total, adj, qualityCount) {
   let slot = 0;
   for (let d = 0; d < 7; d++) {
     if (schedule[d] !== 'quality' || d === raceDay) continue;
+    if (opts.noQuality) { out.push({ d, kind: 'easy' }); continue; } // back from a break: easy running only
     if (raceWeek && d > raceDay) continue;
     if (raceWeek && raceDay - d < 2) { out.push({ d, kind: 'easy' }); continue; } // no hard work 2 days before the race
     const s = qualityFor(goal, phase, qualityCount.n++, slot++, p, light);
@@ -354,10 +355,22 @@ export function buildPlan(profile, logs, workouts = [], now = new Date()) {
   const total = totalWeeks(profile);
   const done = new Map(logs.filter((l) => l.session_key).map((l) => [l.session_key, l]));
   const todayStr = ymd(now);
+  // Back from a break (Daniels): the weeks from the return on follow the return protocol.
+  const fit = fitnessFromHistory(logs, workouts, now);
+  const reentry = fit.protocol || null;
+  const startMonday = mondayOf(new Date(profile.started_on));
+  // If the level was entered before the break, paces are slowed for the lost fitness; if after, it is already current.
+  const levelBeforeBreak = !!(reentry && fit.break && new Date(profile.updated_at || profile.started_on) < fit.break.from);
+  const returnWeek = reentry ? Math.floor((mondayOf(reentry.start) - startMonday) / (7 * 86400000)) : 0;
   const flat = (adj) => {
     const qc = { n: 0 };
     const weeks = [];
-    for (let w = 0; w < total; w++) weeks.push(buildWeek(profile, w, total, adj, qc));
+    for (let w = 0; w < total; w++) {
+      const k = w - returnWeek;
+      const opts = reentry && k >= 0 && k < reentry.weeks.length
+        ? { volMul: reentry.weeks[k], noQuality: k < reentry.easyWeeks, paceMul: levelBeforeBreak ? reentry.paceMul : 1 } : {};
+      weeks.push(buildWeek(profile, w, total, adj, qc, opts));
+    }
     return weeks;
   };
   const base = flat({ paceScale: 1, volScale: 1 });
@@ -390,7 +403,7 @@ export function buildPlan(profile, logs, workouts = [], now = new Date()) {
   // 80/20 measured on time actually spent at each intensity (warm-ups and recoveries count as easy).
   let easyMin = 0, totalMin = 0;
   for (const s of all) for (const g of segments(s)) { totalMin += g.mins; if (relaxed(g.type)) easyMin += g.mins; }
-  return { total, weeks, current, next, adj, note, finished: !next, phases, easyShare: totalMin ? easyMin / totalMin : 0, phase: weeks[current]?.[0]?.phase || 'base' };
+  return { total, weeks, current, next, adj, note, reentry: reentry && { ...reentry, gap: fit.breakDays }, fit, finished: !next, phases, easyShare: totalMin ? easyMin / totalMin : 0, phase: weeks[current]?.[0]?.phase || 'base' };
 }
 
 // "5:10 – 5:30"
@@ -481,4 +494,114 @@ export function runStats(logs, weeksBack = 8, now = new Date()) {
   }
   const longest = valid.reduce((a, l) => Math.max(a, Number(l.distance_km)), 0);
   return { count: valid.length, totalKm, avgPace: totalKm ? totalS / totalKm : null, weeks, longest, weekKm: weeks[weeks.length - 1].km };
+}
+
+/* ---------- Real history: level, volume, breaks ---------- */
+const DAY = 86400000;
+const plausible = (l) => {
+  const km = Number(l.distance_km), t = Number(l.duration_s);
+  if (!(km >= 3 && t >= 600)) return false;
+  const pace = t / km;
+  return pace > 150 && pace < 720;
+};
+
+// Fitness lost after a break without running (Daniels' return-to-running tables; Coyle et al. 1984):
+// almost nothing up to 5 days, ~7 % at 4 weeks, ~13 % at 8 weeks, up to ~20 % after 3 months.
+// Cross-training (here: gym sessions during the break) softens the loss by a quarter.
+export function detraining(gapDays, crossTraining = false) {
+  let loss;
+  if (gapDays <= 5) loss = 0;
+  else if (gapDays <= 28) loss = (gapDays - 5) * (0.07 / 23);
+  else if (gapDays <= 56) loss = 0.07 + (gapDays - 28) * (0.06 / 28);
+  else if (gapDays <= 90) loss = 0.13 + (gapDays - 56) * (0.05 / 34);
+  else loss = 0.2;
+  return 1 - loss * (crossTraining ? 0.75 : 1);
+}
+
+// Return protocol (Daniels): volume as a share of the usual load, week by week, and how many
+// of those weeks stay easy only.
+export function returnProtocol(gapDays, crossTraining = false) {
+  const factor = detraining(gapDays, crossTraining);
+  const paceMul = 1 / Math.pow(factor, 0.9);
+  if (gapDays <= 14) return { weeks: [0.75], easyWeeks: 0, factor, paceMul, label: 'courte pause' };
+  if (gapDays <= 28) return { weeks: [0.5, 0.75], easyWeeks: 1, factor, paceMul, label: 'pause de 2 à 4 semaines' };
+  if (gapDays <= 56) return { weeks: [0.33, 0.5, 0.5, 0.75], easyWeeks: 2, factor, paceMul, label: 'pause de 4 à 8 semaines' };
+  return { weeks: [0.33, 0.4, 0.5, 0.6, 0.75], easyWeeks: 4, factor, paceMul, label: 'longue pause' };
+}
+
+// Breaks: gaps of 8 days or more. A lone run between two gaps does not end a break
+// (one outing in a month is not training again). Returns the latest break, ongoing or recent.
+function latestBreak(dates, now) {
+  if (!dates.length) return null;
+  const gaps = [];
+  for (let i = 1; i < dates.length; i++) gaps.push({ from: dates[i - 1], to: dates[i] });
+  gaps.push({ from: dates[dates.length - 1], to: now, ongoing: true });
+  let j = gaps.length - 1;
+  while (j >= 0 && (gaps[j].to - gaps[j].from) / DAY < 8) j -= 1; // most recent real gap
+  if (j < 0) return null;
+  let from = gaps[j].from;
+  const to = gaps[j].to;
+  // Merge earlier gaps separated by a single isolated run.
+  let k = j - 1;
+  while (k >= 0 && (gaps[k].to - gaps[k].from) / DAY >= 8) { from = gaps[k].from; k -= 1; }
+  const ongoing = !!gaps[j].ongoing;
+  return { from, to, days: Math.floor((to - from) / DAY), ongoing, isolated: j - 1 - k };
+}
+
+// What the logged runs say: level (best recent effort), usual weekly volume, breaks.
+export function fitnessFromHistory(logs, workouts = [], now = new Date()) {
+  const runs = logs.filter((l) => Number(l.distance_km) > 0 && l.duration_s > 0).map((l) => ({ ...l, date: new Date(l.done_at) })).sort((a, b) => a.date - b.date);
+  if (!runs.length) return { runs: 0 };
+  const lastRun = runs[runs.length - 1].date;
+  const brk = latestBreak(runs.map((r) => r.date), now);
+  // The break counts only if it is still going on, or ended recently enough to still be in the return phase.
+  const relevant = brk && (brk.ongoing || (now - brk.to) / DAY < 42) ? brk : null;
+  const refEnd = relevant ? relevant.from : lastRun; // fitness is measured before the break
+  const crossTraining = relevant ? workouts.filter((w) => w.start > relevant.from && w.start < relevant.to).length >= Math.max(1, Math.floor(relevant.days / 7)) : false;
+  // Level: best effort (race or hard run) in the 120 days before the break.
+  const window = runs.filter((r) => plausible(r) && r.date <= refEnd && refEnd - r.date <= 120 * DAY);
+  const pool = window.length ? window : runs.filter(plausible);
+  const scored = pool.map((r) => ({ run: r, vdot: vdotOf(Number(r.distance_km), r.duration_s) * (window.length ? 1 : 0.95) })).sort((a, b) => b.vdot - a.vdot);
+  const best = scored[0] || null;
+  const breakDays = relevant ? relevant.days : Math.floor((now - lastRun) / DAY);
+  const factor = detraining(relevant && !relevant.ongoing ? Math.floor((relevant.to - relevant.from) / DAY) : breakDays, crossTraining);
+  // Usual volume: average of the 8 best weeks among the 12 before the break (break weeks are ignored).
+  const weeks = [];
+  for (let i = 0; i < 12; i++) {
+    const end = new Date(refEnd.getTime() + DAY - i * 7 * DAY);
+    const start = new Date(end - 7 * DAY);
+    weeks.push(runs.filter((r) => r.date > start && r.date <= end).reduce((a, r) => a + Number(r.distance_km), 0));
+  }
+  const usual = weeks.sort((a, b) => b - a).slice(0, 8).reduce((a, b) => a + b, 0) / 8;
+  const kmIn = (from, to) => runs.filter((r) => r.date > from && r.date <= to).reduce((a, r) => a + Number(r.distance_km), 0);
+  const longest = runs.reduce((a, r) => (Number(r.distance_km) > Number(a.distance_km) ? r : a), runs[0]);
+  return {
+    runs: runs.length,
+    totalKm: runs.reduce((a, r) => a + Number(r.distance_km), 0),
+    lastRun, crossTraining, factor,
+    gapDays: Math.floor((now - lastRun) / DAY),
+    break: relevant,
+    breakDays,
+    best: best && { ...best.run, vdot: best.vdot },
+    top: scored.slice(0, 3).map((x) => ({ ...x.run, vdot: x.vdot })),
+    vdotPeak: best?.vdot ?? null,
+    vdotNow: best ? best.vdot * factor : null,
+    weeklyUsual: usual,
+    weeklyNow: kmIn(new Date(now - 28 * DAY), now) / 4,
+    longest,
+    // The plan starts from the usual volume; the return protocol scales the first weeks down.
+    startKm: Math.max(5, Math.round(usual)),
+    protocol: relevant && relevant.days >= 8 ? { ...returnProtocol(relevant.days, crossTraining), start: relevant.ongoing ? now : relevant.to } : null,
+  };
+}
+
+// Kilometres per month over the last 12 months, oldest first.
+export function monthlyKm(logs, now = new Date()) {
+  const out = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const e = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+    out.push({ date: d, km: logs.filter((l) => { const t = new Date(l.done_at); return t >= d && t < e; }).reduce((a, l) => a + Number(l.distance_km || 0), 0) });
+  }
+  return out;
 }

@@ -16,6 +16,7 @@ import Montre from './screens/Montre.jsx';
 import Routine from './screens/Routine.jsx';
 import Course from './screens/Course.jsx';
 import Historique from './screens/Historique.jsx';
+import { UpdateBanner, WhatsNew, useFreshVersion } from './update.jsx';
 
 export default function App() {
   const [session, setSession] = useState(undefined);
@@ -47,6 +48,7 @@ function Shell({ user }) {
   const { pathname } = useLocation();
   const hideNav = pathname.startsWith('/seance') || pathname.startsWith('/montre') || pathname.startsWith('/variante') || pathname.startsWith('/routines');
 
+  const [fresh, closeFresh] = useFreshVersion();
   if (data.loading) return <Loading />;
   return (
     <div className="app">
@@ -66,6 +68,8 @@ function Shell({ user }) {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {!hideNav && <Nav />}
+      <UpdateBanner />
+      <WhatsNew open={fresh} onClose={closeFresh} />
     </div>
   );
 }

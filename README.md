@@ -26,3 +26,10 @@ cp .env.example .env.local   # renseigner l'URL et la clé publishable Supabase
 npm install
 npm run dev
 ```
+
+## Versions
+
+- Le numéro de version est dans `package.json` (`version`), au format majeur.mineur.correctif.
+- Chaque publication ajoute une entrée en tête de `src/changelog.js` et un tag git `vX.Y.Z`.
+- L'app affiche sa version dans Profil, montre les nouveautés une fois après chaque mise à jour,
+  et propose de recharger quand `/version.json` en ligne annonce un autre build.

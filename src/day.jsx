@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useData, deleteWorkout, renameWorkout } from './data.jsx';
+import { useData, deleteWorkout, renameWorkout, deleteRunLog } from './data.jsx';
 import { useUi } from './ui.jsx';
 import { Icon, ExerciseImage } from './components.jsx';
 import { fmtKg, fmtInt, sameDay, isWork, isPlausible } from './lib/stats.js';
-import { mmss, hms } from './lib/running.js';
+import { mmss, hms, vdotOf, raceTime } from './lib/running.js';
 
 const volume = (w) => w.sets.filter((s) => isWork(s) && isPlausible(s)).reduce((a, s) => a + s.weight_kg * s.reps, 0);
 
@@ -19,7 +19,7 @@ export function dayInfo(data, date, planned = [], now = new Date()) {
 export const dayKind = (d) => (d.gym.length ? 'gym' : d.run ? 'run' : d.plan && !d.past ? 'planned' : 'rest');
 
 // The selected day of the week strip: what was done, or what is planned.
-export function DayDetail({ d, onRun, onGym, hideRunLink = false }) {
+export function DayDetail({ d, onRun, onGym, onRunLog, hideRunLink = false }) {
   if (!d) return null;
   const title = d.today ? "Aujourd'hui" : d.date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   const empty = !d.gym.length && !d.runs.length && !(d.plan && !d.past);
@@ -40,13 +40,14 @@ export function DayDetail({ d, onRun, onGym, hideRunLink = false }) {
         );
       })}
       {d.runs.map((l) => (
-        <div key={l.id} className="day-row">
+        <button key={l.id} className="day-row" onClick={() => onRunLog?.(l.id)}>
           <span className="day-ic k-run"><Icon name="run" size={18} /></span>
           <span className="grow stack" style={{ gap: 1 }}>
-            <span style={{ fontWeight: 650 }}>Course, {fmtKg(Number(l.distance_km))} km</span>
+            <span style={{ fontWeight: 650 }}>{l.notes || 'Course'}, {fmtKg(Number(l.distance_km))} km</span>
             <span className="xs muted">{hms(l.duration_s)}, {mmss(l.duration_s / Number(l.distance_km))} /km{l.avg_hr ? `, ${l.avg_hr} bpm` : ''}</span>
           </span>
-        </div>
+          <Icon name="chevron" size={18} />
+        </button>
       ))}
       {d.plan && !d.past && (
         <button className="day-row" onClick={() => onRun(d.plan.key)} disabled={hideRunLink}>
@@ -159,6 +160,7 @@ export function MonthCalendar({ planned = [] }) {
   const [month, setMonth] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1));
   const [sel, setSel] = useState(() => new Date(now.getFullYear(), now.getMonth(), now.getDate()));
   const [openW, setOpenW] = useState(null);
+  const [openR, setOpenR] = useState(null);
   const first = new Date(month.getFullYear(), month.getMonth(), 1);
   const lead = (first.getDay() + 6) % 7;
   const count = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
@@ -186,7 +188,12 @@ export function MonthCalendar({ planned = [] }) {
             const isSel = sameDay(d.date, sel);
             const what = [d.gym.length && 'muscu', d.run && 'course', !d.gym.length && !d.run && d.plan && !d.past && 'course prévue'].filter(Boolean).join(' et ') || 'repos';
             return (
-              <button key={d.date.getDate()} className={`cal-d k-${k}${d.today ? ' today' : ''}${isSel ? ' sel' : ''}`} onClick={() => setSel(d.date)}
+              <button key={d.date.getDate()} className={`cal-d k-${k}${d.today ? ' today' : ''}${isSel ? ' sel' : ''}`} onClick={() => {
+                  setSel(d.date);
+                  const items = d.gym.length + d.runs.length;
+                  if (items === 1) { if (d.gym.length) setOpenW(d.gym[0].id); else setOpenR(d.runs[0].id); }
+                  else document.getElementById('cal-detail')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }}
                 aria-pressed={isSel} aria-label={`${d.date.getDate()} ${MONTHS[month.getMonth()]} : ${what}`}>
                 <span className="cal-n">{d.date.getDate()}</span>
                 {k !== 'rest' && <span className="cal-i"><Icon name={k === 'gym' ? 'dumbbell' : 'run'} size={13} width={2.4} /></span>}
@@ -200,8 +207,48 @@ export function MonthCalendar({ planned = [] }) {
           <span><b className="display" style={{ color: 'var(--text)', fontSize: 15 }}>{runN}</b> course{runN > 1 ? 's' : ''}{km ? `, ${fmtKg(km)} km` : ''}</span>
         </div>
       </div>
-      <DayDetail d={selInfo} onRun={() => {}} onGym={(id) => setOpenW(id)} hideRunLink />
+      <div id="cal-detail" style={{ scrollMarginBottom: 110 }}><DayDetail d={selInfo} onRun={() => {}} onGym={(id) => setOpenW(id)} onRunLog={(id) => setOpenR(id)} hideRunLink /></div>
       <WorkoutSheet id={openW} onClose={() => setOpenW(null)} />
+      <RunSheet id={openR} onClose={() => setOpenR(null)} />
+    </div>
+  );
+}
+
+// One logged run: the numbers, its pace and equivalent level, and delete.
+export function RunSheet({ id, onClose }) {
+  const data = useData();
+  const ui = useUi();
+  const l = id ? data.runLogs.find((x) => x.id === id) : null;
+  if (!l) return null;
+  const km = Number(l.distance_km);
+  const date = new Date(l.done_at);
+  const v = km >= 3 && l.duration_s >= 600 ? vdotOf(km, l.duration_s) : null;
+  const remove = async () => {
+    if (!(await ui.confirm({ title: 'Supprimer cette course ?', message: 'Elle disparaît de tes statistiques et le plan est recalculé.', ok: 'Supprimer', danger: true }))) return;
+    try { await deleteRunLog(l.id); await data.refresh(); onClose(); ui.notify('Course supprimée'); } catch (e) { ui.notify(e.message || String(e)); }
+  };
+  const tiles = [
+    [fmtKg(km), 'km'], [hms(l.duration_s), 'durée'], [mmss(l.duration_s / km), '/km'],
+    ...(l.avg_hr ? [[String(l.avg_hr), 'bpm moyen']] : []), ...(l.calories ? [[String(l.calories), 'kcal']] : []), ...(v ? [[fmtKg(Math.round(v * 10) / 10), 'VDOT']] : []),
+  ];
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="sheet wsheet" role="dialog" aria-modal="true" aria-label={l.notes || 'Course'} onClick={(e) => e.stopPropagation()}>
+        <span className="sheet-grip" />
+        <div className="row" style={{ alignItems: 'flex-start' }}>
+          <div className="grow stack" style={{ gap: 4 }}>
+            <span className="xs muted" style={{ textTransform: 'capitalize', fontWeight: 600 }}>{date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, {date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+            <span className="display">{l.notes || 'Course'}</span>
+          </div>
+          <button className="icon-btn" aria-label="Fermer" onClick={onClose}><Icon name="close" /></button>
+        </div>
+        <div className="wstats" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+          {tiles.map(([val, lab]) => <div key={lab}><b className="display">{val}</b><span>{lab}</span></div>)}
+        </div>
+        {v && <span className="small muted" style={{ lineHeight: 1.45 }}>À ce niveau, temps équivalents : 5 km en {hms(raceTime(v, 5))}, 10 km en {hms(raceTime(v, 10))}, semi en {hms(raceTime(v, 21.0975))}. Valable si la course était faite à fond ; pour un footing, ton vrai niveau est plus haut.</span>}
+        <span className="xs muted">{l.source === 'strava' ? 'Importée de Strava' : l.source === 'screenshot' ? 'Lue sur une capture' : 'Saisie à la main'}{l.feel ? `, ressenti ${l.feel}/5` : ''}</span>
+        <button className="btn" style={{ color: 'var(--danger)', background: 'var(--danger-bg)' }} onClick={remove}><Icon name="trash" size={16} />Supprimer</button>
+      </div>
     </div>
   );
 }

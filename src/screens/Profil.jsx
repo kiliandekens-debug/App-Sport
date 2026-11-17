@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { useData, importWorkouts, exportCsv, importRuns } from '../data.jsx';
 import { readStravaFile } from '../lib/strava.js';
 import { MonthCalendar } from '../day.jsx';
+import { VERSION, BUILD, BUILT_AT } from '../changelog.js';
+import { WhatsNew } from '../update.jsx';
 import { buildPlan } from '../lib/running.js';
 import { useSession } from '../session.jsx';
 import { useUi } from '../ui.jsx';
@@ -20,6 +22,7 @@ export default function Profil({ user }) {
   const fileRef = useRef(null);
   const stravaRef = useRef(null);
   const [stravaStatus, setStravaStatus] = useState('');
+  const [news, setNews] = useState(false);
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [theme, setThemeState] = useState(getTheme);
@@ -166,8 +169,13 @@ export default function Profil({ user }) {
         {stravaStatus && <span className="small soft">{stravaStatus}</span>}
         <span className="xs muted" style={{ lineHeight: 1.45 }}>Sur strava.com (pas dans l'app) : Paramètres, Mon compte, « Télécharger ou supprimer votre compte », puis « Demander une archive ». Strava t'envoie un lien par e-mail : choisis ici le fichier .zip reçu, ou le fichier activities.csv qu'il contient. Seules les courses à pied sont importées, sans doublon.</span>
         <button className="btn" style={{ color: 'var(--danger)' }} onClick={signOut}>Se déconnecter</button>
-        <span className="xs muted" style={{ paddingBottom: 12 }}>Connecté : {user?.email}</span>
+        <span className="xs muted">Connecté : {user?.email}</span>
+        <button className="btn" style={{ height: 52, justifyContent: 'flex-start', marginTop: 10 }} onClick={() => setNews(true)}>
+          <Icon name="spark" size={18} /><span className="grow" style={{ textAlign: 'left' }}>Nouveautés</span><span className="xs muted">v{VERSION}</span>
+        </button>
+        <span className="xs muted" style={{ paddingBottom: 12, textAlign: 'center' }}>Salle {VERSION}, build {BUILD}, publiée le {new Date(BUILT_AT).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
       </div>
+      <WhatsNew open={news} onClose={() => setNews(false)} />
     </main>
   );
 }

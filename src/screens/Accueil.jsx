@@ -6,7 +6,7 @@ import { fmtDay, fmtKg, fmtInt, sameDay, titleKey, isWork, isPlausible } from '.
 import { routineFromHistory } from '../lib/routines.js';
 import { Icon, ExerciseImage, GlassHeader } from '../components.jsx';
 import { buildPlan, segments, intensityOf } from '../lib/running.js';
-import { DayDetail, WorkoutSheet, dayInfo } from '../day.jsx';
+import { DayDetail, WorkoutSheet, RunSheet, dayInfo } from '../day.jsx';
 
 // "aujourd'hui", "hier", "il y a 3 jours", then the date.
 const ago = (d) => {
@@ -43,6 +43,7 @@ export default function Accueil({ user }) {
   const [selDay, setSelDay] = useState(() => Math.max(0, data.weekDays.findIndex((d) => d.today)));
   const sel = weekDays[selDay];
   const [openW, setOpenW] = useState(null);
+  const [openR, setOpenR] = useState(null);
   const weekKm = data.runLogs.filter((l) => new Date(l.done_at) >= weekDays[0].date).reduce((a, l) => a + Number(l.distance_km || 0), 0);
 
   const startRoutine = (r) => { session.startRoutine(r); nav('/seance'); };
@@ -82,7 +83,7 @@ export default function Accueil({ user }) {
             );
           })}
         </div>
-        <DayDetail d={sel} onRun={(key) => nav('/course', { state: { pick: key } })} onGym={(id) => setOpenW(id)} />
+        <DayDetail d={sel} onRun={(key) => nav('/course', { state: { pick: key } })} onGym={(id) => setOpenW(id)} onRunLog={(id) => setOpenR(id)} />
         {(data.summary.sessions > 0 || weekKm > 0) && (
           <div className="row week-stats">
             {(data.week.sessions > 0 || !weekKm) && <span><b className="display">{data.week.sessions}</b>séance{data.week.sessions > 1 ? 's' : ''} de salle</span>}
@@ -195,6 +196,7 @@ export default function Accueil({ user }) {
         </div>
       )}
       <WorkoutSheet id={openW} onClose={() => setOpenW(null)} />
+      <RunSheet id={openR} onClose={() => setOpenR(null)} />
     </main>
   );
 }

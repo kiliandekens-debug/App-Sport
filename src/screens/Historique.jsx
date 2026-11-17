@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useData } from '../data.jsx';
 import { GlassHeader, Icon } from '../components.jsx';
-import { WorkoutSheet } from '../day.jsx';
+import { WorkoutSheet, RunSheet } from '../day.jsx';
 import { fmtKg, fmtInt, isWork, isPlausible } from '../lib/stats.js';
 import { hms } from '../lib/running.js';
 
@@ -39,25 +39,26 @@ export default function Historique() {
             <span className="label" style={{ padding: '14px 4px 2px' }}>{g.key}</span>
             <div className="list">
               {g.items.map((it) => (
-                <button key={it.kind + it.id} onClick={() => it.kind === 'gym' && setOpen(it)} disabled={it.kind !== 'gym'}
-                  style={{ background: 'none', border: 'none', borderBottom: '1px solid var(--line)', color: 'inherit', textAlign: 'left', width: '100%', cursor: it.kind === 'gym' ? 'pointer' : 'default' }}>
+                <button key={it.kind + it.id} onClick={() => setOpen(it)}
+                  style={{ background: 'none', border: 'none', borderBottom: '1px solid var(--line)', color: 'inherit', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
                   <span className="tile-icon" style={{ width: 36, height: 36, background: it.kind === 'run' ? 'color-mix(in srgb, var(--z1) 22%, var(--chip))' : 'var(--chip)' }}>
                     <Icon name={it.kind === 'run' ? 'timer' : 'dumbbell'} size={18} />
                   </span>
                   <span className="grow stack" style={{ gap: 1, minWidth: 0 }}>
-                    <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.kind === 'gym' ? it.w.title : `Course, ${fmtKg(Number(it.l.distance_km))} km`}</span>
+                    <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.kind === 'gym' ? it.w.title : `${it.l.notes || 'Course'}, ${fmtKg(Number(it.l.distance_km))} km`}</span>
                     <span className="xs muted">{dayLabel(it.date)}{it.kind === 'gym' ? `, ${it.w.sets.filter((s) => s.set_type !== 'warmup').length} séries, ${fmtInt(volume(it.w))} kg` : `, ${hms(it.l.duration_s)}`}</span>
                   </span>
-                  {it.kind === 'gym' && <Icon name="chevron" size={18} />}
+                  <Icon name="chevron" size={18} />
                 </button>
               ))}
             </div>
           </div>
         ))}
-        {!!data.runLogs.length && <span className="xs muted" style={{ padding: '8px 4px' }}>Les courses se modifient et se suppriment depuis l'onglet Course.</span>}
+        
       </div>
 
       <WorkoutSheet id={open?.kind === 'gym' ? open.id : null} onClose={() => setOpen(null)} />
+      <RunSheet id={open?.kind === 'run' ? open.id : null} onClose={() => setOpen(null)} />
     </main>
   );
 }

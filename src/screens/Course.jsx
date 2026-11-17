@@ -5,7 +5,7 @@ import { useData, saveRunProfile, saveRunLog, deleteRunLog, deleteRunProfile } f
 import { useUi } from '../ui.jsx';
 import { Icon, Bars, GlassHeader } from '../components.jsx';
 import { fmtDay } from '../lib/stats.js';
-import { GOALS, DAYS, DAY_SHORT, SLOT, DEFAULT_SCHEDULE, PHASES, FEEL, buildPlan, appleSteps, segments, intensityOf, mmss, hms, parseDuration, TYPE_LABEL, paceRange, pacesOf, structureText, goalPrediction, betterLevel, runStats, scheduleOf, scheduleIssues, mainType, raceTime, vdotOfProfile } from '../lib/running.js';
+import { GOALS, DAYS, DAY_SHORT, SLOT, DEFAULT_SCHEDULE, PHASES, FEEL, buildPlan, appleSteps, segments, intensityOf, mmss, hms, parseDuration, TYPE_LABEL, paceRange, pacesOf, structureText, goalPrediction, betterLevel, runStats, scheduleOf, scheduleIssues, mainType, raceTime, vdotOfProfile, fitnessFromHistory, monthlyKm } from '../lib/running.js';
 
 const FILL = { warm: 'var(--z0)', cool: 'var(--z0)', rest: 'var(--z0)', recovery: 'var(--z0)', easy: 'var(--z1)', steady: 'var(--z1)', race: 'var(--z2)', tempo: 'var(--z3)', fast: 'var(--z4)', rep: 'var(--z4)', hill: 'var(--z4)', stride: 'var(--z4)' };
 const localYmd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -66,12 +66,63 @@ function SessionRow({ s, active, onPick }) {
   );
 }
 
-function Setup({ initial, onSave, onCancel, onStop }) {
+// What the coach reads in the logged runs: level, usual volume, break.
+function FitCard({ fit }) {
+  const b = fit.best;
+  return (
+    <section className="card stack" style={{ gap: 10 }} aria-label="Ce que disent tes courses">
+      <span className="label">Ce que disent tes {fit.runs} courses</span>
+      {b && <span className="small" style={{ lineHeight: 1.5 }}>Meilleure performance récente : <b>{b.notes || 'course'}</b>, {fmtDay(new Date(b.done_at))} {new Date(b.done_at).getFullYear()}, {fmtKm(b.distance_km)} km en {hms(b.duration_s)}. Niveau (VDOT) : <b>{fmt1(fit.vdotPeak)}</b>.</span>}
+      <span className="small" style={{ lineHeight: 1.5 }}>Volume habituel : <b>{Math.round(fit.weeklyUsual)} km par semaine</b>. Plus longue sortie : {fmtKm(fit.longest.distance_km)} km.</span>
+      {fit.break && fit.break.days >= 8 && (
+        <div className="warn" style={{ gap: 4 }}>
+          <span className="xs" style={{ fontWeight: 700 }}>Reprise après {fit.break.days} jours {fit.break.ongoing ? 'sans entraînement régulier' : 'de pause'}</span>
+          <span className="small" style={{ lineHeight: 1.45 }}>
+            {fit.break.isolated > 0 ? `Une sortie isolée pendant cette période ne compte pas comme une reprise. ` : ''}
+            Forme estimée : −{Math.round((1 - fit.factor) * 100)} %{fit.crossTraining ? ' (la salle limite la perte)' : ''}, soit un niveau de {fmt1(fit.vdotNow)}. Le plan démarre par {fit.protocol.weeks.length} semaine{fit.protocol.weeks.length > 1 ? 's' : ''} de reprise à {fit.protocol.weeks.map((x) => `${Math.round(x * 100)} %`).join(', ')} du volume{fit.protocol.easyWeeks ? `, dont ${fit.protocol.easyWeeks} en footing uniquement` : ''} (méthode Daniels).
+          </span>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function HistoryCard({ logs, fit }) {
+  const months = monthlyKm(logs);
+  const max = Math.max(...months.map((m) => m.km), 1);
+  return (
+    <section className="card stack" style={{ gap: 12 }} aria-label="Ton historique de course">
+      <div className="between"><span className="label">Ton historique</span><span className="xs muted">{fit.runs} courses, {Math.round(fit.totalKm)} km</span></div>
+      <div className="row" style={{ alignItems: 'flex-end', gap: 4, height: 70 }} role="img" aria-label={`Kilomètres par mois : ${months.map((m) => `${Math.round(m.km)}`).join(', ')}`}>
+        {months.map((m, i) => <div key={i} style={{ flex: 1, height: `${Math.max(3, (m.km / max) * 100)}%`, borderRadius: '5px 5px 2px 2px', background: i === months.length - 1 ? 'var(--accent)' : 'var(--z1)', opacity: m.km ? 1 : 0.25 }} />)}
+      </div>
+      <div className="row xs muted" style={{ justifyContent: 'space-between' }}>{months.map((m, i) => <span key={i} style={{ flex: 1, textAlign: 'center' }}>{'JFMAMJJASOND'[m.date.getMonth()]}</span>)}</div>
+      {!!fit.top?.length && (
+        <div className="stack" style={{ gap: 6 }}>
+          <span className="xs muted" style={{ fontWeight: 600 }}>Meilleures performances (120 jours avant ta dernière période d'entraînement)</span>
+          {fit.top.map((t) => (
+            <div key={t.done_at} className="between" style={{ padding: '8px 10px', borderRadius: 12, background: 'var(--raised)', gap: 10 }}>
+              <span className="grow small" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.notes || 'Course'}<span className="muted">, {fmtDay(new Date(t.done_at))}</span></span>
+              <span className="small" style={{ whiteSpace: 'nowrap' }}><b className="display">{fmtKm(t.distance_km)} km</b> en {hms(t.duration_s)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <span className="xs muted">Dernière course : {fmtDay(fit.lastRun)} ({fit.gapDays === 0 ? "aujourd'hui" : `il y a ${fit.gapDays} jour${fit.gapDays > 1 ? 's' : ''}`}).</span>
+    </section>
+  );
+}
+
+const fmtKm = (v) => String(Math.round(Number(v) * 10) / 10).replace('.', ',');
+const fmt1 = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
+
+function Setup({ initial, onSave, onCancel, onStop, fit }) {
   const [goal, setGoal] = useState(initial?.goal || '10k');
   const [schedule, setSchedule] = useState(() => (initial ? scheduleOf(initial) : DEFAULT_SCHEDULE[3]));
+  const auto = !initial && fit?.vdotNow ? Math.round(raceTime(fit.vdotNow, 5)) : null;
   const [refKm, setRefKm] = useState(initial?.ref_distance_km || 5);
-  const [refTime, setRefTime] = useState(initial ? hms(initial.ref_time_s) : '');
-  const [weekly, setWeekly] = useState(initial?.weekly_km != null ? String(initial.weekly_km) : '');
+  const [refTime, setRefTime] = useState(initial ? hms(initial.ref_time_s) : auto ? hms(auto) : '');
+  const [weekly, setWeekly] = useState(initial?.weekly_km != null ? String(initial.weekly_km) : fit?.startKm ? String(fit.startKm) : '');
   const [date, setDate] = useState(initial?.target_date || '');
   const [busy, setBusy] = useState(false);
   const secs = parseDuration(refTime);
@@ -86,6 +137,7 @@ function Setup({ initial, onSave, onCancel, onStop }) {
     <main className="screen">
       <GlassHeader eyebrow="Plan de course" title={initial ? 'Modifier le plan' : 'Ton objectif'} />
       <div className="pad stack" style={{ gap: 18, paddingTop: 10 }}>
+        {fit?.runs > 0 && !initial && <FitCard fit={fit} />}
         <div className="stack" style={{ gap: 6 }}>
           <span className="label">Objectif</span>
           <div className="seg" role="group" aria-label="Objectif" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
@@ -95,7 +147,7 @@ function Setup({ initial, onSave, onCancel, onStop }) {
 
         <div className="stack" style={{ gap: 6 }}>
           <span className="label">Ton niveau actuel</span>
-          <span className="small muted">Un temps récent sur une distance, même approximatif. Il fixe toutes tes allures (méthode VDOT de Jack Daniels).</span>
+          <span className="small muted">{auto ? 'Pré-rempli depuis tes courses (équivalent 5 km d\'aujourd\'hui). Tu peux le changer.' : 'Un temps récent sur une distance, même approximatif. Il fixe toutes tes allures (méthode VDOT de Jack Daniels).'}</span>
           <div className="seg" role="group" aria-label="Distance de référence" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
             {[[3, '3 km'], [5, '5 km'], [10, '10 km']].map(([k, l]) => <button key={k} className={Number(refKm) === k ? 'on' : ''} aria-pressed={Number(refKm) === k} onClick={() => setRefKm(k)}>{l}</button>)}
           </div>
@@ -105,7 +157,7 @@ function Setup({ initial, onSave, onCancel, onStop }) {
 
         <label className="stack" style={{ gap: 6 }}>
           <span className="label">Kilomètres par semaine en ce moment</span>
-          <span className="small muted">Le volume démarre de là et monte d'environ 8 % par semaine, jamais plus.</span>
+          <span className="small muted">{fit?.protocol && !initial ? 'Pré-rempli avec ton volume habituel avant la pause. Les premières semaines seront réduites automatiquement (protocole de reprise).' : 'Le volume démarre de là et monte d\'environ 8 % par semaine, jamais plus.'}</span>
           <input className="input" inputMode="decimal" placeholder="Par exemple 15 (0 si tu reprends)" value={weekly} onChange={(e) => setWeekly(e.target.value)} />
         </label>
 
@@ -203,6 +255,7 @@ export default function Course() {
   const profile = data.runProfile;
 
   const plan = useMemo(() => (profile ? buildPlan(profile, data.runLogs, data.workouts) : null), [profile, data.runLogs, data.workouts]);
+  const fit = useMemo(() => fitnessFromHistory(data.runLogs, data.workouts), [data.runLogs, data.workouts]);
 
   const saveProfile = async (p) => {
     try { await saveRunProfile(p); await data.refresh(); setEditing(false); ui.notify('Plan enregistré'); } catch (e) { ui.notify(e.message || String(e)); }
@@ -213,7 +266,7 @@ export default function Course() {
     try { await deleteRunProfile(); await data.refresh(); setEditing(false); setPicked(null); window.scrollTo(0, 0); ui.notify('Programme arrêté'); } catch (e) { ui.notify(e.message || String(e)); }
   };
 
-  if (!profile || editing) return <Setup initial={profile} onSave={saveProfile} onCancel={profile ? () => setEditing(false) : null} onStop={profile ? stopPlan : null} />;
+  if (!profile || editing) return <Setup initial={profile} onSave={saveProfile} onCancel={profile ? () => setEditing(false) : null} onStop={profile ? stopPlan : null} fit={fit} />;
 
   const all = plan.weeks.flat();
   const next = all.find((x) => x.key === picked && !x.done) || plan.next;
@@ -338,6 +391,12 @@ export default function Course() {
               </ol>
             </section>
 
+            {plan.reentry && plan.reentry.weeks.length > 0 && (
+              <div className="warn" style={{ gap: 4 }}>
+                <span className="xs" style={{ fontWeight: 700 }}>Reprise après {plan.reentry.gap} jours</span>
+                <span className="small" style={{ lineHeight: 1.45 }}>Volume à {plan.reentry.weeks.map((x) => `${Math.round(x * 100)} %`).join(', puis ')} sur les prochaines semaines{plan.reentry.easyWeeks ? `, footing uniquement pendant ${plan.reentry.easyWeeks} semaine${plan.reentry.easyWeeks > 1 ? 's' : ''}` : ''}. Les tendons reprennent moins vite que le souffle : même si c'est facile, ne force pas.</span>
+              </div>
+            )}
             {plan.note && <div className="warn"><span className="xs" style={{ fontWeight: 700 }}>Jambes</span><span className="small" style={{ lineHeight: 1.4 }}>{plan.note}</span></div>}
             {plan.adj.message && !isPicked && <div className="card"><span className="small">{plan.adj.message}</span></div>}
             {better && (
@@ -409,6 +468,8 @@ export default function Course() {
               </div>
               <span className="xs muted">Temps possibles aujourd'hui avec la préparation adaptée à chaque distance.</span>
             </section>
+
+            {fit.runs > 0 && <HistoryCard logs={data.runLogs} fit={fit} />}
 
             {stats.count > 0 && (
               <section className="card stack" style={{ gap: 12 }} aria-label="Ton suivi">
