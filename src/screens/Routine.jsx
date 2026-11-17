@@ -97,7 +97,7 @@ export default function Routine() {
 
       <div className="pad stack" style={{ gap: 14 }}>
         <label className="stack" style={{ gap: 6 }}>
-          <span className="label">Nom</span>
+          <h2 className="label">Nom</h2>
           <input className="input" value={r.name} placeholder="Ex. Pecs du lundi" onChange={(e) => setR({ ...r, name: e.target.value })} />
         </label>
 

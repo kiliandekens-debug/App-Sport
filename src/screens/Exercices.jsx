@@ -43,7 +43,7 @@ export function ExercisePicker({ selected = new Set(), onAdd, onOpen, bottomPad 
       <div className="pad" style={{ paddingTop: 8 }}>
         <label className="search">
           <span className="muted"><Icon name="search" size={18} /></span>
-          <input aria-label="Rechercher un exercice" placeholder="Rechercher (ex. développé, poulie)" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input type="search" enterKeyHint="search" autoComplete="off" autoCorrect="off" spellCheck={false} aria-label="Rechercher un exercice" placeholder="Rechercher (ex. développé, poulie)" value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
       </div>
       <div className="pad chips" style={{ paddingTop: 12 }}>

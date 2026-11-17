@@ -6,6 +6,15 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.5.2', date: '2026-11-17', title: 'Accessibilité et finitions (Web Interface Guidelines)',
+    items: [
+      'Fiches : Échap ferme, la page derrière ne défile plus, le focus entre dans la fiche et revient au bon endroit.',
+      'Titres de section lus comme de vrais titres par VoiceOver ; erreurs annoncées.',
+      'Recherche : clavier « Rechercher », sans correction automatique, avec contour au focus.',
+      'Liste d\'exercices plus fluide, effets de survol au trackpad, en-tête et barre d\'onglets qui ne masquent plus l\'élément sélectionné.',
+    ],
+  },
+  {
     version: '1.5.1', date: '2026-11-17', title: 'Écran allumé ou montre',
     items: ['Réglage « Garder l\'écran allumé pendant la séance » : désactivé, l\'iPhone se verrouille et les notifications de repos passent sur la montre.'],
   },

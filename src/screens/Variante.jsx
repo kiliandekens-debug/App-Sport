@@ -8,7 +8,7 @@ import { Icon } from '../components.jsx';
 function Seg({ options, value, onChange, label }) {
   return (
     <div className="stack" style={{ gap: 8 }}>
-      <span className="label">{label}</span>
+      <h2 className="label">{label}</h2>
       <div className="seg" role="group" aria-label={label} style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
         {options.map((o) => <button key={o} type="button" className={value === o ? 'on' : ''} aria-pressed={value === o} onClick={() => onChange(o)}>{o}</button>)}
       </div>
@@ -61,7 +61,7 @@ export function VarianteForm({ base, onSaved, embedded }) {
     <div className={embedded ? 'card' : 'stack'} style={{ gap: 18 }}>
       {embedded && <span className="title-s">Nouvelle variante</span>}
       <label className="stack" style={{ gap: 8 }}>
-        <span className="label">Exercice de base</span>
+        <h2 className="label">Exercice de base</h2>
         <input className="input" list="ex-names" value={baseName} onChange={(e) => setBaseName(e.target.value)} placeholder="Ex. Développé épaules (machine)" />
         <datalist id="ex-names">{data.exerciseList.map((e) => <option key={e.name} value={e.name} />)}</datalist>
       </label>
@@ -70,16 +70,16 @@ export function VarianteForm({ base, onSaved, embedded }) {
       <Seg label="Côté" options={['Deux bras', 'Un bras']} value={cote} onChange={setCote} />
       <div className="grid2">
         <label className="stack" style={{ gap: 8 }}>
-          <span className="label">Muscle</span>
+          <h2 className="label">Muscle</h2>
           <select className="input" value={muscle} onChange={(e) => setMuscle(e.target.value)}>{MUSCLES.map((m) => <option key={m}>{m}</option>)}</select>
         </label>
         <label className="stack" style={{ gap: 8 }}>
-          <span className="label">Matériel</span>
+          <h2 className="label">Matériel</h2>
           <select className="input" value={equip} onChange={(e) => setEquip(e.target.value)}>{EQUIPS.map((m) => <option key={m}>{m}</option>)}</select>
         </label>
       </div>
       <label className="stack" style={{ gap: 8 }}>
-        <span className="label">Comment je le fais</span>
+        <h2 className="label">Comment je le fais</h2>
         <textarea rows={2} className="input" style={{ height: 'auto', padding: '12px 14px', resize: 'none' }} placeholder="Ex. assis face au dossier, siège cran 4" value={notes} onChange={(e) => setNotes(e.target.value)} />
       </label>
       <div className="row" style={{ padding: 14, borderRadius: 14, background: embedded ? 'var(--raised)' : 'var(--card)' }}>

@@ -30,13 +30,13 @@ export default function Admin({ user }) {
       <GlassHeader eyebrow="Réservé au superadmin" title="Administration" />
       <div className="pad stack" style={{ gap: 12, paddingTop: 8 }}>
         <section className="card stack" style={{ gap: 6 }}>
-          <span className="label">Application</span>
+          <h2 className="label">Application</h2>
           <span className="small">Kadeon Sport {VERSION}, build {BUILD}</span>
           <span className="xs muted">Publiée le {day(BUILT_AT)}, sur sport.kadeon.be</span>
         </section>
 
         <div className="between" style={{ paddingTop: 8 }}>
-          <span className="label">Comptes</span>
+          <h2 className="label">Comptes</h2>
           <span className="xs muted">{users ? `${users.length} compte${users.length > 1 ? 's' : ''}` : ''}</span>
         </div>
         {err && <span className="small" style={{ color: 'var(--danger)' }}>{err}</span>}

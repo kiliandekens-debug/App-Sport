@@ -467,3 +467,23 @@ input, select, textarea { font-size: max(16px, 1em); }
 .update-banner { position: fixed; left: 12px; right: 12px; bottom: calc(86px + env(safe-area-inset-bottom)); z-index: 40; max-width: 496px; margin: 0 auto; display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 16px; border-radius: 22px;
   background: var(--glass-bg); -webkit-backdrop-filter: blur(24px) saturate(190%); backdrop-filter: blur(24px) saturate(190%); border: 1px solid var(--glass-rim); box-shadow: inset 0 1px 0 var(--glass-hi), var(--glass-shadow); }
 body.has-update .screen { padding-bottom: calc(176px + env(safe-area-inset-bottom)); }
+
+/* Web Interface Guidelines pass */
+/* Sticky header and tab bar never hide the element that gets focus or is scrolled to. */
+html { scroll-padding-top: calc(110px + env(safe-area-inset-top)); scroll-padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+h2.label { margin: 0; }
+/* The search field draws its focus ring on its frame. */
+.search:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+/* Sheets: scrolling inside them never scrolls the page behind. */
+.overlay, .sheet { overscroll-behavior: contain; }
+.sheet:focus { outline: none; }
+/* Long lists: off-screen rows are not laid out until needed. */
+.ex-item { content-visibility: auto; contain-intrinsic-size: auto 60px; }
+/* Hover feedback on devices that have a pointer (Mac, iPad with trackpad). */
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover:not(:disabled), .icon-btn:hover:not(:disabled), .chip:hover, .seg button:hover:not(.on) { filter: brightness(1.08); }
+  .btn.primary:hover:not(:disabled) { filter: brightness(1.06); }
+  .day-row:hover, .list > button:hover, .tile:hover, .prog-item:hover, button.card:hover, .ex-item:hover, .cal-d:hover { background-color: color-mix(in srgb, var(--text) 4%, var(--card)); }
+  .nav a:hover:not(.active) { color: var(--text); }
+}

@@ -24,7 +24,7 @@ export function PasswordForm({ onDone, submitLabel = 'Enregistrer le mot de pass
     <form onSubmit={save} className="stack" style={{ gap: 8 }}>
       <input className="input" type="password" autoComplete="new-password" placeholder="Nouveau mot de passe (8 caractères minimum)" value={p1} onChange={(e) => setP1(e.target.value)} aria-label="Nouveau mot de passe" />
       <input className="input" type="password" autoComplete="new-password" placeholder="Confirme le mot de passe" value={p2} onChange={(e) => setP2(e.target.value)} aria-label="Confirmation du mot de passe" />
-      {(short || mismatch) && <span className="small" style={{ color: 'var(--danger)' }}>{short ? '8 caractères minimum.' : 'Les deux mots de passe ne sont pas identiques.'}</span>}
+      {(short || mismatch) && <span className="small" role="alert" style={{ color: 'var(--danger)' }}>{short ? '8 caractères minimum.' : 'Les deux mots de passe ne sont pas identiques.'}</span>}
       <button className="btn primary" disabled={!ok || busy}>{busy ? '…' : submitLabel}</button>
     </form>
   );

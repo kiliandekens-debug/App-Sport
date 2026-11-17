@@ -109,7 +109,7 @@ export default function Accueil({ user }) {
 
       {session.active ? (
         <div className="card lg hero" style={{ margin: '24px 20px 0' }}>
-          <span className="label">Séance en cours</span>
+          <h2 className="label">Séance en cours</h2>
           <span className="display" style={{ fontSize: 26 }}>{session.title}</span>
           <span className="small muted">{session.done} / {session.total} séries validées</span>
           <Link to="/seance" className="btn primary big"><Icon name="play" size={18} width={2.5} />Reprendre</Link>
@@ -117,7 +117,7 @@ export default function Accueil({ user }) {
       ) : next ? (
         <div className="card lg hero" style={{ margin: '24px 20px 0' }}>
           <div className="stack" style={{ gap: 6 }}>
-            <span className="label">Salle, à faire ensuite</span>
+            <h2 className="label">Salle, à faire ensuite</h2>
             <span className="display" style={{ fontSize: 26 }}>{next.name}</span>
             <span className="small muted">{next.exercises.length} exercices, {sets(next)} séries{next.last ? `, ${ago(next.last)}` : ''}</span>
           </div>
@@ -167,7 +167,7 @@ export default function Accueil({ user }) {
 
       <div className="section">
         <div className="between">
-          <span className="label">Mes routines</span>
+          <h2 className="label">Mes routines</h2>
           <Link to="/routines/nouvelle" className="small" style={{ fontWeight: 600 }}>+ Nouvelle</Link>
         </div>
         {routines.length ? routines.map((r) => (

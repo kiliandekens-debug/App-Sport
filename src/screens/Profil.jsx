@@ -153,12 +153,12 @@ export default function Profil({ user }) {
       )}
 
       <div className="section">
-        <span className="label">Calendrier</span>
+        <h2 className="label">Calendrier</h2>
         <MonthCalendar planned={planned} />
       </div>
 
       <div className="section">
-        <span className="label">Notifications</span>
+        <h2 className="label">Notifications</h2>
         <div className="card row" style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <span className="grow stack" style={{ gap: 2 }}>
             <span style={{ fontWeight: 600 }}>Fin de repos sur l'iPhone et la montre</span>
@@ -191,7 +191,7 @@ export default function Profil({ user }) {
       </div>
 
       <div className="section">
-        <span className="label">Apparence</span>
+        <h2 className="label">Apparence</h2>
         <div className="seg" role="group" aria-label="Apparence" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
           {[['auto', 'Automatique'], ['light', 'Clair'], ['dark', 'Sombre']].map(([k, l]) => (
             <button key={k} className={theme === k ? 'on' : ''} aria-pressed={theme === k} onClick={() => { setTheme(k); setThemeState(k); }}>{l}</button>
@@ -200,7 +200,7 @@ export default function Profil({ user }) {
       </div>
 
       <div className="section">
-        <span className="label">Données</span>
+        <h2 className="label">Données</h2>
         <Link to="/historique" className="btn" style={{ height: 52, justifyContent: 'flex-start' }}><Icon name="list" size={18} /><span className="grow" style={{ textAlign: 'left' }}>Historique des séances</span><Icon name="chevron" size={18} /></Link>
         <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={onFile} />
         <button className="btn" style={{ borderRadius: 14, height: 52 }} disabled={busy} onClick={() => fileRef.current?.click()}>
@@ -215,7 +215,7 @@ export default function Profil({ user }) {
         </button>
         {stravaStatus && <span className="small soft">{stravaStatus}</span>}
         <span className="xs muted" style={{ lineHeight: 1.45 }}>Sur strava.com (pas dans l'app) : Paramètres, Mon compte, « Télécharger ou supprimer votre compte », puis « Demander une archive ». Strava t'envoie un lien par e-mail : choisis ici le fichier .zip reçu, ou le fichier activities.csv qu'il contient. Seules les courses à pied sont importées, sans doublon.</span>
-        <span className="label" style={{ paddingTop: 18 }}>Compte</span>
+        <h2 className="label" style={{ paddingTop: 18 }}>Compte</h2>
         {data.superadmin && (
           <Link to="/admin" className="btn" style={{ height: 52, justifyContent: 'flex-start' }}><Icon name="user" size={18} /><span className="grow" style={{ textAlign: 'left' }}>Administration</span><span className="tag">Superadmin</span></Link>
         )}

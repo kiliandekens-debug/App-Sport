@@ -35,7 +35,7 @@ export default function Progres() {
         <>
           <div className="pad stack" style={{ paddingTop: 8 }}>
             <label className="stack" style={{ gap: 6 }}>
-              <span className="label">Exercice</span>
+              <h2 className="label">Exercice</h2>
               <select className="input" value={name} onChange={(e) => setName(e.target.value)}>
                 {list.map((e) => <option key={e.name} value={e.name}>{e.name} ({e.history.length})</option>)}
               </select>
@@ -68,7 +68,7 @@ export default function Progres() {
 
       {!!records.length && (
         <div className="section">
-          <span className="label">Records personnels</span>
+          <h2 className="label">Records personnels</h2>
           <div className="list">
             {records.map((e) => (
               <div key={e.name}>

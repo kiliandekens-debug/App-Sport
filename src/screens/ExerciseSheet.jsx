@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useModal } from '../modal.js';
 import { useData } from '../data.jsx';
 import { ExerciseImage, Icon } from '../components.jsx';
 import { fmtKg, fmtDay } from '../lib/stats.js';
@@ -7,17 +7,13 @@ import { muscleOf, equipOf } from '../lib/exercises.js';
 // Bottom sheet with the exercise illustration and the user's history on it.
 export default function ExerciseSheet({ exercise, onClose, children }) {
   const data = useData();
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  const ref = useModal(!!exercise, onClose);
   if (!exercise) return null;
   const st = data.exercises.get(exercise.name);
   const last = st?.history[st.history.length - 1];
   return (
     <div className="overlay" onClick={onClose}>
-      <div className="sheet" role="dialog" aria-modal="true" aria-label={exercise.name} onClick={(e) => e.stopPropagation()}>
+      <div ref={ref} tabIndex={-1} className="sheet" role="dialog" aria-modal="true" aria-label={exercise.name} onClick={(e) => e.stopPropagation()}>
         <span className="sheet-grip" />
         <div className="row">
           <span className="display grow" style={{ fontSize: 20, lineHeight: 1.2 }}>{exercise.name}</span>

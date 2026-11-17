@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BUILD, VERSION, CHANGELOG } from './changelog.js';
 import { Icon } from './components.jsx';
+import { useModal } from './modal.js';
 
 const SEEN = 'app-sport-seen-version';
 
@@ -49,10 +50,11 @@ export function UpdateBanner() {
 
 // Release notes. Shown once automatically after an update, and from the profile.
 export function WhatsNew({ open, onClose }) {
+  const ref = useModal(open, onClose);
   if (!open) return null;
   return (
     <div className="overlay" onClick={onClose}>
-      <div className="sheet" role="dialog" aria-modal="true" aria-label="Nouveautés" onClick={(e) => e.stopPropagation()}>
+      <div ref={ref} tabIndex={-1} className="sheet" role="dialog" aria-modal="true" aria-label="Nouveautés" onClick={(e) => e.stopPropagation()}>
         <span className="sheet-grip" />
         <div className="row">
           <div className="grow stack" style={{ gap: 2 }}>

@@ -36,7 +36,7 @@ export default function Historique() {
         {!items.length && <div className="card"><span className="muted">Aucune séance pour l'instant. Termine une séance ou importe ton historique Hevy depuis le profil.</span></div>}
         {groups.map((g) => (
           <div key={g.key} className="stack" style={{ gap: 6 }}>
-            <span className="label" style={{ padding: '14px 4px 2px' }}>{g.key}</span>
+            <h2 className="label" style={{ padding: '14px 4px 2px' }}>{g.key}</h2>
             <div className="list">
               {g.items.map((it) => (
                 <button key={it.kind + it.id} onClick={() => setOpen(it)}

@@ -102,7 +102,7 @@ export default function Coach() {
 
       <div className="pad stack" style={{ gap: 12, paddingTop: 10 }}>
         <div className="card hero" style={{ gap: 8 }}>
-          <span className="label">{state?.summary ? 'Séance enregistrée' : `Dernière séance, ${sameDay(w.start, new Date()) ? "aujourd'hui" : `le ${fmtDay(w.start)}`}`}</span>
+          <h2 className="label">{state?.summary ? 'Séance enregistrée' : `Dernière séance, ${sameDay(w.start, new Date()) ? "aujourd'hui" : `le ${fmtDay(w.start)}`}`}</h2>
           <span className="display">{w.title}</span>
           <div className="session-stats" style={{ padding: 0 }}>
             <span><b>{review.totalSets}</b>séries</span>
@@ -117,7 +117,7 @@ export default function Coach() {
         </div>
 
         <div className="between" style={{ paddingTop: 12 }}>
-          <span className="label">Pour la prochaine fois</span>
+          <h2 className="label">Pour la prochaine fois</h2>
           <span className="xs muted">{rows.length} exercice{rows.length > 1 ? 's' : ''}</span>
         </div>
 

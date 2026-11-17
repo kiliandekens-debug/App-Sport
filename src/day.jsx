@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useModal } from './modal.js';
 import { useData, deleteWorkout, renameWorkout, deleteRunLog } from './data.jsx';
 import { useUi } from './ui.jsx';
 import { Icon, ExerciseImage } from './components.jsx';
@@ -76,6 +77,7 @@ export function WorkoutSheet({ id, onClose }) {
   const ui = useUi();
   const [busy, setBusy] = useState(false);
   const w = id ? data.workouts.find((x) => x.id === id) : null;
+  const ref = useModal(!!w, onClose);
   if (!w) return null;
   const exercises = [...new Set(w.sets.map((s) => s.exercise))].map((name) => ({ name, sets: w.sets.filter((s) => s.exercise === name) }));
   const records = exercises.filter((e) => { const st = data.exercises.get(e.name); return st?.best && st.best.date.getTime() === w.start.getTime() && st.history.length > 1; }).length;
@@ -92,7 +94,7 @@ export function WorkoutSheet({ id, onClose }) {
   return (
     <>
         <div className="overlay" onClick={() => onClose()}>
-          <div className="sheet wsheet" role="dialog" aria-modal="true" aria-label={w.title} onClick={(e) => e.stopPropagation()}>
+          <div ref={ref} tabIndex={-1} className="sheet wsheet" role="dialog" aria-modal="true" aria-label={w.title} onClick={(e) => e.stopPropagation()}>
             <span className="sheet-grip" />
             <div className="row" style={{ alignItems: 'flex-start' }}>
               <div className="grow stack" style={{ gap: 4 }}>
@@ -219,6 +221,7 @@ export function RunSheet({ id, onClose }) {
   const data = useData();
   const ui = useUi();
   const l = id ? data.runLogs.find((x) => x.id === id) : null;
+  const ref = useModal(!!l, onClose);
   if (!l) return null;
   const km = Number(l.distance_km);
   const date = new Date(l.done_at);
@@ -233,7 +236,7 @@ export function RunSheet({ id, onClose }) {
   ];
   return (
     <div className="overlay" onClick={onClose}>
-      <div className="sheet wsheet" role="dialog" aria-modal="true" aria-label={l.notes || 'Course'} onClick={(e) => e.stopPropagation()}>
+      <div ref={ref} tabIndex={-1} className="sheet wsheet" role="dialog" aria-modal="true" aria-label={l.notes || 'Course'} onClick={(e) => e.stopPropagation()}>
         <span className="sheet-grip" />
         <div className="row" style={{ alignItems: 'flex-start' }}>
           <div className="grow stack" style={{ gap: 4 }}>

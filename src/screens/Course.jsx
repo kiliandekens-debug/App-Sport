@@ -71,7 +71,7 @@ function FitCard({ fit }) {
   const b = fit.best;
   return (
     <section className="card stack" style={{ gap: 10 }} aria-label="Ce que disent tes courses">
-      <span className="label">Ce que disent tes {fit.runs} courses</span>
+      <h2 className="label">Ce que disent tes {fit.runs} courses</h2>
       {b && <span className="small" style={{ lineHeight: 1.5 }}>Meilleure performance récente : <b>{b.notes || 'course'}</b>, {fmtDay(new Date(b.done_at))} {new Date(b.done_at).getFullYear()}, {fmtKm(b.distance_km)} km en {hms(b.duration_s)}. Niveau (VDOT) : <b>{fmt1(fit.vdotPeak)}</b>.</span>}
       <span className="small" style={{ lineHeight: 1.5 }}>Volume habituel : <b>{Math.round(fit.weeklyUsual)} km par semaine</b>. Plus longue sortie : {fmtKm(fit.longest.distance_km)} km.</span>
       {fit.break && fit.break.days >= 8 && (
@@ -92,7 +92,7 @@ function HistoryCard({ logs, fit }) {
   const max = Math.max(...months.map((m) => m.km), 1);
   return (
     <section className="card stack" style={{ gap: 12 }} aria-label="Ton historique de course">
-      <div className="between"><span className="label">Ton historique</span><span className="xs muted">{fit.runs} courses, {Math.round(fit.totalKm)} km</span></div>
+      <div className="between"><h2 className="label">Ton historique</h2><span className="xs muted">{fit.runs} courses, {Math.round(fit.totalKm)} km</span></div>
       <div className="row" style={{ alignItems: 'flex-end', gap: 4, height: 70 }} role="img" aria-label={`Kilomètres par mois : ${months.map((m) => `${Math.round(m.km)}`).join(', ')}`}>
         {months.map((m, i) => <div key={i} style={{ flex: 1, height: `${Math.max(3, (m.km / max) * 100)}%`, borderRadius: '5px 5px 2px 2px', background: i === months.length - 1 ? 'var(--accent)' : 'var(--z1)', opacity: m.km ? 1 : 0.25 }} />)}
       </div>
@@ -142,14 +142,14 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
       <div className="pad stack" style={{ gap: 18, paddingTop: 10 }}>
         {fit?.runs > 0 && !initial && <FitCard fit={fit} />}
         <div className="stack" style={{ gap: 6 }}>
-          <span className="label">Objectif</span>
+          <h2 className="label">Objectif</h2>
           <div className="seg" role="group" aria-label="Objectif" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
             {Object.entries(GOALS).map(([k, g]) => <button key={k} className={goal === k ? 'on' : ''} aria-pressed={goal === k} onClick={() => setGoal(k)}>{g.label === 'Semi-marathon' ? 'Semi' : g.label}</button>)}
           </div>
         </div>
 
         <div className="stack" style={{ gap: 6 }}>
-          <span className="label">Ton niveau actuel</span>
+          <h2 className="label">Ton niveau actuel</h2>
           <span className="small muted">{auto ? 'Pré-rempli depuis tes courses (équivalent 5 km d\'aujourd\'hui). Tu peux le changer.' : 'Un temps récent sur une distance, même approximatif. Il fixe toutes tes allures (méthode VDOT de Jack Daniels).'}</span>
           <div className="seg" role="group" aria-label="Distance de référence" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
             {[[3, '3 km'], [5, '5 km'], [10, '10 km']].map(([k, l]) => <button key={k} className={Number(refKm) === k ? 'on' : ''} aria-pressed={Number(refKm) === k} onClick={() => setRefKm(k)}>{l}</button>)}
@@ -159,13 +159,13 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
         </div>
 
         <label className="stack" style={{ gap: 6 }}>
-          <span className="label">Kilomètres par semaine en ce moment</span>
+          <h2 className="label">Kilomètres par semaine en ce moment</h2>
           <span className="small muted">{fit?.protocol && !initial ? 'Pré-rempli avec ton volume habituel avant la pause. Les premières semaines seront réduites automatiquement (protocole de reprise).' : 'Le volume démarre de là et monte d\'environ 8 % par semaine, jamais plus.'}</span>
           <input className="input" inputMode="decimal" placeholder="Par exemple 15 (0 si tu reprends)" value={weekly} onChange={(e) => setWeekly(e.target.value)} />
         </label>
 
         <div className="stack" style={{ gap: 8 }}>
-          <span className="label">Tes jours de course</span>
+          <h2 className="label">Tes jours de course</h2>
           <span className="small muted">Choisis un modèle, puis ajuste jour par jour : facile, qualité (fractionné, seuil, côtes) ou sortie longue.</span>
           <div className="seg" role="group" aria-label="Nombre de sorties par semaine" style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}>
             {[2, 3, 4, 5, 6].map((n) => <button key={n} className={count === n ? 'on' : ''} aria-pressed={count === n} onClick={() => setSchedule(DEFAULT_SCHEDULE[n])}>{n} j</button>)}
@@ -187,7 +187,7 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
 
         {fit?.protocol && (
           <div className="stack" style={{ gap: 6 }}>
-            <span className="label">Reprise progressive</span>
+            <h2 className="label">Reprise progressive</h2>
             <span className="small muted" style={{ lineHeight: 1.45 }}>Recommandée après {fit.break.days} jours sans entraînement régulier : volume réduit les premières semaines, et tes jours de qualité en version allégée pendant {fit.protocol.easyWeeks} semaine{fit.protocol.easyWeeks > 1 ? 's' : ''}.</span>
             <div className="seg" role="group" aria-label="Reprise progressive" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
               <button className={reentry ? 'on' : ''} aria-pressed={reentry} onClick={() => setReentry(true)}>Oui (conseillé)</button>
@@ -197,14 +197,14 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
         )}
 
         <div className="stack" style={{ gap: 6 }}>
-          <span className="label">Début du programme</span>
+          <h2 className="label">Début du programme</h2>
           <span className="small muted">La première semaine commence ce jour-là. Par défaut aujourd'hui.</span>
           <input className="input" type="date" value={start} onChange={(e) => setStart(e.target.value)} aria-label="Début du programme" />
           {initial && start !== String(initial.started_on).slice(0, 10) && <span className="small" style={{ color: 'var(--warm)', lineHeight: 1.4 }}>Changer la date de début recale toutes les séances : celles déjà cochées ne seront plus reliées au plan (tes courses restent enregistrées).</span>}
         </div>
 
         <div className="stack" style={{ gap: 6 }}>
-          <span className="label">Date de la course (facultatif)</span>
+          <h2 className="label">Date de la course (facultatif)</h2>
           <span className="small muted">Avec une date, le plan se cale dessus et finit par l'affûtage puis le jour J.</span>
           <input className="input" type="date" min={start || today()} value={date} onChange={(e) => setDate(e.target.value)} aria-label="Date de la course" />
           {dateIssue && <span className="small" style={{ color: 'var(--danger)' }}>{dateIssue}</span>}
@@ -237,7 +237,7 @@ function ResultForm({ draft, session, onSave, onCancel, note }) {
   const ok = km > 0 && secs > 0;
   return (
     <section className="card stack" style={{ gap: 12 }} aria-label="Résultat de la course">
-      <span className="label">Résultat à enregistrer</span>
+      <h2 className="label">Résultat à enregistrer</h2>
       {note && <span className="small" style={{ color: 'var(--rest)' }}>{note}</span>}
       <div className="grid2">
         <label className="stack" style={{ gap: 4 }}><span className="xs muted">Distance (km)</span><input className="input" inputMode="decimal" value={f.distance} onChange={(e) => set('distance', e.target.value)} /></label>
@@ -381,7 +381,7 @@ export default function Course() {
         {!draft && next && (
           <>
             <div className="card hero" style={{ gap: 8 }}>
-              <span className="label">{isPicked ? `Séance choisie : ${whenLabel(next).toLowerCase()}` : `Prochaine sortie : ${whenLabel(next).toLowerCase()}`}</span>
+              <h2 className="label">{isPicked ? `Séance choisie : ${whenLabel(next).toLowerCase()}` : `Prochaine sortie : ${whenLabel(next).toLowerCase()}`}</h2>
               <span className="display">{next.title}</span>
               <div className="session-stats" style={{ padding: 0 }}>
                 <span><b>{next.mins}</b>min</span>
@@ -391,7 +391,7 @@ export default function Course() {
             </div>
 
             <section className="card stack" style={{ gap: 10 }} aria-label="Le mot du coach">
-              <span className="label">Pourquoi cette séance</span>
+              <h2 className="label">Pourquoi cette séance</h2>
               <span className="small" style={{ lineHeight: 1.5 }}>{next.why}</span>
               <div className="row" style={{ alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 14, background: 'var(--raised)' }}>
                 <span style={{ width: 10, height: 10, borderRadius: 5, marginTop: 5, flexShrink: 0, background: FILL[mainType(next)] }} />
@@ -400,13 +400,13 @@ export default function Course() {
             </section>
 
             <section className="card stack" style={{ gap: 10 }} aria-label="Profil de la séance">
-              <span className="label">La séance en un coup d'œil</span>
+              <h2 className="label">La séance en un coup d'œil</h2>
               <RunChart session={next} />
             </section>
 
             <section className="card stack" style={{ gap: 12 }} aria-label="À saisir dans Exercice">
               <div className="stack" style={{ gap: 2 }}>
-                <span className="label">À saisir dans Exercice</span>
+                <h2 className="label">À saisir dans Exercice</h2>
                 <span className="small muted">{apple.where}</span>
               </div>
               <ol className="stack" style={{ gap: 10, margin: 0, padding: 0, listStyle: 'none' }}>
@@ -453,13 +453,13 @@ export default function Course() {
         {!draft && (
           <>
             <div className="between" style={{ paddingTop: 12 }}>
-              <span className="label">Cette semaine</span>
+              <h2 className="label">Cette semaine</h2>
               <span className="xs muted">{weekSessions.filter((s) => s.done).length} sur {weekSessions.length} faites</span>
             </div>
             {weekSessions.map((s) => <SessionRow key={s.key} s={s} active={next?.key === s.key} onPick={() => { setPicked(s.key); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}
 
             <section className="card stack" style={{ gap: 12, marginTop: 12 }} aria-label="Ton programme">
-              <div className="between"><span className="label">Ton programme</span><span className="xs muted">{plan.total} semaines</span></div>
+              <div className="between"><h2 className="label">Ton programme</h2><span className="xs muted">{plan.total} semaines</span></div>
               <div className="row" style={{ gap: 3 }} aria-hidden="true">
                 {plan.phases.map((ph) => <div key={ph.key} style={{ flexGrow: ph.weeks, flexBasis: 0, height: 8, borderRadius: 4, background: ph.key === plan.phase ? 'var(--accent)' : 'var(--chip)' }} />)}
               </div>
@@ -474,7 +474,7 @@ export default function Course() {
 
             <section className="card stack" style={{ gap: 12 }} aria-label="Tes allures">
               <div className="between">
-                <span className="label">Tes allures</span>
+                <h2 className="label">Tes allures</h2>
                 <span className="xs muted">VDOT {Math.round(paces.vdot * 10) / 10}, par km</span>
               </div>
               <div className="stack" style={{ gap: 9 }}>
@@ -504,7 +504,7 @@ export default function Course() {
 
             {stats.count > 0 && (
               <section className="card stack" style={{ gap: 12 }} aria-label="Ton suivi">
-                <span className="label">Ton suivi</span>
+                <h2 className="label">Ton suivi</h2>
                 <div className="session-stats" style={{ padding: 0, flexWrap: 'wrap', rowGap: 6 }}>
                   <span><b>{stats.count}</b>sortie{stats.count > 1 ? 's' : ''}</span>
                   <span><b>{km1(stats.totalKm)}</b>km au total</span>
@@ -519,7 +519,7 @@ export default function Course() {
             {showPlan && plan.weeks.map((wk, i) => (
               <div key={i} className="stack" style={{ gap: 8 }}>
                 <div className="between" style={{ paddingTop: 8 }}>
-                  <span className="label">Semaine {i + 1}{i === plan.current ? ' (en cours)' : ''}, {PHASES[wk[0]?.phase]?.label.toLowerCase()}{wk[0]?.recover ? ', allégée' : ''}</span>
+                  <h2 className="label">Semaine {i + 1}{i === plan.current ? ' (en cours)' : ''}, {PHASES[wk[0]?.phase]?.label.toLowerCase()}{wk[0]?.recover ? ', allégée' : ''}</h2>
                   <span className="xs muted">≈ {km1(wk.reduce((a, x) => a + x.km, 0))} km</span>
                 </div>
                 {wk.map((s) => <SessionRow key={s.key} s={s} active={next?.key === s.key} onPick={() => { setPicked(s.key); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}
@@ -528,7 +528,7 @@ export default function Course() {
 
             {!!logs.length && (
               <>
-                <span className="label" style={{ paddingTop: 12 }}>Dernières courses</span>
+                <h2 className="label" style={{ paddingTop: 12 }}>Dernières courses</h2>
                 {logs.slice(0, 6).map((l) => (
                   <div key={l.id} className="card row" style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 }}>
                     <div className="grow stack" style={{ gap: 1 }}>

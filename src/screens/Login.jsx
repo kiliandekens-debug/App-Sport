@@ -41,7 +41,7 @@ export default function Login() {
       <div className="center" style={{ alignItems: 'stretch', textAlign: 'left', maxWidth: 400, margin: '0 auto', width: '100%', gap: 20 }}>
         <img src="/icon.svg" alt="" width="64" height="64" style={{ borderRadius: 18, boxShadow: '0 10px 30px rgba(232, 80, 14, 0.25)' }} />
         <div className="stack" style={{ gap: 8 }}>
-          <h1 className="title" style={{ fontSize: 40 }}>Kadeon Sport</h1>
+          <h1 className="title" translate="no" style={{ fontSize: 40 }}>Kadeon Sport</h1>
           <p className="muted" style={{ margin: 0, fontSize: 17, lineHeight: 1.45 }}>Ta muscu et ta course au même endroit.</p>
         </div>
         {state === 'sent' || state === 'reset-sent' ? (
@@ -57,18 +57,18 @@ export default function Login() {
               <button type="button" className={mode === 'link' ? 'on' : ''} aria-pressed={mode === 'link'} onClick={() => setMode('link')}>Lien par e-mail</button>
             </div>
             <label className="stack" style={{ gap: 6 }}>
-              <span className="label">E-mail</span>
+              <h2 className="label">E-mail</h2>
               <input className="input" type="email" required autoComplete="username" placeholder="toi@exemple.com" value={email} onChange={(e) => setEmail(e.target.value)} />
             </label>
             {mode === 'password' && (
               <label className="stack" style={{ gap: 6 }}>
-                <span className="label">Mot de passe</span>
+                <h2 className="label">Mot de passe</h2>
                 <input className="input" type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
               </label>
             )}
             <button className="btn primary big" disabled={state === 'sending'}>{state === 'sending' ? '…' : mode === 'password' ? 'Se connecter' : 'Recevoir le lien'}</button>
             {mode === 'password' && <button type="button" className="btn" style={{ background: 'transparent' }} onClick={forgot}>Mot de passe oublié ?</button>}
-            {error && <span className="small" style={{ color: 'var(--danger)' }}>{error}</span>}
+            {error && <span className="small" role="alert" style={{ color: 'var(--danger)' }}>{error}</span>}
           </form>
         )}
       </div>
