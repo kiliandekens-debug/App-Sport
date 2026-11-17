@@ -6,6 +6,13 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.1.0', date: '2026-11-17', title: 'Date de début du programme',
+    items: [
+      'Course : choisis la date de début de ton programme, aujourd\'hui ou plus tard, et modifie-la ensuite.',
+      'Avant le début, l\'onglet Course indique quand le plan commence ; la reprise après pause se cale sur ce jour.',
+    ],
+  },
+  {
     version: '1.0.0', date: '2026-11-17', title: 'Coach course sur tes vraies courses',
     items: [
       'Le coach course lit ton historique : niveau tiré de ta meilleure course récente, volume habituel, et reprise adaptée après une pause (méthode Daniels).',

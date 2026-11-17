@@ -361,7 +361,9 @@ export function buildPlan(profile, logs, workouts = [], now = new Date()) {
   const startMonday = mondayOf(new Date(profile.started_on));
   // If the level was entered before the break, paces are slowed for the lost fitness; if after, it is already current.
   const levelBeforeBreak = !!(reentry && fit.break && new Date(profile.updated_at || profile.started_on) < fit.break.from);
-  const returnWeek = reentry ? Math.floor((mondayOf(reentry.start) - startMonday) / (7 * 86400000)) : 0;
+  // The return protocol starts at the return (or now), but never before the plan itself starts.
+  const anchor = reentry && reentry.start > startMonday ? reentry.start : startMonday;
+  const returnWeek = reentry ? Math.floor((mondayOf(anchor) - startMonday) / (7 * 86400000)) : 0;
   const flat = (adj) => {
     const qc = { n: 0 };
     const weeks = [];

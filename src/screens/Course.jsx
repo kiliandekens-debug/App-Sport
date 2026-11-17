@@ -124,12 +124,14 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
   const [refTime, setRefTime] = useState(initial ? hms(initial.ref_time_s) : auto ? hms(auto) : '');
   const [weekly, setWeekly] = useState(initial?.weekly_km != null ? String(initial.weekly_km) : fit?.startKm ? String(fit.startKm) : '');
   const [date, setDate] = useState(initial?.target_date || '');
+  const [start, setStart] = useState(initial?.started_on ? String(initial.started_on).slice(0, 10) : today());
+  const dateIssue = date && start && date <= start ? 'La date de la course doit être après le début du programme.' : null;
   const [busy, setBusy] = useState(false);
   const secs = parseDuration(refTime);
   const count = schedule.filter(Boolean).length;
   const issues = scheduleIssues(schedule);
   const blocking = count < 2 || schedule.filter((x) => x === 'quality').length > 2 || schedule.filter((x) => x === 'long').length > 1;
-  const bad = !secs || secs < 600 || secs > 20000 || blocking;
+  const bad = !secs || secs < 600 || secs > 20000 || blocking || !start || !!dateIssue;
   const preview = secs ? raceTime(vdotOfProfile({ ref_distance_km: refKm, ref_time_s: secs }), GOALS[goal].km) : null;
   const setDay = (i, v) => setSchedule(schedule.map((x, j) => (j === i ? v : x)));
 
@@ -183,15 +185,23 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
         </div>
 
         <div className="stack" style={{ gap: 6 }}>
+          <span className="label">Début du programme</span>
+          <span className="small muted">La première semaine commence ce jour-là. Par défaut aujourd'hui.</span>
+          <input className="input" type="date" value={start} onChange={(e) => setStart(e.target.value)} aria-label="Début du programme" />
+          {initial && start !== String(initial.started_on).slice(0, 10) && <span className="small" style={{ color: 'var(--warm)', lineHeight: 1.4 }}>Changer la date de début recale toutes les séances : celles déjà cochées ne seront plus reliées au plan (tes courses restent enregistrées).</span>}
+        </div>
+
+        <div className="stack" style={{ gap: 6 }}>
           <span className="label">Date de la course (facultatif)</span>
           <span className="small muted">Avec une date, le plan se cale dessus et finit par l'affûtage puis le jour J.</span>
-          <input className="input" type="date" min={today()} value={date} onChange={(e) => setDate(e.target.value)} aria-label="Date de la course" />
+          <input className="input" type="date" min={start || today()} value={date} onChange={(e) => setDate(e.target.value)} aria-label="Date de la course" />
+          {dateIssue && <span className="small" style={{ color: 'var(--danger)' }}>{dateIssue}</span>}
         </div>
 
         <button className="btn primary big" disabled={bad || busy} onClick={async () => {
           setBusy(true);
           try {
-            await onSave({ goal, schedule, days_per_week: count, weekly_km: weekly === '' ? null : Number(String(weekly).replace(',', '.')) || 0, ref_distance_km: Number(refKm), ref_time_s: secs, target_date: date || null, started_on: initial?.started_on || today() });
+            await onSave({ goal, schedule, days_per_week: count, weekly_km: weekly === '' ? null : Number(String(weekly).replace(',', '.')) || 0, ref_distance_km: Number(refKm), ref_time_s: secs, target_date: date || null, started_on: start });
           } finally { setBusy(false); }
         }}>{initial ? 'Mettre à jour le plan' : 'Créer mon plan'}</button>
         {onCancel && <button className="btn" onClick={onCancel}>Annuler les modifications</button>}
@@ -269,6 +279,8 @@ export default function Course() {
   if (!profile || editing) return <Setup initial={profile} onSave={saveProfile} onCancel={profile ? () => setEditing(false) : null} onStop={profile ? stopPlan : null} fit={fit} />;
 
   const all = plan.weeks.flat();
+  const firstSession = all[0];
+  const notStarted = !!firstSession && firstSession.ymd > today();
   const next = all.find((x) => x.key === picked && !x.done) || plan.next;
   const isPicked = next && plan.next && next.key !== plan.next.key;
   const paces = pacesOf(profile, plan.adj.paceScale);
@@ -334,7 +346,7 @@ export default function Course() {
 
   return (
     <main className="screen">
-      <GlassHeader eyebrow={`${GOALS[profile.goal]?.label || 'Course'}, semaine ${Math.min(plan.current + 1, plan.total)} sur ${plan.total}, ${PHASES[plan.phase].label.toLowerCase()}`} title="Course" />
+      <GlassHeader eyebrow={notStarted ? `${GOALS[profile.goal]?.label || 'Course'}, première sortie ${whenLabel(firstSession).toLowerCase()}` : `${GOALS[profile.goal]?.label || 'Course'}, semaine ${Math.min(plan.current + 1, plan.total)} sur ${plan.total}, ${PHASES[plan.phase].label.toLowerCase()}`} title="Course" />
 
       <div className="pad stack" style={{ gap: 12, paddingTop: 10 }}>
         {draft && <ResultForm draft={draft} session={next} note={draftNote} onSave={saveResult} onCancel={() => setDraft(null)} />}
@@ -344,6 +356,13 @@ export default function Course() {
             <span className="display" style={{ fontSize: 22 }}>Plan terminé</span>
             <span className="small muted">Tu as fait toutes les séances prévues. Définis un nouvel objectif pour continuer.</span>
             <button className="btn primary" onClick={() => setEditing(true)}>Nouvel objectif</button>
+          </div>
+        )}
+
+        {!draft && notStarted && (
+          <div className="card stack" style={{ gap: 6 }}>
+            <span style={{ fontWeight: 650 }}>Ton programme commence le {new Date(`${String(profile.started_on).slice(0, 10)}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+            <span className="small muted" style={{ lineHeight: 1.45 }}>En attendant, cours si tu en as envie, en footing facile et sans dépasser 30 minutes. Tu peux enregistrer ces sorties, le coach en tient compte.</span>
           </div>
         )}
 
