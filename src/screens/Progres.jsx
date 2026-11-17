@@ -1,6 +1,7 @@
+import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useData } from '../data.jsx';
-import { LineChart, ExerciseImage, GlassHeader } from '../components.jsx';
+import { LineChart, ExerciseImage, GlassHeader, Icon } from '../components.jsx';
 import { fmtKg, fmtDay, fmtInt } from '../lib/stats.js';
 
 const METRICS = [
@@ -25,7 +26,8 @@ export default function Progres() {
 
   return (
     <main className="screen">
-      <GlassHeader eyebrow={`${data.summary.sessions} séances${data.summary.since ? ` depuis le ${fmtDay(data.summary.since)} ${data.summary.since.getFullYear()}` : ''}`} title="Progrès" />
+      <GlassHeader eyebrow={`${data.summary.sessions} séances${data.summary.since ? ` depuis le ${fmtDay(data.summary.since)} ${data.summary.since.getFullYear()}` : ''}`} title="Progrès"
+        right={<Link to="/historique" className="icon-btn" aria-label="Historique des séances"><Icon name="list" size={20} /></Link>} />
 
       {!list.length ? (
         <div className="pad"><div className="card"><span className="muted">Pas encore assez de séances pour tracer une progression.</span></div></div>

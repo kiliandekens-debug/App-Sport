@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useSession, mmss, num } from '../session.jsx';
+import { useSession, mmss, num, prevOf } from '../session.jsx';
+import { useUi } from '../ui.jsx';
+import { onValidate } from './Seance.jsx';
 import { useData } from '../data.jsx';
 import { fmtKg, fmtInt } from '../lib/stats.js';
 import { incrementOf } from '../lib/exercises.js';
@@ -14,6 +16,7 @@ export default function Montre() {
   const [field, setField] = useState('kg');
   const [summary, setSummary] = useState(null);
   const [saving, setSaving] = useState(false);
+  const ui = useUi();
 
   const Frame = ({ children }) => (
     <div className="watch-wrap">
@@ -84,7 +87,7 @@ export default function Montre() {
     const remaining = s.exercises.map((e, i) => ({ e, i })).filter(({ e }) => e.sets.some((x) => !x.done));
     const end = async () => {
       setSaving(true);
-      try { setSummary(await s.finish()); } finally { setSaving(false); }
+      try { setSummary(await s.finish()); } catch (e) { ui.notify(`Échec de l'enregistrement : ${e.message || e}`); } finally { setSaving(false); }
     };
     return (
       <Frame>
@@ -105,10 +108,12 @@ export default function Montre() {
   }
 
   const set = ex.sets[s.activeSet];
-  const prev = ex.prev[s.activeSet];
+  const prev = prevOf(ex, s.activeSet);
+  const kgShown = set.kg !== '' ? num(set.kg) : prev?.kg ?? 0;
+  const repsShown = set.reps !== '' ? set.reps : prev?.reps ?? 0;
   const step = (d) => {
-    if (field === 'kg') s.setSet(s.current, s.activeSet, { kg: String(Math.max(0, Math.round((num(set.kg) + d * incrementOf(ex.name)) * 10) / 10)) });
-    else s.setSet(s.current, s.activeSet, { reps: String(Math.max(0, Math.round(num(set.reps)) + d)) });
+    if (field === 'kg') s.setSet(s.current, s.activeSet, { kg: String(Math.max(0, Math.round((num(kgShown) + d * incrementOf(ex.name)) * 10) / 10)).replace('.', ',') });
+    else s.setSet(s.current, s.activeSet, { reps: String(Math.max(0, Math.round(num(repsShown)) + d)) });
   };
   const firstOfEx = !ex.sets.some((x) => x.done);
 
@@ -120,11 +125,11 @@ export default function Montre() {
         {firstOfEx && ex.plan ? `Coach : ${fmtKg(ex.plan.kg)} × ${ex.plan.reps}` : `Série ${s.activeSet + 1} / ${ex.sets.length}${prev ? ` · avant : ${fmtKg(prev.kg)} × ${prev.reps}` : ''}`}
       </span>
       <div className="grid2" style={{ gap: 6 }}>
-        <button className={`cell ${field === 'kg' ? 'sel' : ''}`} style={{ color: 'inherit' }} onClick={() => setField('kg')} aria-pressed={field === 'kg'} aria-label={`Charge ${fmtKg(num(set.kg))} kilos`}>
-          <span className="big">{fmtKg(num(set.kg))}</span><span className="muted" style={{ fontSize: 10 }}>kg</span>
+        <button className={`cell ${field === 'kg' ? 'sel' : ''}`} style={{ color: 'inherit' }} onClick={() => setField('kg')} aria-pressed={field === 'kg'} aria-label={`Charge ${fmtKg(kgShown)} kilos`}>
+          <span className="big">{fmtKg(kgShown)}</span><span className="muted" style={{ fontSize: 10 }}>kg</span>
         </button>
-        <button className={`cell ${field === 'reps' ? 'sel' : ''}`} style={{ color: 'inherit' }} onClick={() => setField('reps')} aria-pressed={field === 'reps'} aria-label={`${set.reps} répétitions`}>
-          <span className="big">{set.reps || 0}</span><span className="muted" style={{ fontSize: 10 }}>reps</span>
+        <button className={`cell ${field === 'reps' ? 'sel' : ''}`} style={{ color: 'inherit' }} onClick={() => setField('reps')} aria-pressed={field === 'reps'} aria-label={`${repsShown} répétitions`}>
+          <span className="big">{repsShown}</span><span className="muted" style={{ fontSize: 10 }}>reps</span>
         </button>
       </div>
       <div className="row" style={{ justifyContent: 'center', gap: 16 }}>
@@ -132,7 +137,7 @@ export default function Montre() {
         <button className="step" aria-label={field === 'kg' ? 'Plus de charge' : 'Une rep de plus'} onClick={() => step(1)}>+</button>
       </div>
       <div className="grow" />
-      <button className="btn primary" onClick={() => s.validate(s.current, s.activeSet)}><Icon name="check" size={16} width={3} />Valider</button>
+      <button className="btn primary" onClick={() => onValidate(s, ui, s.current, s.activeSet)}><Icon name="check" size={16} width={3} />Valider</button>
     </Frame>
   );
 }

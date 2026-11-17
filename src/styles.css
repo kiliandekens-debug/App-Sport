@@ -396,3 +396,4 @@ html, body { overflow-x: clip; }
 /* Login gets the same ambient light as the app. */
 .login { background: radial-gradient(80% 360px at 0% 0%, color-mix(in srgb, var(--brand) 22%, transparent), transparent 70%), radial-gradient(70% 320px at 100% 30%, color-mix(in srgb, var(--z0) 22%, transparent), transparent 70%); min-height: 100dvh; }
 .session-head .session-stats { gap: 14px; }
+.session-head .display { font-size: 19px !important; font-stretch: 100%; }

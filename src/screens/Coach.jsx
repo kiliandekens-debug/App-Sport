@@ -118,7 +118,7 @@ export default function Coach() {
 
         <div className="between" style={{ paddingTop: 12 }}>
           <span className="label">Pour la prochaine fois</span>
-          <span className="xs muted">{rows.length} exercices</span>
+          <span className="xs muted">{rows.length} exercice{rows.length > 1 ? 's' : ''}</span>
         </div>
 
         {rows.map((r) => {

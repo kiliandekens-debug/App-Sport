@@ -80,6 +80,19 @@ export default function Accueil({ user }) {
         )}
       </div>
 
+      {!data.workouts.length && !session.active && (
+        <Link to="/profil" className="card tile" style={{ margin: '20px 20px 0' }}>
+          <span className="row" style={{ gap: 10 }}>
+            <span className="tile-icon" style={{ background: 'var(--accent)', color: 'var(--accent-ink)' }}><Icon name="upload" size={20} /></span>
+            <span className="grow stack" style={{ gap: 2 }}>
+              <span style={{ fontWeight: 650 }}>Importe ton historique Hevy</span>
+              <span className="xs muted">Dans Hevy : Profil, Réglages, Exporter les données. Puis ici : Profil, Importer. Tes charges, records et routines seront repris.</span>
+            </span>
+            <Icon name="chevron" size={18} />
+          </span>
+        </Link>
+      )}
+
       {session.active ? (
         <div className="card lg hero" style={{ margin: '24px 20px 0' }}>
           <span className="label">Séance en cours</span>

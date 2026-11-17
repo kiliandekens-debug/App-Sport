@@ -7,6 +7,8 @@ import { Icon, ExerciseImage, GlassHeader } from '../components.jsx';
 import { VarianteForm } from './Variante.jsx';
 import ExerciseSheet from './ExerciseSheet.jsx';
 
+const fold = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
 // Your exercises (custom variants, then history by frequency), then the base library.
 export function useCatalog() {
   const data = useData();
@@ -29,11 +31,12 @@ export function ExercisePicker({ selected = new Set(), onAdd, onOpen, bottomPad 
   const [muscle, setMuscle] = useState('Tous');
   const [equip, setEquip] = useState('Tout');
   const [q, setQ] = useState('');
-  const query = q.trim().toLowerCase();
+  // "developpe" finds "Développé"; every word must match the name, muscle or equipment.
+  const words = fold(q).split(/\s+/).filter(Boolean);
   const list = all
     .filter((x) => muscle === 'Tous' || x.muscle === muscle)
     .filter((x) => equip === 'Tout' || x.equip === equip)
-    .filter((x) => !query || x.name.toLowerCase().includes(query));
+    .filter((x) => { const hay = fold(`${x.name} ${x.muscle} ${x.equip}`); return words.every((w) => hay.includes(w)); });
 
   return (
     <>

@@ -15,6 +15,7 @@ import Profil from './screens/Profil.jsx';
 import Montre from './screens/Montre.jsx';
 import Routine from './screens/Routine.jsx';
 import Course from './screens/Course.jsx';
+import Historique from './screens/Historique.jsx';
 
 export default function App() {
   const [session, setSession] = useState(undefined);
@@ -58,6 +59,7 @@ function Shell({ user }) {
         <Route path="/variante" element={<Variante />} />
         <Route path="/coach" element={<Coach />} />
         <Route path="/course" element={<Course />} />
+        <Route path="/historique" element={<Historique />} />
         <Route path="/profil" element={<Profil user={user} />} />
         <Route path="/montre" element={<Montre />} />
         <Route path="/routines/:id" element={<Routine key={pathname} />} />

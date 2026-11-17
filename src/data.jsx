@@ -106,3 +106,25 @@ export async function deleteRunLog(id) {
   const { error } = await supabase.from('run_logs').delete().eq('id', id);
   if (error) throw error;
 }
+
+// Deleting a workout also deletes its sets (foreign key on delete cascade).
+export async function deleteWorkout(id) {
+  const { error } = await supabase.from('workouts').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function renameWorkout(id, title) {
+  const { error } = await supabase.from('workouts').update({ title }).eq('id', id);
+  if (error) throw error;
+}
+
+// All gym sets as a CSV in Hevy's column layout, so the file can be re-imported here or elsewhere.
+export function exportCsv(workouts) {
+  const q = (v) => (v == null ? '' : `"${String(v).replace(/"/g, '""')}"`);
+  const iso = (d) => (d ? new Date(d).toISOString() : '');
+  const rows = [['title', 'start_time', 'end_time', 'description', 'exercise_title', 'superset_id', 'exercise_notes', 'set_index', 'set_type', 'weight_kg', 'reps', 'distance_km', 'duration_seconds', 'rpe'].join(',')];
+  for (const w of [...workouts].sort((a, b) => a.start - b.start)) {
+    for (const s of w.sets) rows.push([q(w.title), q(iso(w.started_at)), q(iso(w.ended_at)), '""', q(s.exercise), s.superset_id ?? '', '""', s.set_index, q(s.set_type), s.weight_kg ?? '', s.reps ?? '', s.distance_km ?? '', s.duration_seconds ?? '', ''].join(','));
+  }
+  return rows.join('\n');
+}

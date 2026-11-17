@@ -166,6 +166,18 @@ export function SessionProvider({ children }) {
     return () => clearInterval(t);
   }, [active]);
 
+  // Keep the screen on during a session (rest timer visible without unlocking the phone).
+  useEffect(() => {
+    if (!active || !('wakeLock' in navigator)) return undefined;
+    let lock = null;
+    let stopped = false;
+    const get = async () => { try { lock = await navigator.wakeLock.request('screen'); if (stopped) lock.release(); } catch { /* refused or unsupported */ } };
+    const onVis = () => { if (document.visibilityState === 'visible') get(); };
+    get();
+    document.addEventListener('visibilitychange', onVis);
+    return () => { stopped = true; document.removeEventListener('visibilitychange', onVis); lock?.release?.().catch(() => {}); };
+  }, [active]);
+
   const resting = Boolean(s?.restUntil && s.restUntil > now);
   useEffect(() => {
     if (wasResting.current && !resting && s?.restUntil) restOverAlert();
@@ -276,6 +288,15 @@ export function SessionProvider({ children }) {
         if (!target) return false;
         const filled = fillFromPrev(s.exercises[ei], si);
         if (!(num(filled.reps) > 0)) return false;
+        // New personal best (estimated 1RM) on a working set, compared with history and this session.
+        let record = null;
+        const kgV = num(filled.kg), repsV = num(filled.reps);
+        if ((filled.type || 'normal') !== 'warmup' && kgV > 0) {
+          const est = kgV * (1 + repsV / 30);
+          const best = data.exercises.get(s.exercises[ei].name)?.best;
+          const today = Math.max(0, ...s.exercises[ei].sets.filter((x) => x.done && x.type !== 'warmup').map((x) => num(x.kg) * (1 + num(x.reps) / 30)));
+          if (best && est > best.e1rm && est > today) record = { kg: kgV, reps: repsV, name: s.exercises[ei].name };
+        }
         unlockAudio();
         update((c) => {
           const exercises = c.exercises.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((x, j) => (j === si ? { ...fillFromPrev(e, j), done: true } : x)) }));
@@ -308,7 +329,7 @@ export function SessionProvider({ children }) {
             restTotal: rest,
           };
         });
-        return true;
+        return record ? { record } : true;
       },
       unvalidate: (ei, si) => mapEx(ei, (e) => ({ ...e, sets: e.sets.map((x, j) => (j === si ? { ...x, done: false } : x)) })),
       addSet: (ei) => mapEx(ei, (e) => {

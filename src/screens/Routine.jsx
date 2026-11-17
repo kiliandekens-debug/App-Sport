@@ -63,9 +63,13 @@ export default function Routine() {
 
   const remove = async () => {
     if (!(await ui.confirm({ title: `Supprimer « ${r.name} » ?`, message: 'Tes séances passées ne sont pas touchées.', ok: 'Supprimer', danger: true }))) return;
-    await deleteRoutine(r.id);
-    await data.refresh();
-    nav('/');
+    try { await deleteRoutine(r.id); await data.refresh(); nav('/'); } catch (e) { setErr(e.message || String(e)); }
+  };
+  const dirty = JSON.stringify(existing ? { name: existing.name, exercises: existing.exercises || [] } : { name: '', exercises: [] }) !== JSON.stringify({ name: r.name, exercises: r.exercises });
+  const leave = async (e) => {
+    if (!dirty) return;
+    e.preventDefault();
+    if (await ui.confirm({ title: 'Quitter sans enregistrer ?', message: 'Tes modifications de la routine seront perdues.', ok: 'Quitter', danger: true })) nav('/');
   };
 
   if (picking) {
@@ -86,7 +90,7 @@ export default function Routine() {
   return (
     <main className="screen" style={{ paddingBottom: 'calc(110px + env(safe-area-inset-bottom))' }}>
       <div className="head-row">
-        <Link to="/" aria-label="Retour à l'accueil" className="icon-btn"><Icon name="back" /></Link>
+        <Link to="/" aria-label="Retour à l'accueil" className="icon-btn" onClick={leave}><Icon name="back" /></Link>
         <h1 className="title-s grow">{id === 'nouvelle' ? 'Nouvelle routine' : 'Routine'}</h1>
         <button className="btn" onClick={() => save(false)} disabled={saving}>{saving ? '…' : 'Enregistrer'}</button>
       </div>

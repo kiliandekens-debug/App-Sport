@@ -1,6 +1,9 @@
 import { useRef, useState } from 'react';
 import { supabase } from '../supabase.js';
-import { useData, importWorkouts } from '../data.jsx';
+import { Link } from 'react-router-dom';
+import { useData, importWorkouts, exportCsv } from '../data.jsx';
+import { useSession } from '../session.jsx';
+import { useUi } from '../ui.jsx';
 import { parseHevyCsv } from '../lib/csv.js';
 import { Bars, Icon, GlassHeader } from '../components.jsx';
 import { fmtDay, fmtInt } from '../lib/stats.js';
@@ -15,6 +18,21 @@ export default function Profil({ user }) {
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [theme, setThemeState] = useState(getTheme);
+  const session = useSession();
+  const ui = useUi();
+  const download = () => {
+    const blob = new Blob(['\ufeff' + exportCsv(data.workouts)], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `salle-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+  const signOut = async () => {
+    if (session.active && !(await ui.confirm({ title: 'Une séance est en cours', message: 'Elle sera perdue si tu te déconnectes maintenant.', ok: 'Se déconnecter', danger: true }))) return;
+    session.cancel();
+    supabase.auth.signOut();
+  };
   const { summary: s, months, muscles } = data;
   const facts = weeklyFacts(data);
   const name = user?.user_metadata?.name || 'Kilian';
@@ -103,13 +121,15 @@ export default function Profil({ user }) {
 
       <div className="section">
         <span className="label">Données</span>
+        <Link to="/historique" className="btn" style={{ height: 52, justifyContent: 'flex-start' }}><Icon name="list" size={18} /><span className="grow" style={{ textAlign: 'left' }}>Historique des séances</span><Icon name="chevron" size={18} /></Link>
         <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={onFile} />
         <button className="btn" style={{ borderRadius: 14, height: 52 }} disabled={busy} onClick={() => fileRef.current?.click()}>
           <Icon name="upload" size={18} />Importer un export Hevy (.csv)
         </button>
         {status && <span className="small soft">{status}</span>}
+        {s.sessions > 0 && <button className="btn" style={{ height: 52 }} onClick={download}><Icon name="upload" size={18} />Exporter mes séances de salle (.csv)</button>}
         <span className="xs muted">Les séances déjà présentes (même date et heure) sont ignorées, tu peux réimporter sans doublons.</span>
-        <button className="btn" style={{ color: 'var(--danger)' }} onClick={() => supabase.auth.signOut()}>Se déconnecter</button>
+        <button className="btn" style={{ color: 'var(--danger)' }} onClick={signOut}>Se déconnecter</button>
         <span className="xs muted" style={{ paddingBottom: 12 }}>Connecté : {user?.email}</span>
       </div>
     </main>

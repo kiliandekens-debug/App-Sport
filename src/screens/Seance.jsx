@@ -9,6 +9,16 @@ import { Icon, ExerciseImage, SupersetTag } from '../components.jsx';
 import ExerciseSheet from './ExerciseSheet.jsx';
 
 const TYPE_COLOR = { warmup: 'var(--warm)', dropset: 'var(--drop)', failure: 'var(--danger)' };
+// Validates a set and says why when it cannot; celebrates a new personal best.
+export function onValidate(s, ui, ei, si) {
+  const r = s.validate(ei, si);
+  if (!r) ui.notify('Indique le nombre de répétitions');
+  else if (r.record) {
+    ui.notify(`Nouveau record : ${fmtKg(r.record.kg)} kg × ${r.record.reps}`);
+    try { navigator.vibrate?.([30, 40, 30]); } catch { /* not supported */ }
+  }
+}
+
 const restLabel = (sec) => (sec ? mmss(sec) : 'Désactivé');
 
 // One exercise with all its sets, as in Hevy: everything is editable in place.
@@ -86,7 +96,7 @@ function ExerciseCard({ e, ei, s, best, isCurrent, onOpen, cardRef }) {
               {typeBtn}<span className="muted small">{prev}</span>
               <input aria-label={`Charge en kg, série ${i + 1}`} inputMode="decimal" value={x.kg} placeholder={p ? fmtKg(p.kg) : 'kg'} onFocus={(ev) => ev.target.select()} onChange={(ev) => s.setSet(ei, i, { kg: ev.target.value })} />
               <input aria-label={`Répétitions, série ${i + 1}`} inputMode="numeric" value={x.reps} placeholder={p ? String(p.reps) : 'reps'} onFocus={(ev) => ev.target.select()} onChange={(ev) => s.setSet(ei, i, { reps: ev.target.value })} />
-              <button className="check outline" aria-label={`Valider la série ${i + 1}`} onClick={() => { if (!s.validate(ei, i)) ui.notify('Indique le nombre de répétitions'); }}><Icon name="check" size={18} width={2.5} /></button>
+              <button className="check outline" aria-label={`Valider la série ${i + 1}`} onClick={() => onValidate(s, ui, ei, i)}><Icon name="check" size={18} width={2.5} /></button>
             </div>
           );
         })}
@@ -186,13 +196,13 @@ export default function Seance() {
           <button className="grow" style={{ background: 'none', border: 'none', color: 'inherit', textAlign: 'left', padding: 0, minHeight: 44 }} onClick={rename} aria-label={`Renommer la séance ${s.title}`}>
             <span className="display" style={{ fontSize: 20, lineHeight: 1.15 }}>{s.title}</span>
           </button>
-          <Link to="/montre" aria-label="Vue montre" className="icon-btn"><Icon name="watch" /></Link>
+          <button className="btn primary" style={{ height: 40, padding: '0 16px', borderRadius: 20, fontSize: 15 }} onClick={finish} disabled={saving}>{saving ? '…' : 'Terminer'}</button>
         </div>
         <div className="session-stats" style={{ alignItems: 'center' }}>
           <span><b className="accent" style={{ color: 'var(--accent)' }}>{mmss(s.elapsed)}</b>durée</span>
           <span><b>{fmtInt(s.volume)}</b>kg</span>
           <span><b>{s.done}/{s.total}</b>séries</span>
-          <button className="btn primary" style={{ height: 38, padding: "0 16px", borderRadius: 19, fontSize: 15, marginLeft: "auto" }} onClick={finish} disabled={saving}>{saving ? '…' : 'Terminer'}</button>
+          <Link to="/montre" aria-label="Vue montre" className="icon-btn" style={{ width: 36, height: 36, marginLeft: 'auto', borderRadius: 12 }}><Icon name="watch" size={18} /></Link>
         </div>
         <div className="session-bar"><div style={{ width: `${s.total ? (s.done / s.total) * 100 : 0}%` }} /></div>
       </header>
@@ -262,7 +272,7 @@ export default function Seance() {
                 <span className="xs muted">À toi : {ex.name}</span>
                 <span className="display" style={{ fontSize: 22 }}>{(() => { const x = ex.sets[s.activeSet]; const pv = prevOf(ex, s.activeSet); const kg = x.kg !== '' ? num(x.kg) : pv?.kg; const reps = x.reps !== '' ? x.reps : pv?.reps; return `${kg != null ? fmtKg(kg) : '?'} kg × ${reps ?? '?'}`; })()}</span>
               </button>
-              <button className="btn primary" style={{ height: 56, borderRadius: 16, padding: '0 24px', fontSize: 16 }} onClick={() => { if (!s.validate(ei, s.activeSet)) ui.notify('Indique le nombre de répétitions'); }}>Valider</button>
+              <button className="btn primary" style={{ height: 56, borderRadius: 16, padding: '0 24px', fontSize: 16 }} onClick={() => onValidate(s, ui, ei, s.activeSet)}>Valider</button>
             </div>
           ) : (
             <div className="row">
