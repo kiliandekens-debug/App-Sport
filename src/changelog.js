@@ -6,6 +6,14 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.6.0', date: '2026-11-18', title: 'Analyse de séance',
+    items: [
+      'Après chaque séance (Coach) et dans chaque séance de l\'historique : la zone travaillée est détectée automatiquement.',
+      'Schéma du corps face et dos : chaque muscle se colore selon le nombre de séries reçues. Touche un muscle pour savoir ce qu\'il fait et quels exercices l\'ont travaillé.',
+      'Conseils pour améliorer la séance, chacun avec sa source scientifique : volume par séance et par semaine, fréquence, choix des exercices, ordre, plages de reps, équilibre poussée et tirage, jambes.',
+    ],
+  },
+  {
     version: '1.5.4', date: '2026-11-18', title: 'Petites corrections de la nuit',
     items: [
       'Coach : la charge conseillée (ex. « 65,8 kg ») ne se cache plus sous le bouton + sur l\'écran de l\'iPhone.',

@@ -3,6 +3,7 @@ import { useModal } from './modal.js';
 import { useData, deleteWorkout, renameWorkout, deleteRunLog } from './data.jsx';
 import { useUi } from './ui.jsx';
 import { Icon, ExerciseImage } from './components.jsx';
+import { SessionAnalysis } from './analysis.jsx';
 import { fmtKg, fmtInt, sameDay, isWork, isPlausible } from './lib/stats.js';
 import { mmss, hms, vdotOf, raceTime } from './lib/running.js';
 
@@ -142,6 +143,8 @@ export function WorkoutSheet({ id, onClose }) {
                 );
               })}
             </div>
+
+            <SessionAnalysis workout={w} />
 
             <div className="row" style={{ gap: 8, paddingTop: 4 }}>
               <button className="btn grow" onClick={rename}><Icon name="edit" size={16} />Renommer</button>

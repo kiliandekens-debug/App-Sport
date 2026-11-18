@@ -6,6 +6,7 @@ import { reviewLastSession, weeklyFacts } from '../lib/coach.js';
 import { fmtKg, fmtInt, fmtDay, sameDay, titleKey, isWork, isPlausible } from '../lib/stats.js';
 import { incrementOf } from '../lib/exercises.js';
 import { Icon, ExerciseImage, GlassHeader } from '../components.jsx';
+import { SessionAnalysis } from '../analysis.jsx';
 
 const KIND = {
   up: ['Charge en hausse', 'var(--done)', 'var(--ok)'],
@@ -115,6 +116,8 @@ export default function Coach() {
             </span>
           )}
         </div>
+
+        <SessionAnalysis workout={w} />
 
         <div className="between" style={{ paddingTop: 12 }}>
           <h2 className="label">Pour la prochaine fois</h2>

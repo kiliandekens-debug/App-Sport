@@ -119,6 +119,18 @@ with sync_playwright() as p:
     check(len(T['workouts']) == n0 + 1, 'finished session saved')
     check('/coach' in pg.url, 'redirected to coach after session')
     pg.screenshot(path=f'{SHOTS}/flow-coach.png', full_page=True)
+    check(pg.get_by_text('Zone travaillée').count() == 1, 'coach shows session analysis')
+    check(pg.locator('.bm svg').count() == 2, 'body map front and back drawn')
+    check(pg.locator('.bm-m.hit').count() > 0, 'worked muscles highlighted')
+    pg.locator('.ana-head').first.click(); pg.wait_for_timeout(200)
+    check(pg.locator('.ana-more').count() == 1, 'muscle row expands with explanation')
+
+    # Analysis in the history sheet.
+    pg.goto(BASE + '/historique'); pg.wait_for_timeout(1200)
+    pg.locator('.list button').filter(has_not_text=' km').first.click(); pg.wait_for_timeout(600)
+    check(pg.locator('.wsheet .ana').count() == 2, 'history sheet shows analysis')
+    pg.screenshot(path=f'{SHOTS}/flow-sheet.png', full_page=False)
+    pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
 
     # Regression 1.5.3: a routine using library names must pick up the coach plan
     # and history stored under the imported (Hevy) names.
