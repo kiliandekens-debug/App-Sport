@@ -108,9 +108,12 @@ with sync_playwright() as p:
     pg.get_by_text('Créer depuis mon historique').click(); pg.wait_for_timeout(1200)
     check(len(T['routines']) >= 3, 'routines created from history')
     pg.get_by_role('button', name='Démarrer', exact=True).click(); pg.wait_for_timeout(800)
-    for _ in range(3):
+    for i in range(3):
         v = pg.locator('.dock').get_by_role('button', name='Valider')
         if v.count(): v.click(); pg.wait_for_timeout(200)
+        if i == 0:
+            check(pg.locator('.session-head .head-rest').count() == 1, 'rest countdown shown in session header')
+            pg.screenshot(path=f'{SHOTS}/flow-rest-head.png')
         s = pg.get_by_role('button', name='Passer', exact=True)
         if s.count(): s.click(); pg.wait_for_timeout(200)
     n0 = len(T['workouts'])

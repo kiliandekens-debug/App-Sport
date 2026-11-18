@@ -6,6 +6,10 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.6.1', date: '2026-11-18', title: 'Repos visible en haut',
+    items: ['Pendant un repos, le chrono s\'affiche aussi dans l\'en-tête de séance, à côté des séries : il reste visible même quand tu fais défiler la page.'],
+  },
+  {
     version: '1.6.0', date: '2026-11-18', title: 'Analyse de séance',
     items: [
       'Après chaque séance (Coach) et dans chaque séance de l\'historique : la zone travaillée est détectée automatiquement.',

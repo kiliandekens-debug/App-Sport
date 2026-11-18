@@ -202,7 +202,13 @@ export default function Seance() {
           <span><b className="accent" style={{ color: 'var(--accent)' }}>{mmss(s.elapsed)}</b>durée</span>
           <span><b>{fmtInt(s.volume)}</b>kg</span>
           <span><b>{s.done}/{s.total}</b>séries</span>
-          <Link to="/montre" aria-label="Vue montre" className="icon-btn" style={{ width: 36, height: 36, marginLeft: 'auto', borderRadius: 12 }}><Icon name="watch" size={18} /></Link>
+          {s.resting ? (
+            <span className="head-rest" role="timer" aria-label={`Repos restant ${mmss(s.restLeft)}`}>
+              <Icon name="timer" size={15} width={2.4} /><b>{mmss(s.restLeft)}</b>
+            </span>
+          ) : (
+            <Link to="/montre" aria-label="Vue montre" className="icon-btn" style={{ width: 36, height: 36, marginLeft: 'auto', borderRadius: 12 }}><Icon name="watch" size={18} /></Link>
+          )}
         </div>
         <div className="session-bar"><div style={{ width: `${s.total ? (s.done / s.total) * 100 : 0}%` }} /></div>
       </header>
