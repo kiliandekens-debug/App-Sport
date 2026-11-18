@@ -23,13 +23,13 @@ function setsText(sets) {
     : sets.map((s) => `${fmtKg(s.weight_kg)} × ${s.reps}`).join(', ');
 }
 
-function Stepper({ label, value, name, onStep }) {
-  const btn = { width: 40, height: 44, background: 'var(--card)', border: '1px solid var(--line)' };
+function Stepper({ label, value, unit, name, onStep }) {
+  const btn = { width: 36, flexShrink: 0, height: 44, background: 'var(--card)', border: '1px solid var(--line)' };
   return (
     <div className="row" style={{ gap: 4, padding: 4, borderRadius: 12, background: 'var(--raised)' }}>
       <button className="icon-btn" style={btn} aria-label={`Moins de ${label} sur ${name}`} onClick={() => onStep(-1)}><Icon name="minus" size={16} /></button>
-      <div className="grow stack" style={{ gap: 0, alignItems: 'center' }}>
-        <span className="display" style={{ fontSize: 22, fontWeight: 800, lineHeight: 1, whiteSpace: 'nowrap', letterSpacing: '-0.02em' }}>{value}</span>
+      <div className="grow stack" style={{ gap: 0, alignItems: 'center', minWidth: 0 }}>
+        <span className="display" style={{ fontSize: String(value).length > 4 ? 19 : 22, fontWeight: 800, lineHeight: 1, whiteSpace: 'nowrap', letterSpacing: '-0.02em' }}>{value}{unit && <span style={{ fontSize: 13, fontWeight: 700, marginLeft: 2 }}>{unit}</span>}</span>
         <span className="xs muted">{label}</span>
       </div>
       <button className="icon-btn" style={btn} aria-label={`Plus de ${label} sur ${name}`} onClick={() => onStep(1)}><Icon name="plus" size={16} /></button>
@@ -155,7 +155,7 @@ export default function Coach() {
               {r.target && (
                 <>
                   <div className="grid2">
-                    <Stepper label="charge" value={`${fmtKg(r.target.target_kg)} kg`} name={r.name} onStep={(d) => step(r, 'target_kg', d)} />
+                    <Stepper label="charge" value={fmtKg(r.target.target_kg)} unit="kg" name={r.name} onStep={(d) => step(r, 'target_kg', d)} />
                     <Stepper label="reps" value={`× ${r.target.target_reps}`} name={r.name} onStep={(d) => step(r, 'target_reps', d)} />
                   </div>
                   {r.isSaved && <span className="row xs" style={{ gap: 6, color: 'var(--ok)', fontWeight: 700 }}><Icon name="check" size={14} width={3} />Appliqué à la prochaine séance</span>}

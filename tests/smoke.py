@@ -88,6 +88,14 @@ with sync_playwright() as p:
             sw = pg.evaluate('document.documentElement.scrollWidth')
             check(sw <= 390, f'{mode} {path} no horizontal overflow ({sw})')
             check(pg.locator('main').count() > 0, f'{mode} {path} renders')
+            if path == '/coach':
+                # Regression 1.5.4: a 3-digit load must not slide under the + button of the stepper.
+                over = pg.evaluate("""() => { const b = document.querySelector('button[aria-label^="Plus de charge"]'); if (!b) return -1;
+                  const v = b.previousElementSibling.querySelector('.display'); v.firstChild.textContent = '102,5';
+                  v.style.fontSize = '19px'; // what the component picks for a 5-character value
+                  return Math.round(v.getBoundingClientRect().right - b.getBoundingClientRect().left); }""")
+                check(over <= 0, f'{mode} coach stepper value fits ({over})')
+                pg.goto(BASE + path); pg.wait_for_timeout(1200)
             pg.screenshot(path=f'{SHOTS}/{mode}{path.replace("/", "-") or "-home"}.png', full_page=True)
         pg.close()
 
