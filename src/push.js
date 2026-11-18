@@ -55,12 +55,21 @@ export async function testPush() {
 }
 
 // Keeps exactly one pending "end of rest" notification in step with the session's timer.
+// Calls are queued: two quick changes (+15 s tapped twice) must not interleave their
+// delete and insert, or the older « Repos terminé » would stay scheduled and arrive too early.
 let last = null;
-export async function syncRestPush(restUntil, body) {
-  if (!pushEnabled()) return;
+let queue = Promise.resolve();
+export function syncRestPush(restUntil, body) {
+  if (!pushEnabled()) return queue;
   const key = restUntil ? `${restUntil}|${body}` : null;
-  if (key === last) return;
+  if (key === last) return queue;
   last = key;
+  // A call overtaken by a newer one before its turn has nothing left to do.
+  queue = queue.then(() => (key === last ? applyRestPush(restUntil, body) : undefined));
+  return queue;
+}
+
+async function applyRestPush(restUntil, body) {
   try {
     await supabase.from('scheduled_pushes').delete().is('sent_at', null).eq('tag', 'rest');
     if (restUntil && restUntil > Date.now() + 3000) {

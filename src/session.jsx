@@ -215,7 +215,8 @@ export function SessionProvider({ children }) {
       const p = prevOf(ex, i);
       const kg = x.kg !== '' ? x.kg : p ? String(p.kg).replace('.', ',') : '?';
       const reps = x.reps !== '' ? x.reps : p ? p.reps : '?';
-      body = `${ex.name} : ${kg} kg × ${reps}`;
+      // Bodyweight (0 kg): « Traction : × 8 » rather than « 0 kg × 8 ».
+      body = Number(String(kg).replace(',', '.')) === 0 ? `${ex.name} : × ${reps}` : `${ex.name} : ${kg} kg × ${reps}`;
     } else if (s.exercises.some((e) => e.sets.some((x) => !x.done))) body = 'Exercice suivant.';
     syncRestPush(s.restUntil, body);
   }, [s?.restUntil, s?.current]); // eslint-disable-line react-hooks/exhaustive-deps
