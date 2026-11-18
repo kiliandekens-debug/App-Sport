@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useData, saveRoutine } from '../data.jsx';
 import { useSession } from '../session.jsx';
-import { fmtDay, fmtKg, fmtInt, sameDay, titleKey, isWork, isPlausible } from '../lib/stats.js';
+import { fmtDay, sameDay, titleKey } from '../lib/stats.js';
 import { routineFromHistory } from '../lib/routines.js';
 import { Icon, ExerciseImage, GlassHeader } from '../components.jsx';
 import { buildPlan, segments, intensityOf } from '../lib/running.js';
@@ -36,16 +36,16 @@ export default function Accueil({ user }) {
     : null;
   const next = suggested || fromHistory;
   const last = data.workouts[0] || null;
-  const lastWork = last ? last.sets.filter((x) => isWork(x) && isPlausible(x)) : [];
   // What happened, or is planned, on each day of the week: gym, run, or rest.
   const planned = run ? run.weeks.flat() : [];
   const weekDays = data.weekDays.map((d) => ({ ...d, ...dayInfo(data, d.date, planned) }));
   const [selDay, setSelDay] = useState(() => Math.max(0, data.weekDays.findIndex((d) => d.today)));
+  const [picked, setPicked] = useState(false);
   const sel = weekDays[selDay];
+  const selEmpty = !sel.gym.length && !sel.runs.length && !(sel.plan && !sel.past);
   const [openW, setOpenW] = useState(null);
   const [openR, setOpenR] = useState(null);
-  const weekKm = data.runLogs.filter((l) => new Date(l.done_at) >= weekDays[0].date).reduce((a, l) => a + Number(l.distance_km || 0), 0);
-
+  
   const startRoutine = (r) => { session.startRoutine(r); nav('/seance'); };
   const startProgram = (title) => { session.start(title); nav('/seance'); };
   const importFromHistory = async () => {
@@ -72,26 +72,18 @@ export default function Accueil({ user }) {
             const kind = gym ? 'gym' : d.run ? 'run' : d.plan && !d.past ? 'planned' : 'rest';
             const what = [gym && 'muscu', d.run && 'course', !gym && !d.run && d.plan && !d.past && `course prévue`].filter(Boolean).join(' et ') || 'repos';
             return (
-              <button key={d.date.toISOString()} className="day" onClick={() => setSelDay(i)} aria-pressed={selDay === i}
+              <button key={d.date.toISOString()} className="day" onClick={() => { setSelDay(i); setPicked(true); }} aria-pressed={selDay === i}
                 aria-label={`${d.date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' })} : ${what}`}>
                 <span style={d.today ? { color: 'var(--text)', fontWeight: 800 } : null}>{d.letter}</span>
                 <span className={`dot k-${kind}${d.today ? ' today' : ''}${selDay === i ? ' sel' : ''}`}>
-                  <Icon name={kind === 'gym' ? 'dumbbell' : kind === 'rest' ? 'moon' : 'run'} size={kind === 'rest' ? 15 : 19} width={kind === 'rest' ? 1.8 : 2.2} />
+                  {kind === 'rest' ? <span className="dnum">{d.date.getDate()}</span> : <Icon name={kind === 'gym' ? 'dumbbell' : 'run'} size={19} width={2.2} />}
                   {gym && d.run && <span className="dot-badge"><Icon name="run" size={11} width={2.4} /></span>}
                 </span>
               </button>
             );
           })}
         </div>
-        <DayDetail d={sel} onRun={(key) => nav('/course', { state: { pick: key } })} onGym={(id) => setOpenW(id)} onRunLog={(id) => setOpenR(id)} />
-        {(data.summary.sessions > 0 || weekKm > 0) && (
-          <div className="row week-stats">
-            {(data.week.sessions > 0 || !weekKm) && <span><b className="display">{data.week.sessions}</b>séance{data.week.sessions > 1 ? 's' : ''} de salle</span>}
-            {data.week.kg > 0 && <span><b className="display">{fmtKg(data.week.kg / 1000)} t</b>soulevées</span>}
-            {weekKm > 0 && <span><b className="display">{fmtKg(weekKm)} km</b>courus</span>}
-            {data.week.streak > 1 && <span className="row" style={{ gap: 5, color: 'var(--ok)' }}><Icon name="flame" size={16} /><b className="display" style={{ color: 'var(--ok)' }}>{data.week.streak}</b>semaines d'affilée</span>}
-          </div>
-        )}
+        {(!selEmpty || picked) && <DayDetail d={sel} onRun={(key) => nav('/course', { state: { pick: key } })} onGym={(id) => setOpenW(id)} onRunLog={(id) => setOpenR(id)} />}
       </div>
 
       {!data.workouts.length && !session.active && (
@@ -100,7 +92,7 @@ export default function Accueil({ user }) {
             <span className="tile-icon" style={{ background: 'var(--accent)', color: 'var(--accent-ink)' }}><Icon name="upload" size={20} /></span>
             <span className="grow stack" style={{ gap: 2 }}>
               <span style={{ fontWeight: 650 }}>Importe ton historique Hevy</span>
-              <span className="xs muted">Dans Hevy : Profil, Réglages, Exporter les données. Puis ici : Profil, Importer. Tes charges, records et routines seront repris.</span>
+              <span className="xs muted">Tes charges, records et routines seront repris.</span>
             </span>
             <Icon name="chevron" size={18} />
           </span>
@@ -135,35 +127,31 @@ export default function Accueil({ user }) {
         </div>
       ) : null}
 
-      <Link to="/course" className="card tile" style={{ margin: '12px 20px 0' }}>
-        <span className="row" style={{ gap: 10 }}>
-          <span className="tile-icon"><Icon name="timer" size={20} /></span>
-          <span className="grow stack" style={{ gap: 1 }}>
-            <span className="xs muted">Course à pied</span>
-            <span style={{ fontWeight: 600 }}>{run ? (run.next ? `${run.next.title}, ${run.next.mins} min` : 'Plan terminé') : 'Crée ton plan de course'}</span>
+      <div className="list home-links" style={{ margin: '12px 20px 0' }}>
+        <Link to="/course" className="home-link">
+          <span className="tile-icon k-run"><Icon name="run" size={20} /></span>
+          <span className="grow stack" style={{ gap: 1, minWidth: 0 }}>
+            <span className="xs muted">Course</span>
+            <span className="ellipsis" style={{ fontWeight: 600 }}>{run ? (run.next ? `${run.next.title}, ${run.next.mins} min` : 'Plan terminé') : 'Créer mon plan'}</span>
           </span>
+          {run?.next && (
+            <span className="mini-run" aria-hidden="true">
+              {segments(run.next).map((g, i) => <span key={i} className={`seg-${g.type}`} style={{ flexGrow: g.mins, height: `${Math.round(intensityOf(g.type) * 100)}%` }} />)}
+            </span>
+          )}
           <Icon name="chevron" size={18} />
-        </span>
-        {run?.next && (
-          <span className="mini-run" aria-hidden="true">
-            {segments(run.next).map((g, i) => <span key={i} className={`seg-${g.type}`} style={{ flexGrow: g.mins, height: `${Math.round(intensityOf(g.type) * 100)}%` }} />)}
-          </span>
-        )}
-      </Link>
-
-      {last && (
-        <Link to="/coach" className="card tile" style={{ margin: '12px 20px 0' }}>
-          <span className="row" style={{ gap: 10 }}>
+        </Link>
+        {last && (
+          <Link to="/coach" className="home-link">
             <span className="tile-icon"><Icon name="spark" size={20} /></span>
-            <span className="grow stack" style={{ gap: 1 }}>
-              <span className="xs muted">Dernière séance, {ago(last.start)}</span>
-              <span style={{ fontWeight: 600 }}>{last.title}</span>
-              <span className="xs muted">{lastWork.length} séries, {fmtInt(lastWork.reduce((a, x) => a + x.weight_kg * x.reps, 0))} kg. Voir le bilan du coach</span>
+            <span className="grow stack" style={{ gap: 1, minWidth: 0 }}>
+              <span className="xs muted">Bilan, {ago(last.start)}</span>
+              <span className="ellipsis" style={{ fontWeight: 600 }}>{last.title}</span>
             </span>
             <Icon name="chevron" size={18} />
-          </span>
-        </Link>
-      )}
+          </Link>
+        )}
+      </div>
 
       <div className="section">
         <div className="between">
@@ -181,7 +169,7 @@ export default function Accueil({ user }) {
         )) : (
           <div className="card">
             <span style={{ fontWeight: 600 }}>Pas encore de routine</span>
-            <span className="small muted">Je peux créer tes routines à partir de tes séances habituelles ({data.programs.map((p) => p.title).join(', ') || 'aucune pour l\'instant'}). Tu pourras ensuite les modifier.</span>
+            <span className="small muted">{data.programs.length ? `À partir de tes séances habituelles : ${data.programs.map((p) => p.title).join(', ')}.` : 'Crée ta première routine.'}</span>
             {!!data.programs.length && <button className="btn primary" onClick={importFromHistory} disabled={busy}>{busy ? 'Création…' : 'Créer depuis mon historique'}</button>}
             <Link to="/routines/nouvelle" className="btn">Créer une routine vide</Link>
           </div>
@@ -190,8 +178,8 @@ export default function Accueil({ user }) {
 
       {!session.active && (
         <div className="section">
-          <button className="btn dashed" style={{ height: 52, borderRadius: 14 }} onClick={() => { session.startEmpty(); nav('/seance'); }}>
-            <Icon name="plus" size={18} />Démarrer une séance vide
+          <button className="text-btn" onClick={() => { session.startEmpty(); nav('/seance'); }}>
+            <Icon name="plus" size={16} />Séance libre
           </button>
         </div>
       )}

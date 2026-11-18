@@ -274,6 +274,8 @@ export default function Course() {
   const [picked, setPicked] = useState(location.state?.pick || null);
   // The plan's paces include the coach's current adjustment.
   const [showPlan, setShowPlan] = useState(false);
+  const [tab, setTab] = useState('seance');
+  const pick = (key) => { setPicked(key); setTab('seance'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const profile = data.runProfile;
 
   const plan = useMemo(() => (profile ? buildPlan(profile, data.runLogs, data.workouts) : null), [profile, data.runLogs, data.workouts]);
@@ -361,9 +363,16 @@ export default function Course() {
       <GlassHeader eyebrow={notStarted ? `${GOALS[profile.goal]?.label || 'Course'}, première sortie ${whenLabel(firstSession).toLowerCase()}` : `${GOALS[profile.goal]?.label || 'Course'}, semaine ${Math.min(plan.current + 1, plan.total)} sur ${plan.total}, ${PHASES[plan.phase].label.toLowerCase()}`} title="Course" />
 
       <div className="pad stack" style={{ gap: 12, paddingTop: 10 }}>
+        {!draft && (
+          <div className="seg" role="tablist" aria-label="Sections de la course" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+            {[['seance', 'Séance'], ['plan', 'Programme'], ['suivi', 'Suivi']].map(([k, l]) => (
+              <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>
+            ))}
+          </div>
+        )}
         {draft && <ResultForm draft={draft} session={next} note={draftNote} onSave={saveResult} onCancel={() => setDraft(null)} />}
 
-        {!draft && plan.finished && (
+        {!draft && tab === 'seance' && plan.finished && (
           <div className="card stack" style={{ gap: 8 }}>
             <span className="display" style={{ fontSize: 22 }}>Plan terminé</span>
             <span className="small muted">Tu as fait toutes les séances prévues. Définis un nouvel objectif pour continuer.</span>
@@ -371,14 +380,14 @@ export default function Course() {
           </div>
         )}
 
-        {!draft && notStarted && (
+        {!draft && tab === 'seance' && notStarted && (
           <div className="card stack" style={{ gap: 6 }}>
             <span style={{ fontWeight: 650 }}>Ton programme commence le {new Date(`${String(profile.started_on).slice(0, 10)}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-            <span className="small muted" style={{ lineHeight: 1.45 }}>En attendant, cours si tu en as envie, en footing facile et sans dépasser 30 minutes. Tu peux enregistrer ces sorties, le coach en tient compte.</span>
+            <span className="small muted" style={{ lineHeight: 1.45 }}>D'ici là : footing facile si tu veux, 30 min maximum.</span>
           </div>
         )}
 
-        {!draft && next && (
+        {!draft && tab === 'seance' && next && (
           <>
             <div className="card hero" style={{ gap: 8 }}>
               <h2 className="label">{isPicked ? `Séance choisie : ${whenLabel(next).toLowerCase()}` : `Prochaine sortie : ${whenLabel(next).toLowerCase()}`}</h2>
@@ -390,25 +399,26 @@ export default function Course() {
               {(next.recover || next.taper) && <span className="small" style={{ fontWeight: 600 }}>{next.taper ? 'Semaine d\'affûtage : on garde les jambes fraîches.' : 'Semaine allégée : volume réduit de 20 % pour assimiler.'}</span>}
             </div>
 
-            <section className="card stack" style={{ gap: 10 }} aria-label="Le mot du coach">
-              <h2 className="label">Pourquoi cette séance</h2>
-              <span className="small" style={{ lineHeight: 1.5 }}>{next.why}</span>
-              <div className="row" style={{ alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 14, background: 'var(--raised)' }}>
-                <span style={{ width: 10, height: 10, borderRadius: 5, marginTop: 5, flexShrink: 0, background: FILL[mainType(next)] }} />
-                <span className="small" style={{ lineHeight: 1.45 }}><b>Ressenti visé :</b> {FEEL[mainType(next)] || FEEL.easy}</span>
-              </div>
-            </section>
-
-            <section className="card stack" style={{ gap: 10 }} aria-label="Profil de la séance">
-              <h2 className="label">La séance en un coup d'œil</h2>
+            <section className="card stack" style={{ gap: 12 }} aria-label="La séance">
               <RunChart session={next} />
+              <div className="row" style={{ alignItems: 'flex-start', gap: 10 }}>
+                <span style={{ width: 10, height: 10, borderRadius: 5, marginTop: 5, flexShrink: 0, background: FILL[mainType(next)] }} />
+                <span className="small" style={{ lineHeight: 1.45 }}><b>Ressenti :</b> {FEEL[mainType(next)] || FEEL.easy}</span>
+              </div>
+              <details className="disclose">
+                <summary>Pourquoi cette séance</summary>
+                <p className="small" style={{ lineHeight: 1.5 }}>{next.why}</p>
+              </details>
             </section>
 
-            <section className="card stack" style={{ gap: 12 }} aria-label="À saisir dans Exercice">
-              <div className="stack" style={{ gap: 2 }}>
-                <h2 className="label">À saisir dans Exercice</h2>
-                <span className="small muted">{apple.where}</span>
-              </div>
+            <details className="card stack disclose-card" aria-label="À saisir dans Exercice">
+              <summary>
+                <span className="grow stack" style={{ gap: 2 }}>
+                  <span style={{ fontWeight: 650 }}>Programmer la séance sur la montre</span>
+                  <span className="xs muted">{apple.where}</span>
+                </span>
+                <Icon name="chevron" size={16} />
+              </summary>
               <ol className="stack" style={{ gap: 10, margin: 0, padding: 0, listStyle: 'none' }}>
                 {apple.steps.map((s, i) => (
                   <li key={i} className="row" style={{ alignItems: 'flex-start', gap: 12 }}>
@@ -420,12 +430,12 @@ export default function Course() {
                   </li>
                 ))}
               </ol>
-            </section>
+            </details>
 
             {plan.reentry && plan.reentry.weeks.length > 0 && (
               <div className="warn" style={{ gap: 4 }}>
                 <span className="xs" style={{ fontWeight: 700 }}>Reprise après {plan.reentry.gap} jours</span>
-                <span className="small" style={{ lineHeight: 1.45 }}>Volume à {plan.reentry.weeks.map((x) => `${Math.round(x * 100)} %`).join(', puis ')} sur les prochaines semaines.{plan.reentry.easyWeeks ? ` Tes jours de qualité restent en place mais allégés (lignes droites, puis fartlek doux) ; les vraies séances reviennent ${plan.reentry.backOn}.` : ''} Tu peux désactiver la reprise dans « Modifier ».</span>
+                <span className="small" style={{ lineHeight: 1.45 }}>Volume à {plan.reentry.weeks.map((x) => `${Math.round(x * 100)} %`).join(' puis ')}.{plan.reentry.easyWeeks ? ` Séances de qualité allégées jusqu'à ${plan.reentry.backOn}.` : ''}</span>
               </div>
             )}
             {plan.note && <div className="warn"><span className="xs" style={{ fontWeight: 700 }}>Jambes</span><span className="small" style={{ lineHeight: 1.4 }}>{plan.note}</span></div>}
@@ -442,21 +452,20 @@ export default function Course() {
             <button className="btn primary big" disabled={reading} onClick={() => fileRef.current?.click()}>
               <Icon name="plus" size={18} />{reading ? 'Lecture de la capture…' : 'J\'ai couru : envoyer la capture'}
             </button>
-            <div className="grid2">
-              <button className="btn" onClick={pasteText}>Coller le texte</button>
-              <button className="btn" onClick={manual}>Saisir à la main</button>
+            <div className="row" style={{ justifyContent: 'center', gap: 4 }}>
+              <button className="text-btn" onClick={manual}>Saisir à la main</button>
+              <button className="text-btn" onClick={pasteText}>Coller le texte</button>
             </div>
-            <span className="xs muted" style={{ textAlign: 'center' }}>La capture est lue sur ton téléphone. Elle n'est envoyée nulle part.</span>
           </>
         )}
 
-        {!draft && (
+        {!draft && tab === 'plan' && (
           <>
-            <div className="between" style={{ paddingTop: 12 }}>
+            <div className="between" style={{ paddingTop: 4 }}>
               <h2 className="label">Cette semaine</h2>
               <span className="xs muted">{weekSessions.filter((s) => s.done).length} sur {weekSessions.length} faites</span>
             </div>
-            {weekSessions.map((s) => <SessionRow key={s.key} s={s} active={next?.key === s.key} onPick={() => { setPicked(s.key); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}
+            {weekSessions.map((s) => <SessionRow key={s.key} s={s} active={next?.key === s.key} onPick={() => pick(s.key)} />)}
 
             <section className="card stack" style={{ gap: 12, marginTop: 12 }} aria-label="Ton programme">
               <div className="between"><h2 className="label">Ton programme</h2><span className="xs muted">{plan.total} semaines</span></div>
@@ -500,6 +509,26 @@ export default function Course() {
               <span className="xs muted">Temps possibles aujourd'hui avec la préparation adaptée à chaque distance.</span>
             </section>
 
+            <button className="btn" aria-expanded={showPlan} onClick={() => setShowPlan(!showPlan)}>{showPlan ? 'Masquer le plan complet' : `Voir le plan complet (${plan.total} semaines)`}</button>
+            {showPlan && plan.weeks.map((wk, i) => (
+              <div key={i} className="stack" style={{ gap: 8 }}>
+                <div className="between" style={{ paddingTop: 8 }}>
+                  <h2 className="label">Semaine {i + 1}{i === plan.current ? ' (en cours)' : ''}, {PHASES[wk[0]?.phase]?.label.toLowerCase()}{wk[0]?.recover ? ', allégée' : ''}</h2>
+                  <span className="xs muted">≈ {km1(wk.reduce((a, x) => a + x.km, 0))} km</span>
+                </div>
+                {wk.map((s) => <SessionRow key={s.key} s={s} active={next?.key === s.key} onPick={() => pick(s.key)} />)}
+              </div>
+            ))}
+
+            <div className="grid2" style={{ marginTop: 8 }}>
+              <button className="btn" onClick={() => setEditing(true)}><Icon name="edit" size={16} />Modifier</button>
+              <button className="btn" style={{ color: 'var(--danger)' }} onClick={stopPlan}><Icon name="trash" size={16} />Arrêter</button>
+            </div>
+          </>
+        )}
+
+        {!draft && tab === 'suivi' && (
+          <>
             {fit.runs > 0 && <HistoryCard logs={data.runLogs} fit={fit} />}
 
             {stats.count > 0 && (
@@ -515,20 +544,9 @@ export default function Course() {
               </section>
             )}
 
-            <button className="btn" aria-expanded={showPlan} onClick={() => setShowPlan(!showPlan)}>{showPlan ? 'Masquer le plan complet' : `Voir le plan complet (${plan.total} semaines)`}</button>
-            {showPlan && plan.weeks.map((wk, i) => (
-              <div key={i} className="stack" style={{ gap: 8 }}>
-                <div className="between" style={{ paddingTop: 8 }}>
-                  <h2 className="label">Semaine {i + 1}{i === plan.current ? ' (en cours)' : ''}, {PHASES[wk[0]?.phase]?.label.toLowerCase()}{wk[0]?.recover ? ', allégée' : ''}</h2>
-                  <span className="xs muted">≈ {km1(wk.reduce((a, x) => a + x.km, 0))} km</span>
-                </div>
-                {wk.map((s) => <SessionRow key={s.key} s={s} active={next?.key === s.key} onPick={() => { setPicked(s.key); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />)}
-              </div>
-            ))}
-
             {!!logs.length && (
               <>
-                <h2 className="label" style={{ paddingTop: 12 }}>Dernières courses</h2>
+                <h2 className="label" style={{ paddingTop: 4 }}>Dernières courses</h2>
                 {logs.slice(0, 6).map((l) => (
                   <div key={l.id} className="card row" style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 }}>
                     <div className="grow stack" style={{ gap: 1 }}>
@@ -543,10 +561,7 @@ export default function Course() {
                 ))}
               </>
             )}
-            <div className="grid2" style={{ marginTop: 8 }}>
-              <button className="btn" onClick={() => setEditing(true)}><Icon name="edit" size={16} />Modifier</button>
-              <button className="btn" style={{ color: 'var(--danger)' }} onClick={stopPlan}><Icon name="trash" size={16} />Arrêter</button>
-            </div>
+            {!logs.length && !fit.runs && <div className="card"><span className="small muted">Tes courses enregistrées apparaîtront ici.</span></div>}
           </>
         )}
       </div>

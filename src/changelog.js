@@ -6,6 +6,18 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.7.0', date: '2026-11-18', title: 'Plus simple, plus clair',
+    items: [
+      'Nouveau schéma anatomique des muscles, face et dos, bien plus détaillé (dorsaux, milieu du dos, lombaires, fessiers…).',
+      'Cinq onglets au lieu de six : le bilan du coach s\'ouvre après chaque séance et depuis l\'accueil.',
+      'Accueil épuré : les jours de repos n\'affichent plus qu\'une date, le détail du jour n\'apparaît que s\'il y a quelque chose.',
+      'Course en trois onglets : Séance, Programme, Suivi.',
+      'Progrès réunit toutes les statistiques, avec la carte des muscles travaillés sur 7 jours.',
+      'Profil rangé comme les Réglages d\'iOS ; les explications longues sont repliées.',
+      'Bilan : les muscles en soutien et les conseils secondaires se déplient à la demande.',
+    ],
+  },
+  {
     version: '1.6.3', date: '2026-11-18', title: 'Illustrations pleine largeur',
     items: ['Fiche exercice : l\'illustration remplit tout son cadre, sans bandes claires sur les côtés.'],
   },

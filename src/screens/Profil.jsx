@@ -12,12 +12,9 @@ import { buildPlan } from '../lib/running.js';
 import { useSession, keepAwake, setKeepAwake } from '../session.jsx';
 import { useUi } from '../ui.jsx';
 import { parseHevyCsv } from '../lib/csv.js';
-import { Bars, Icon, GlassHeader } from '../components.jsx';
-import { fmtDay, fmtInt } from '../lib/stats.js';
-import { weeklyFacts } from '../lib/coach.js';
+import { Icon, GlassHeader } from '../components.jsx';
+import { fmtDay } from '../lib/stats.js';
 import { getTheme, setTheme } from '../theme.js';
-
-const COLORS = ['var(--accent)', 'var(--z0)', 'var(--z1)', 'var(--drop)', 'var(--z3)', 'var(--text)', 'var(--muted)', 'var(--border)'];
 
 export default function Profil({ user }) {
   const data = useData();
@@ -55,10 +52,8 @@ export default function Profil({ user }) {
     session.cancel();
     supabase.auth.signOut();
   };
-  const { summary: s, months, muscles } = data;
-  const facts = weeklyFacts(data);
+  const { summary: s } = data;
   const name = user?.user_metadata?.name || 'Kilian';
-  const peakIdx = months.reduce((b, m, i) => (m.tonnes > months[b].tonnes ? i : b), 0);
 
   const onFile = async (e) => {
     const file = e.target.files?.[0];
@@ -99,95 +94,56 @@ export default function Profil({ user }) {
   };
   const planned = data.runProfile ? buildPlan(data.runProfile, data.runLogs, data.workouts).weeks.flat() : [];
 
+  const Row = ({ icon, tint, children, onClick, to, right, danger, ...rest }) => {
+    const inner = (
+      <>
+        {icon && <span className="gi" style={tint ? { background: tint, color: '#fff' } : null}><Icon name={icon} size={17} /></span>}
+        <span className="grow gl" style={danger ? { color: 'var(--danger)' } : null}>{children}</span>
+        {right}
+      </>
+    );
+    if (to) return <Link to={to} className="grow-row" {...rest}>{inner}<Icon name="chevron" size={16} /></Link>;
+    if (onClick) return <button className="grow-row" onClick={onClick} {...rest}>{inner}</button>;
+    return <div className="grow-row" {...rest}>{inner}</div>;
+  };
+
   return (
     <main className="screen">
       <GlassHeader eyebrow={s.since ? `Membre depuis le ${fmtDay(s.since)} ${s.since.getFullYear()}` : user?.email} title={name}
         lead={<div className="glass-avatar display" aria-hidden="true">{name[0]}</div>} />
 
-      <div className="pad grid2" style={{ paddingTop: 8 }}>
-        <div className="tile" style={{ borderRadius: 16, padding: '12px 14px' }}><span className="xs muted">Séances</span><span className="v accent" style={{ fontSize: 24, fontWeight: 700 }}>{s.sessions}</span></div>
-        <div className="tile" style={{ borderRadius: 16, padding: '12px 14px' }}><span className="xs muted">Temps sous la barre</span><span className="v" style={{ fontSize: 24, fontWeight: 700 }}>{Math.round(s.hours)} h</span></div>
-        <div className="tile" style={{ borderRadius: 16, padding: '12px 14px' }}><span className="xs muted">Tonnage total</span><span className="v" style={{ fontSize: 24, fontWeight: 700 }}>{fmtInt(s.tonnes)} t</span></div>
-        <div className="tile" style={{ borderRadius: 16, padding: '12px 14px' }}><span className="xs muted">Séries de travail</span><span className="v" style={{ fontSize: 24, fontWeight: 700 }}>{fmtInt(s.workSets)}</span></div>
-      </div>
-
-      {s.sessions > 0 && (
-        <>
-          <div className="card" style={{ margin: '14px 20px 0', padding: 16, gap: 10 }}>
-            <div className="between">
-              <span style={{ fontSize: 14, fontWeight: 600 }}>Volume par mois</span>
-              <span className="xs muted">pic : {Math.round(months[peakIdx].tonnes)} t</span>
-            </div>
-            <Bars
-              values={months.map((m) => m.tonnes)}
-              labels={months.map((m) => m.label)}
-              highlight={[peakIdx]}
-              partialLast
-              label={`Volume mensuel en tonnes : ${months.map((m) => `${m.date.toLocaleDateString('fr-FR', { month: 'short' })} ${Math.round(m.tonnes)}`).join(', ')}`}
-            />
-          </div>
-
-          <div className="card" style={{ margin: '14px 20px 0', padding: 16 }}>
-            <span style={{ fontSize: 14, fontWeight: 600 }}>Répartition des séries</span>
-            <div role="img" aria-label={muscles.map((m) => `${m.name} ${Math.round(m.pct)} %`).join(', ')} style={{ height: 14, borderRadius: 7, overflow: 'hidden', display: 'flex' }}>
-              {muscles.map((m, i) => <div key={m.name} style={{ width: `${Math.max(m.pct, 0.6)}%`, background: COLORS[i % COLORS.length] }} />)}
-            </div>
-            <div className="grid2" style={{ gap: '6px 12px' }}>
-              {muscles.map((m, i) => (
-                <div key={m.name} className="row" style={{ gap: 8, fontSize: 13 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: 5, background: COLORS[i % COLORS.length], flexShrink: 0 }} />
-                  <span className="grow">{m.name}</span>
-                  <span className="muted">{m.pct < 1 ? '< 1 %' : `${Math.round(m.pct)} %`}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {!!facts.length && (
-            <div className="warn" style={{ margin: '14px 20px 0' }}>
-              <span className="xs" style={{ color: 'var(--warm)', fontWeight: 700 }}>À surveiller</span>
-              {facts.map((f) => <span key={f} className="small" style={{ lineHeight: 1.4 }}>{f}</span>)}
-            </div>
-          )}
-        </>
-      )}
-
-      <div className="section">
+      <div className="section" style={{ paddingTop: 8 }}>
         <h2 className="label">Calendrier</h2>
         <MonthCalendar planned={planned} />
       </div>
 
       <div className="section">
-        <h2 className="label">Notifications</h2>
-        <div className="card row" style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <span className="grow stack" style={{ gap: 2 }}>
-            <span style={{ fontWeight: 600 }}>Fin de repos sur l'iPhone et la montre</span>
-            <span className="xs muted" style={{ lineHeight: 1.4 }}>Une notification à la fin de chaque repos, avec la série suivante. iPhone verrouillé, elle arrive sur l'Apple Watch.</span>
-          </span>
-          <button className="switch" role="switch" aria-checked={push} aria-label="Notifications de fin de repos" onClick={togglePush}><span /></button>
-        </div>
-        {isIos() && !isStandalone() && !push && <span className="xs muted" style={{ lineHeight: 1.45 }}>Sur iPhone, les notifications ne marchent que depuis l'app ajoutée à l'écran d'accueil (Safari › Partager › Sur l'écran d'accueil), ouverte depuis son icône.</span>}
-        {!pushSupported() && !isIos() && <span className="xs muted">Ce navigateur ne gère pas les notifications.</span>}
-        {pushMsg && <span className="small" style={{ color: 'var(--danger)', lineHeight: 1.4 }}>{pushMsg}</span>}
-        {push && (
-          <div className="stack" style={{ gap: 6 }}>
-            <span className="small" style={{ fontWeight: 600 }}>Pendant le repos</span>
-            <div className="seg" role="group" aria-label="Rappels pendant le repos" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-              {[[0, 'À la fin'], [30, 'Toutes les 30 s'], [15, 'Toutes les 15 s']].map(([v, l]) => (
-                <button key={v} className={every === v ? 'on' : ''} aria-pressed={every === v} onClick={() => { setPushEvery(v); setEvery(v); }}>{l}</button>
-              ))}
+        <h2 className="label">Pendant la séance</h2>
+        <div className="glist">
+          <Row icon="bell" tint="#FF3B30" right={<button className="switch" role="switch" aria-checked={push} aria-label="Notification de fin de repos" onClick={togglePush}><span /></button>}>
+            Notification de fin de repos
+          </Row>
+          {push && (
+            <div className="grow-row" style={{ display: 'block' }}>
+              <div className="seg" role="group" aria-label="Rappels pendant le repos" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+                {[[0, 'À la fin'], [30, 'Toutes les 30 s'], [15, 'Toutes les 15 s']].map(([v, l]) => (
+                  <button key={v} className={every === v ? 'on' : ''} aria-pressed={every === v} onClick={() => { setPushEvery(v); setEvery(v); }}>{l}</button>
+                ))}
+              </div>
             </div>
-            <span className="xs muted" style={{ lineHeight: 1.4 }}>{every ? `Une notification toutes les ${every} secondes avec le temps restant, qui remplace la précédente (une légère vibration sur la montre à chaque fois), puis « Repos terminé ».` : 'Une seule notification, à la fin du repos.'}</span>
-          </div>
-        )}
-        <div className="card row" style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <span className="grow stack" style={{ gap: 2 }}>
-            <span style={{ fontWeight: 600 }}>Garder l'écran allumé pendant la séance</span>
-            <span className="xs muted" style={{ lineHeight: 1.4 }}>{awake ? 'Les notifications arrivent sur la montre seulement si tu verrouilles l\'iPhone (bouton latéral) : c\'est une règle d\'iOS.' : 'L\'iPhone se verrouille selon ton réglage habituel, et les notifications passent alors sur la montre.'}</span>
-          </span>
-          <button className="switch" role="switch" aria-checked={awake} aria-label="Garder l'écran allumé pendant la séance" onClick={() => { setKeepAwake(!awake); setAwake(!awake); ui.notify(!awake ? 'Écran allumé pendant la séance' : 'L\'écran pourra se verrouiller (effet à la prochaine séance)'); }}><span /></button>
+          )}
+          <Row icon="sun" tint="#FF9500" right={<button className="switch" role="switch" aria-checked={awake} aria-label="Garder l'écran allumé" onClick={() => { setKeepAwake(!awake); setAwake(!awake); ui.notify(!awake ? 'Écran allumé pendant la séance' : 'L\'écran pourra se verrouiller (effet à la prochaine séance)'); }}><span /></button>}>
+            Garder l'écran allumé
+          </Row>
+          {push && <Row icon="send" tint="#8E8E93" onClick={async () => { try { await testPush(); ui.notify('Notification de test dans 5 secondes'); } catch (e) { ui.notify(e.message || String(e)); } }}>Envoyer une notification de test</Row>}
         </div>
-        {push && <button className="btn" onClick={async () => { try { await testPush(); ui.notify('Notification de test dans 5 secondes'); } catch (e) { ui.notify(e.message || String(e)); } }}>Envoyer une notification de test</button>}
+        <span className="gfoot">
+          {isIos() && !isStandalone() && !push
+            ? 'Sur iPhone, les notifications marchent seulement depuis l\'app ajoutée à l\'écran d\'accueil.'
+            : !pushSupported() && !isIos() ? 'Ce navigateur ne gère pas les notifications.'
+            : 'Sur l\'Apple Watch, les notifications arrivent quand l\'iPhone est verrouillé.'}
+        </span>
+        {pushMsg && <span className="small" style={{ color: 'var(--danger)', lineHeight: 1.4 }}>{pushMsg}</span>}
       </div>
 
       <div className="section">
@@ -201,34 +157,33 @@ export default function Profil({ user }) {
 
       <div className="section">
         <h2 className="label">Données</h2>
-        <Link to="/historique" className="btn" style={{ height: 52, justifyContent: 'flex-start' }}><Icon name="list" size={18} /><span className="grow" style={{ textAlign: 'left' }}>Historique des séances</span><Icon name="chevron" size={18} /></Link>
         <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={onFile} />
-        <button className="btn" style={{ borderRadius: 14, height: 52 }} disabled={busy} onClick={() => fileRef.current?.click()}>
-          <Icon name="upload" size={18} />Importer un export Hevy (.csv)
-        </button>
-        {status && <span className="small soft">{status}</span>}
-        {s.sessions > 0 && <button className="btn" style={{ height: 52 }} onClick={download}><Icon name="upload" size={18} />Exporter mes séances de salle (.csv)</button>}
-        <span className="xs muted">Les séances déjà présentes (même date et heure) sont ignorées, tu peux réimporter sans doublons.</span>
         <input ref={stravaRef} type="file" accept=".zip,.csv,application/zip,text/csv" hidden onChange={onStrava} />
-        <button className="btn" style={{ height: 52, marginTop: 6 }} disabled={busy} onClick={() => stravaRef.current?.click()}>
-          <Icon name="run" size={18} />Importer mes courses Strava
-        </button>
-        {stravaStatus && <span className="small soft">{stravaStatus}</span>}
-        <span className="xs muted" style={{ lineHeight: 1.45 }}>Sur strava.com (pas dans l'app) : Paramètres, Mon compte, « Télécharger ou supprimer votre compte », puis « Demander une archive ». Strava t'envoie un lien par e-mail : choisis ici le fichier .zip reçu, ou le fichier activities.csv qu'il contient. Seules les courses à pied sont importées, sans doublon.</span>
-        <h2 className="label" style={{ paddingTop: 18 }}>Compte</h2>
-        {data.superadmin && (
-          <Link to="/admin" className="btn" style={{ height: 52, justifyContent: 'flex-start' }}><Icon name="user" size={18} /><span className="grow" style={{ textAlign: 'left' }}>Administration</span><span className="tag">Superadmin</span></Link>
-        )}
-        <button className="btn" style={{ height: 52, justifyContent: 'flex-start' }} aria-expanded={pwd} onClick={() => setPwd(!pwd)}>
-          <Icon name="edit" size={18} /><span className="grow" style={{ textAlign: 'left' }}>Définir ou changer mon mot de passe</span>
-        </button>
+        <div className="glist">
+          <Row icon="list" tint="#007AFF" to="/historique">Historique des séances</Row>
+          <Row icon="upload" tint="#5856D6" onClick={() => fileRef.current?.click()} disabled={busy}>Importer depuis Hevy</Row>
+          <Row icon="run" tint="#FC4C02" onClick={() => stravaRef.current?.click()} disabled={busy}>Importer depuis Strava</Row>
+          {s.sessions > 0 && <Row icon="download" tint="#34C759" onClick={download}>Exporter mes séances (.csv)</Row>}
+        </div>
+        {(status || stravaStatus) && <span className="small soft">{status || stravaStatus}</span>}
+        <details className="gfoot">
+          <summary>Où trouver ces fichiers ?</summary>
+          <p><b>Hevy :</b> Profil, Réglages, Exporter les données.</p>
+          <p><b>Strava :</b> sur strava.com, Paramètres, Mon compte, « Télécharger ou supprimer votre compte », « Demander une archive ». Choisis ici le .zip reçu par e-mail. Seules les courses sont importées.</p>
+          <p>Les doublons sont ignorés : tu peux réimporter sans risque.</p>
+        </details>
+      </div>
+
+      <div className="section">
+        <h2 className="label">Compte</h2>
+        <div className="glist">
+          {data.superadmin && <Row icon="user" tint="#8E8E93" to="/admin">Administration</Row>}
+          <Row icon="edit" tint="#8E8E93" onClick={() => setPwd(!pwd)} aria-expanded={pwd}>Mot de passe</Row>
+          <Row icon="spark" tint="#E8500E" onClick={() => setNews(true)} right={<span className="xs muted">{VERSION}</span>}>Nouveautés</Row>
+          <Row onClick={signOut} danger>Se déconnecter</Row>
+        </div>
         {pwd && <div className="card"><PasswordForm onDone={() => setPwd(false)} /></div>}
-        <button className="btn" style={{ color: 'var(--danger)' }} onClick={signOut}>Se déconnecter</button>
-        <span className="xs muted">Connecté : {user?.email}</span>
-        <button className="btn" style={{ height: 52, justifyContent: 'flex-start', marginTop: 10 }} onClick={() => setNews(true)}>
-          <Icon name="spark" size={18} /><span className="grow" style={{ textAlign: 'left' }}>Nouveautés</span><span className="xs muted">v{VERSION}</span>
-        </button>
-        <span className="xs muted" style={{ paddingBottom: 12, textAlign: 'center' }}>Kadeon Sport {VERSION}, build {BUILD}, publiée le {new Date(BUILT_AT).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+        <span className="gfoot" style={{ textAlign: 'center' }}>{user?.email}<br />Kadeon Sport {VERSION} ({BUILD}), {new Date(BUILT_AT).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
       </div>
       <WhatsNew open={news} onClose={() => setNews(false)} />
     </main>

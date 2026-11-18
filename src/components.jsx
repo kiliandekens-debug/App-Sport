@@ -69,6 +69,10 @@ const P = {
   close: <path d="M6 6l12 12M18 6L6 18" />,
   more: <path d="M5 12h.01M12 12h.01M19 12h.01" />,
   minus: <path d="M5 12h14" />,
+  bell: <><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></>,
+  sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
+  send: <><path d="M22 2 11 13" /><path d="M22 2 15 22l-4-9-9-4 20-7z" /></>,
+  download: <><path d="M12 3v12M7 10l5 5 5-5" /><path d="M5 21h14" /></>,
   flame: <path d="M12 3c1 3 4 5 4 9a4 4 0 0 1-8 0c0-1.5.5-2.5 1.5-3.5C10 10 12 8 12 3zM12 21a7 7 0 0 0 7-7" />,
 };
 
@@ -83,9 +87,8 @@ export function Icon({ name, size = 20, width = 2, fill }) {
 const TABS = [
   ['/', 'home', 'Accueil'],
   ['/exercices', 'dumbbell', 'Exercices'],
+  ['/course', 'run', 'Course'],
   ['/progres', 'chart', 'Progrès'],
-  ['/course', 'timer', 'Course'],
-  ['/coach', 'spark', 'Coach'],
   ['/profil', 'user', 'Profil'],
 ];
 

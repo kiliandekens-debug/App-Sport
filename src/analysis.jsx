@@ -1,31 +1,36 @@
 import { useMemo, useState } from 'react';
 import { useData } from './data.jsx';
 import { analyseSession, fmtSets } from './lib/analysis.js';
-import { FRONT, BACK } from './lib/bodymap.js';
+import { BODY } from './lib/bodymap.js';
 import { Icon } from './components.jsx';
 
-const MIRROR = 'matrix(-1 0 0 1 200 0)';
 // 0 → idle tone, 8+ sets → full brand colour.
-const heat = (n) => (n ? `color-mix(in oklab, var(--brand) ${Math.round(28 + 72 * Math.min(1, n / 8))}%, var(--map-idle))` : 'var(--map-idle)');
+const heat = (n) => (n ? `color-mix(in oklab, var(--brand) ${Math.round(30 + 70 * Math.min(1, n / 8))}%, var(--map-idle))` : 'var(--map-idle)');
+
+// Shapes that stand for several zones show the busiest one.
+const ZONES = {
+  chest: ['pecs', 'pecHaut'],
+  deltFront: ['deltAnt', 'deltLat'],
+  deltBack: ['deltPost', 'deltLat'],
+  trapBack: ['trapezes', 'hautDos'],
+};
+const zoneOf = (k, regions) => {
+  const list = ZONES[k] || [k];
+  return list.reduce((best, r) => ((regions[r] || 0) > (regions[best] || 0) ? r : best), list[0]);
+};
+const valueOf = (k, regions) => Math.max(...(ZONES[k] || [k]).map((r) => regions[r] || 0));
 
 function Figure({ view, regions, selected, onPick, label }) {
   return (
     <figure className="bm-fig">
-      <svg viewBox="0 0 200 410" role="img" aria-label={label}>
-        {view.base.map((b, i) => (
-          <g key={i} fill="var(--map-base)">
-            <path d={b.d} />
-            {!b.full && <path d={b.d} transform={MIRROR} />}
-          </g>
-        ))}
-        {view.muscles.map((m) => {
-          const n = regions[m.r] || 0;
-          const on = selected === m.r;
+      <svg viewBox={view.vb} role="img" aria-label={label}>
+        <path d={view.outline} className="bm-outline" />
+        <g fill="var(--map-base)">{view.base.map((d, i) => <path key={i} d={d} />)}</g>
+        {view.muscles.map((m, i) => {
+          const n = valueOf(m.k, regions);
+          const zone = zoneOf(m.k, regions);
           return (
-            <g key={m.r} className={`bm-m${n ? ' hit' : ''}${on ? ' on' : ''}`} fill={heat(n)} onClick={n ? () => onPick(m.r) : undefined}>
-              <path d={m.d} />
-              <path d={m.d} transform={MIRROR} />
-            </g>
+            <path key={i} d={m.d} className={`bm-m${n ? ' hit' : ''}${selected === zone && n ? ' on' : ''}`} fill={heat(n)} onClick={n ? () => onPick(zone) : undefined} />
           );
         })}
       </svg>
@@ -37,8 +42,8 @@ function Figure({ view, regions, selected, onPick, label }) {
 export function BodyMap({ regions, selected, onPick }) {
   return (
     <div className="bm">
-      <Figure view={FRONT} regions={regions} selected={selected} onPick={onPick} label="Face" />
-      <Figure view={BACK} regions={regions} selected={selected} onPick={onPick} label="Dos" />
+      <Figure view={BODY.front} regions={regions} selected={selected} onPick={onPick} label="Face" />
+      <Figure view={BODY.back} regions={regions} selected={selected} onPick={onPick} label="Dos" />
     </div>
   );
 }
@@ -48,7 +53,13 @@ export function SessionAnalysis({ workout }) {
   const data = useData();
   const a = useMemo(() => analyseSession(workout, data.workouts), [workout, data.workouts]);
   const [open, setOpen] = useState(null);
+  const [moreMuscles, setMoreMuscles] = useState(false);
+  const [moreTips, setMoreTips] = useState(false);
   if (!a) return null;
+  const targeted = a.muscles.filter((m) => m.primary);
+  const support = a.muscles.filter((m) => !m.primary);
+  const shownMuscles = moreMuscles ? a.muscles : targeted;
+  const tips = moreTips ? a.tips : a.tips.slice(0, 2);
   const pick = (r) => setOpen((cur) => (cur === r ? null : r));
 
   return (
@@ -59,7 +70,6 @@ export function SessionAnalysis({ workout }) {
           <span className="xs muted">{a.sets} séries de travail</span>
         </div>
         <span className="display ana-zone">{a.zone.name}</span>
-        {!!a.support.length && <span className="small muted">En soutien : {a.support.join(', ')}</span>}
 
         <BodyMap regions={a.regions} selected={open} onPick={pick} />
         <div className="bm-legend xs muted" aria-hidden="true">
@@ -67,14 +77,14 @@ export function SessionAnalysis({ workout }) {
         </div>
 
         <div className="ana-list">
-          {a.muscles.map((m) => {
+          {shownMuscles.map((m) => {
             const on = open === m.region;
             return (
               <div key={m.region} className={`ana-row${on ? ' on' : ''}`}>
                 <button className="ana-head" aria-expanded={on} onClick={() => pick(m.region)}>
                   <span className="ana-dot" style={{ background: heat(m.sets) }} />
                   <span className="grow" style={{ fontWeight: 650 }}>{m.name}</span>
-                  <span className={`ana-role${m.primary ? ' main' : ''}`}>{m.primary ? 'Ciblé' : 'Soutien'}</span>
+                  {moreMuscles && <span className={`ana-role${m.primary ? ' main' : ''}`}>{m.primary ? 'Ciblé' : 'Soutien'}</span>}
                   <span className="ana-n">{fmtSets(m.sets)}<small> séries</small></span>
                   <Icon name="chevron" size={16} />
                 </button>
@@ -88,12 +98,16 @@ export function SessionAnalysis({ workout }) {
             );
           })}
         </div>
-        <span className="xs muted">Séries de soutien comptées pour moitié, comme dans les études sur le volume.</span>
+        {!!support.length && (
+          <button className="text-btn" onClick={() => setMoreMuscles(!moreMuscles)} aria-expanded={moreMuscles}>
+            {moreMuscles ? 'Masquer les muscles en soutien' : `${support.length} muscle${support.length > 1 ? 's' : ''} en soutien`}
+          </button>
+        )}
       </section>
 
       <section className="card ana" aria-label="Pour améliorer ta séance">
         <h2 className="label">Pour améliorer ta séance</h2>
-        {a.tips.length ? a.tips.map((t) => (
+        {tips.length ? tips.map((t) => (
           <div key={t.id} className="ana-tip">
             <span className="ana-tip-mark" aria-hidden="true" />
             <div className="stack" style={{ gap: 4 }}>
@@ -103,6 +117,11 @@ export function SessionAnalysis({ workout }) {
             </div>
           </div>
         )) : <span className="small">Rien à corriger : ta séance suit les recommandations.</span>}
+        {a.tips.length > 2 && (
+          <button className="text-btn" onClick={() => setMoreTips(!moreTips)} aria-expanded={moreTips}>
+            {moreTips ? 'Afficher moins' : `${a.tips.length - 2} autre${a.tips.length - 2 > 1 ? 's' : ''} conseil${a.tips.length - 2 > 1 ? 's' : ''}`}
+          </button>
+        )}
         {!!a.goods.length && (
           <div className="stack" style={{ gap: 8, paddingTop: 4 }}>
             <h3 className="xs muted" style={{ margin: 0, fontWeight: 700 }}>Ce qui est déjà bien</h3>

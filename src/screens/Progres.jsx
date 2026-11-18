@@ -1,8 +1,12 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useData } from '../data.jsx';
-import { LineChart, ExerciseImage, GlassHeader, Icon } from '../components.jsx';
-import { fmtKg, fmtDay, fmtInt } from '../lib/stats.js';
+import { LineChart, ExerciseImage, GlassHeader, Icon, Bars } from '../components.jsx';
+import { fmtKg, fmtDay, fmtInt, isWork, isPlausible } from '../lib/stats.js';
+import { muscleLoad, GROUPS, REGIONS } from '../lib/anatomy.js';
+import { BodyMap } from '../analysis.jsx';
+import { fmtSets } from '../lib/analysis.js';
+import { weeklyFacts } from '../lib/coach.js';
 
 const METRICS = [
   ['maxKg', 'Charge max', (v) => `${fmtKg(v)} kg`],
@@ -22,12 +26,55 @@ export default function Progres() {
   const last = hist[hist.length - 1];
   const delta = values.length ? Math.round((values[values.length - 1] - values[0]) * 10) / 10 : 0;
 
-  const records = data.exerciseList.slice(0, 8).filter((e) => e.best);
+  const [allRecords, setAllRecords] = useState(false);
+  const records = data.exerciseList.filter((e) => e.best).slice(0, allRecords ? 30 : 5);
+  const [sel, setSel] = useState(null);
+
+  // Last 7 days: sessions, tonnage, km, and the muscles they reached.
+  const since = Date.now() - 7 * 86400000;
+  const recent = data.workouts.filter((w) => w.start.getTime() > since);
+  const recentSets = recent.flatMap((w) => w.sets.filter((x) => isWork(x) && isPlausible(x)));
+  const load = muscleLoad(recentSets);
+  const tonnes = recentSets.reduce((a, x) => a + x.weight_kg * x.reps, 0) / 1000;
+  const km = data.runLogs.filter((l) => new Date(l.done_at).getTime() > since).reduce((a, l) => a + Number(l.distance_km || 0), 0);
+  const topGroups = Object.entries(load.groups).sort((a, b) => b[1] - a[1]).slice(0, 4);
+  const months = data.months;
+  const peakIdx = months.reduce((b, m, i) => (m.tonnes > months[b].tonnes ? i : b), 0);
+  const facts = weeklyFacts(data);
+  const s = data.summary;
 
   return (
     <main className="screen">
       <GlassHeader eyebrow={`${data.summary.sessions} séance${data.summary.sessions > 1 ? 's' : ''}${data.summary.since ? ` depuis le ${fmtDay(data.summary.since)} ${data.summary.since.getFullYear()}` : ''}`} title="Progrès"
         right={<Link to="/historique" className="icon-btn" aria-label="Historique des séances"><Icon name="list" size={20} /></Link>} />
+
+      {data.workouts.length > 0 && (
+        <div className="pad stack" style={{ paddingTop: 8, gap: 12 }}>
+          <div className="card" style={{ gap: 14 }}>
+            <div className="between"><h2 className="label">7 derniers jours</h2>{data.week.streak > 1 && <span className="row xs" style={{ gap: 4, color: 'var(--ok)', fontWeight: 700 }}><Icon name="flame" size={14} />{data.week.streak} semaines d'affilée</span>}</div>
+            <div className="kpis">
+              <span><b>{recent.length}</b>séance{recent.length > 1 ? 's' : ''}</span>
+              <span><b>{fmtKg(tonnes)}</b>tonnes</span>
+              <span><b>{fmtKg(km)}</b>km courus</span>
+            </div>
+            {recentSets.length > 0 && (
+              <>
+                <BodyMap regions={load.regions} selected={sel} onPick={(r) => setSel(sel === r ? null : r)} />
+                {sel && <span className="small" style={{ lineHeight: 1.45 }}><b>{REGIONS[sel].name} :</b> {fmtSets(load.regions[sel])} séries. {REGIONS[sel].what}</span>}
+                <div className="kpis small-kpis">
+                  {topGroups.map(([g, n]) => <span key={g}><b>{fmtSets(n)}</b>{GROUPS[g].toLowerCase()}</span>)}
+                </div>
+              </>
+            )}
+          </div>
+          {!!facts.length && (
+            <div className="warn">
+              <span className="xs" style={{ color: 'var(--warm)', fontWeight: 700 }}>À surveiller</span>
+              {facts.map((f) => <span key={f} className="small" style={{ lineHeight: 1.4 }}>{f}</span>)}
+            </div>
+          )}
+        </div>
+      )}
 
       {!list.length ? (
         <div className="pad"><div className="card"><span className="muted">Pas encore assez de séances pour tracer une progression.</span></div></div>
@@ -79,6 +126,24 @@ export default function Progres() {
                 </span>
               </div>
             ))}
+          </div>
+          {data.exerciseList.filter((e) => e.best).length > 5 && (
+            <button className="text-btn" onClick={() => setAllRecords(!allRecords)} aria-expanded={allRecords}>{allRecords ? 'Afficher moins' : 'Tous les records'}</button>
+          )}
+        </div>
+      )}
+      {s.sessions > 0 && (
+        <div className="section">
+          <h2 className="label">Depuis le début</h2>
+          <div className="card" style={{ gap: 12 }}>
+            <div className="kpis">
+              <span><b>{s.sessions}</b>séances</span>
+              <span><b>{Math.round(s.hours)}</b>heures</span>
+              <span><b>{fmtInt(s.tonnes)}</b>tonnes</span>
+            </div>
+            <Bars values={months.map((m) => m.tonnes)} labels={months.map((m) => m.label)} highlight={[peakIdx]} partialLast
+              label={`Volume mensuel en tonnes : ${months.map((m) => `${m.date.toLocaleDateString('fr-FR', { month: 'short' })} ${Math.round(m.tonnes)}`).join(', ')}`} />
+            <span className="xs muted">Volume soulevé par mois. Pic : {Math.round(months[peakIdx].tonnes)} t.</span>
           </div>
         </div>
       )}

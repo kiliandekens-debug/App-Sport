@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useData, savePlan } from '../data.jsx';
 import { useUi } from '../ui.jsx';
-import { reviewLastSession, weeklyFacts } from '../lib/coach.js';
+import { reviewLastSession } from '../lib/coach.js';
 import { fmtKg, fmtInt, fmtDay, sameDay, titleKey, isWork, isPlausible } from '../lib/stats.js';
 import { incrementOf } from '../lib/exercises.js';
 import { Icon, ExerciseImage, GlassHeader } from '../components.jsx';
@@ -44,7 +44,6 @@ export default function Coach() {
   const ui = useUi();
   const { state } = useLocation();
   const review = useMemo(() => reviewLastSession(data), [data]);
-  const facts = useMemo(() => weeklyFacts(data), [data]);
   const [answers, setAnswers] = useState({});
   const [tweak, setTweak] = useState({});
   const [saving, setSaving] = useState(false);
@@ -52,7 +51,7 @@ export default function Coach() {
   if (!review) {
     return (
       <main className="screen">
-        <GlassHeader title="Coach" />
+        <GlassHeader title="Bilan" lead={<Link to="/" className="icon-btn" aria-label="Retour à l'accueil"><Icon name="back" size={20} /></Link>} />
         <div className="pad"><div className="card"><span className="muted">Termine une première séance : le coach te proposera ensuite les charges de la suivante.</span></div></div>
       </main>
     );
@@ -99,7 +98,7 @@ export default function Coach() {
 
   return (
     <main className="screen">
-      <GlassHeader eyebrow="Bilan et charges conseillées" title="Coach" />
+      <GlassHeader eyebrow="Bilan et prochaines charges" title="Bilan" lead={<Link to="/" className="icon-btn" aria-label="Retour à l'accueil"><Icon name="back" size={20} /></Link>} />
 
       <div className="pad stack" style={{ gap: 12, paddingTop: 10 }}>
         <div className="card hero" style={{ gap: 8 }}>
@@ -169,13 +168,6 @@ export default function Coach() {
           );
         })}
 
-        {!!facts.length && (
-          <div className="warn" style={{ marginTop: 8 }}>
-            <span className="xs" style={{ fontWeight: 700 }}>À surveiller</span>
-            {facts.map((f) => <span key={f} className="small" style={{ lineHeight: 1.4 }}>{f}</span>)}
-          </div>
-        )}
-        <span className="xs muted">Conseils calculés à partir de ton historique (double progression) : on ajoute des reps, puis de la charge.</span>
       </div>
 
       <div className="float-cta" style={{ position: 'sticky', bottom: 'calc(84px + env(safe-area-inset-bottom))', zIndex: 5, padding: '24px 20px 8px', display: 'flex', flexDirection: 'column', gap: 6 }}>

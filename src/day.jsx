@@ -64,7 +64,7 @@ export function DayDetail({ d, onRun, onGym, onRunLog, hideRunLink = false }) {
       {empty && (
         <div className="day-row">
           <span className="day-ic k-rest"><Icon name="moon" size={17} /></span>
-          <span className="small muted">{d.past ? 'Jour de repos.' : d.today ? 'Rien de prévu aujourd\'hui. Repos, ou une séance de salle si tu en as envie.' : 'Rien de prévu : jour de repos.'}</span>
+          <span className="small muted">{d.past ? 'Jour de repos.' : d.today ? 'Rien de prévu aujourd\'hui.' : 'Rien de prévu : jour de repos.'}</span>
         </div>
       )}
     </div>
@@ -212,7 +212,9 @@ export function MonthCalendar({ planned = [] }) {
           <span><b className="display" style={{ color: 'var(--text)', fontSize: 15 }}>{runN}</b> course{runN > 1 ? 's' : ''}{km ? `, ${fmtKg(km)} km` : ''}</span>
         </div>
       </div>
-      <div id="cal-detail" style={{ scrollMarginBottom: 110 }}><DayDetail d={selInfo} onRun={() => {}} onGym={(id) => setOpenW(id)} onRunLog={(id) => setOpenR(id)} hideRunLink /></div>
+      {(selInfo.gym.length > 0 || selInfo.runs.length > 0 || (selInfo.plan && !selInfo.past)) && (
+        <div id="cal-detail" style={{ scrollMarginBottom: 110 }}><DayDetail d={selInfo} onRun={() => {}} onGym={(id) => setOpenW(id)} onRunLog={(id) => setOpenR(id)} hideRunLink /></div>
+      )}
       <WorkoutSheet id={openW} onClose={() => setOpenW(null)} />
       <RunSheet id={openR} onClose={() => setOpenR(null)} />
     </div>
