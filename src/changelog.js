@@ -6,6 +6,10 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.7.1', date: '2026-11-18', title: 'Barre d\'onglets centrée',
+    items: ['Les cinq onglets occupent toute la barre, bien centrés.'],
+  },
+  {
     version: '1.7.0', date: '2026-11-18', title: 'Plus simple, plus clair',
     items: [
       'Nouveau schéma anatomique des muscles, face et dos, bien plus détaillé (dorsaux, milieu du dos, lombaires, fessiers…).',

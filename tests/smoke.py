@@ -88,6 +88,9 @@ with sync_playwright() as p:
             sw = pg.evaluate('document.documentElement.scrollWidth')
             check(sw <= 390, f'{mode} {path} no horizontal overflow ({sw})')
             check(pg.locator('main').count() > 0, f'{mode} {path} renders')
+            if path == '/':
+                gaps = pg.evaluate("(() => { const n = document.querySelector('.nav-in').getBoundingClientRect(); const a = [...document.querySelectorAll('.nav-in a')].map((x) => x.getBoundingClientRect()); return [a[0].left - n.left, n.right - a[a.length - 1].right]; })()")
+                check(abs(gaps[0] - gaps[1]) < 2, f'{mode} tab bar centred ({gaps})')
             if path == '/coach':
                 # Regression 1.5.4: a 3-digit load must not slide under the + button of the stepper.
                 over = pg.evaluate("""() => { const b = document.querySelector('button[aria-label^="Plus de charge"]'); if (!b) return -1;
