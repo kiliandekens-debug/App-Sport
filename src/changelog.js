@@ -6,6 +6,10 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.6.2', date: '2026-11-18', title: 'Clavier mieux géré',
+    items: ['Quand tu tapes une charge ou des reps, le bandeau « Valider » remonte au-dessus du clavier, le champ reste visible et la page défile jusqu\'en bas.'],
+  },
+  {
     version: '1.6.1', date: '2026-11-18', title: 'Repos visible en haut',
     items: ['Pendant un repos, le chrono s\'affiche aussi dans l\'en-tête de séance, à côté des séries : il reste visible même quand tu fais défiler la page.'],
   },

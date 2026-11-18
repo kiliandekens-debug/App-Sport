@@ -522,3 +522,9 @@ h2.label { margin: 0; }
 /* Rest countdown in the session header, in place of the watch button while resting */
 .session-stats .head-rest { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; height: 36px; padding: 0 11px; border-radius: 12px; background: var(--rest-bg); color: var(--rest); }
 .session-stats .head-rest b { color: var(--rest); font-size: 18px; margin: 0; }
+/* On-screen keyboard (see keyboard.js): docks sit above it, the page can scroll to its end */
+.dock, .glass-dock { transform: translateY(calc(-1 * var(--kb, 0px))); }
+.kb-open .dock { padding-bottom: 12px; border-radius: 20px; }
+.kb-open .glass-dock { padding-bottom: 8px; }
+.kb-open main.screen { padding-bottom: calc(var(--kb) + 170px) !important; }
+.kb-open .nav { visibility: hidden; }

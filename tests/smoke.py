@@ -108,6 +108,13 @@ with sync_playwright() as p:
     pg.get_by_text('Créer depuis mon historique').click(); pg.wait_for_timeout(1200)
     check(len(T['routines']) >= 3, 'routines created from history')
     pg.get_by_role('button', name='Démarrer', exact=True).click(); pg.wait_for_timeout(800)
+    # Simulated 300 px keyboard: the dock must sit right above it.
+    pg.evaluate("document.documentElement.style.setProperty('--kb','300px'); document.body.classList.add('kb-open')")
+    pg.wait_for_timeout(100)
+    db = pg.evaluate("document.querySelector('.dock').getBoundingClientRect().bottom")
+    check(abs(db - (844 - 300)) < 2, f'dock lifted above keyboard ({db})')
+    pg.screenshot(path=f'{SHOTS}/flow-keyboard.png')
+    pg.evaluate("document.documentElement.style.setProperty('--kb','0px'); document.body.classList.remove('kb-open')")
     for i in range(3):
         v = pg.locator('.dock').get_by_role('button', name='Valider')
         if v.count(): v.click(); pg.wait_for_timeout(200)
