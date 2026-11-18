@@ -13,8 +13,9 @@ export function ExerciseImage({ name, base, size = 48, animate = false, radius =
     const t = setInterval(() => setFrame((f) => 1 - f), 900);
     return () => clearInterval(t);
   }, [animate, imgs.length]);
-  const box = { width: size === 'full' ? '100%' : size, height: size === 'full' ? 'auto' : size, aspectRatio: size === 'full' ? '16 / 10' : undefined, maxHeight: size === 'full' ? 260 : undefined, borderRadius: radius, flexShrink: 0, overflow: 'hidden', background: '#F4F5F7' };
-  const fit = size === 'full' ? 'contain' : 'cover';
+  const box = { width: size === 'full' ? '100%' : size, height: size === 'full' ? 'auto' : size, aspectRatio: size === 'full' ? '3 / 2' : undefined, borderRadius: radius, flexShrink: 0, overflow: 'hidden', background: '#F4F5F7' };
+  // Full size fills its frame too: "contain" left pale bars on each side of the photo.
+  const fit = 'cover';
   if (!imgs.length || broken) {
     return <div style={{ ...box, background: 'var(--raised)', color: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden="true"><Icon name="dumbbell" size={typeof size === 'number' ? Math.round(size / 2) : 40} /></div>;
   }
@@ -27,7 +28,7 @@ export function ExerciseImage({ name, base, size = 48, animate = false, radius =
           alt={i === 0 ? `Illustration : ${name}` : ''}
           loading="lazy"
           onError={() => setBroken(true)}
-          style={{ position: i ? 'absolute' : 'static', inset: 0, width: '100%', height: '100%', objectFit: fit, display: 'block', opacity: animate ? (frame === i ? 1 : 0) : i === 0 ? 1 : 0, transition: 'opacity 0.25s' }}
+          style={{ position: i ? 'absolute' : 'static', inset: 0, width: '100%', height: '100%', objectFit: fit, objectPosition: 'center 35%', display: 'block', opacity: animate ? (frame === i ? 1 : 0) : i === 0 ? 1 : 0, transition: 'opacity 0.25s' }}
         />
       ))}
     </div>
