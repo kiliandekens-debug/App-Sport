@@ -70,7 +70,7 @@ export default function Profil({ user }) {
       if (!parsed.length) throw new Error('Aucune séance trouvée dans ce fichier.');
       const res = await importWorkouts(parsed, data.workouts, (d, t) => setStatus(`Import… ${d} / ${t} séances`));
       await data.refresh();
-      setStatus(`${res.added} séances ajoutées${res.skipped ? `, ${res.skipped} déjà présentes` : ''}.`);
+      setStatus(`${res.added} séance${res.added > 1 ? 's' : ''} ajoutée${res.added > 1 ? 's' : ''}${res.skipped ? `, ${res.skipped} déjà présente${res.skipped > 1 ? 's' : ''}` : ''}.`);
     } catch (err) {
       setStatus(`Échec de l'import : ${err.message || err}`);
     } finally {

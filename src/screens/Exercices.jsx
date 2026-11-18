@@ -59,7 +59,7 @@ export function ExercisePicker({ selected = new Set(), onAdd, onOpen, bottomPad 
               <ExerciseImage name={ex.name} base={ex.base} size={48} />
               <span className="grow stack" style={{ gap: 2 }}>
                 <span style={{ fontSize: 15, fontWeight: 600 }}>{ex.name}</span>
-                <span className="xs muted">{ex.muscle} · {ex.equip}{ex.count ? ` · ${ex.count} séances` : ''}</span>
+                <span className="xs muted">{ex.muscle} · {ex.equip}{ex.count ? ` · ${ex.count} séance${ex.count > 1 ? 's' : ''}` : ''}</span>
               </span>
             </button>
             {ex.source === 'custom' && <span className="tag">Perso</span>}

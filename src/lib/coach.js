@@ -67,7 +67,7 @@ export function weeklyFacts(data) {
   const facts = [];
   const { legSets, workSets, peak, lastFull } = data.alerts;
   if (workSets > 100 && legSets / workSets < 0.05)
-    facts.push(`Jambes : ${legSets} séries sur ${workSets.toLocaleString('fr-FR')}. Une séance jambes par semaine équilibrerait le programme.`);
+    facts.push(`Jambes : ${legSets} série${legSets > 1 ? 's' : ''} sur ${workSets.toLocaleString('fr-FR')}. Une séance jambes par semaine équilibrerait le programme.`);
   if (peak && lastFull && lastFull.tonnes < peak.tonnes * 0.6)
     facts.push(`Volume du mois dernier : ${Math.round(lastFull.tonnes)} t, contre ${Math.round(peak.tonnes)} t au pic. Tes charges plafonnent depuis que le volume a baissé.`);
   return facts;

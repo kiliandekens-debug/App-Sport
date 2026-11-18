@@ -151,7 +151,7 @@ export default function Seance() {
     const left = s.total - s.done;
     const ok = await ui.confirm({
       title: 'Terminer la séance ?',
-      message: left > 0 ? `${left} série${left > 1 ? 's' : ''} non validée${left > 1 ? 's' : ''} ne ser${left > 1 ? 'ont' : 'a'} pas enregistrée${left > 1 ? 's' : ''}.` : `${s.done} séries, ${fmtInt(s.volume)} kg soulevés.`,
+      message: left > 0 ? `${left} série${left > 1 ? 's' : ''} non validée${left > 1 ? 's' : ''} ne ser${left > 1 ? 'ont' : 'a'} pas enregistrée${left > 1 ? 's' : ''}.` : `${s.done} série${s.done > 1 ? 's' : ''}, ${fmtInt(s.volume)} kg soulevés.`,
       ok: 'Terminer',
     });
     if (!ok) return;

@@ -26,7 +26,7 @@ export default function Progres() {
 
   return (
     <main className="screen">
-      <GlassHeader eyebrow={`${data.summary.sessions} séances${data.summary.since ? ` depuis le ${fmtDay(data.summary.since)} ${data.summary.since.getFullYear()}` : ''}`} title="Progrès"
+      <GlassHeader eyebrow={`${data.summary.sessions} séance${data.summary.sessions > 1 ? 's' : ''}${data.summary.since ? ` depuis le ${fmtDay(data.summary.since)} ${data.summary.since.getFullYear()}` : ''}`} title="Progrès"
         right={<Link to="/historique" className="icon-btn" aria-label="Historique des séances"><Icon name="list" size={20} /></Link>} />
 
       {!list.length ? (
