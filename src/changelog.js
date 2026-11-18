@@ -6,6 +6,15 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.5.4', date: '2026-11-18', title: 'Petites corrections de la nuit',
+    items: [
+      'Coach : la charge conseillée (ex. « 65,8 kg ») ne se cache plus sous le bouton + sur l\'écran de l\'iPhone.',
+      'Notifications de repos : en appuyant deux fois vite sur +15 s, l\'ancienne notification « Repos terminé » pouvait arriver trop tôt. Corrigé.',
+      'Notification au poids du corps : « Traction : × 8 » au lieu de « 0 kg × 8 ».',
+      'Singulier quand il n\'y en a qu\'un : « 1 séance », « 1 série » (bibliothèque, historique, progrès, fin de séance, import, coach).',
+    ],
+  },
+  {
     version: '1.5.3', date: '2026-11-17', title: 'Le coach s\'applique vraiment',
     items: [
       'Une routine créée avec les noms de la bibliothèque (« Développé couché (haltères) ») retrouve maintenant ton historique importé (« Développé Couché (Haltère) ») : charges du coach, séries précédentes et records sont repris.',
