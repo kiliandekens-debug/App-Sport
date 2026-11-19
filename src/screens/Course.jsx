@@ -435,7 +435,7 @@ export default function Course() {
             {plan.reentry && plan.reentry.weeks.length > 0 && (
               <div className="warn" style={{ gap: 4 }}>
                 <span className="xs" style={{ fontWeight: 700 }}>Reprise après {plan.reentry.gap} jours</span>
-                <span className="small" style={{ lineHeight: 1.45 }}>Volume à {plan.reentry.weeks.map((x) => `${Math.round(x * 100)} %`).join(' puis ')}.{plan.reentry.easyWeeks ? ` Séances de qualité allégées jusqu'à ${plan.reentry.backOn}.` : ''}</span>
+                <span className="small" style={{ lineHeight: 1.45 }}>Volume à {plan.reentry.weeks.map((x) => `${Math.round(x * 100)} %`).join(' puis ')}.{plan.reentry.easyWeeks ? ` Séances de qualité allégées ; les vraies reviennent ${plan.reentry.backOn}.` : ''}</span>
               </div>
             )}
             {plan.note && <div className="warn"><span className="xs" style={{ fontWeight: 700 }}>Jambes</span><span className="small" style={{ lineHeight: 1.4 }}>{plan.note}</span></div>}
