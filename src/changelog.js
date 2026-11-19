@@ -6,6 +6,15 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.7.2', date: '2026-11-19', title: 'Corrections de la nuit',
+    items: [
+      'Accords au singulier : « 1 série », « 1 séance », « 1 heure », « 1 exercice » dans l\'analyse de séance, Progrès et l\'accueil.',
+      'Conseil « Jambes oubliées » : plus de « pas de séance jambes » à tort ni de « 1 semaines ».',
+      'Le conseil « plus de poussée que de tirage » s\'affiche aussi pour les séances Épaules et pectoraux ou Triceps et épaules.',
+      'Course : la reprise indique clairement quand les vraies séances de qualité reviennent.',
+    ],
+  },
+  {
     version: '1.7.1', date: '2026-11-18', title: 'Barre d\'onglets centrée',
     items: ['Les cinq onglets occupent toute la barre, bien centrés.'],
   },
