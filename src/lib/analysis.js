@@ -7,6 +7,8 @@ const DAY = 86400000;
 const workSets = (w) => w.sets.filter((s) => isWork(s) && isPlausible(s) && Object.keys(targetsOf(s.exercise)).length);
 const half = (x) => Math.round(x * 2) / 2;
 export const fmtSets = (x) => String(half(x)).replace('.', ',');
+// "1 série", "1,5 série", "2 séries": in French the plural starts at 2.
+export const nSets = (x) => `${fmtSets(x)} série${half(x) >= 2 ? 's' : ''}`;
 const list = (a) => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} et ${a[a.length - 1]}`);
 const lower = (s) => s.charAt(0).toLowerCase() + s.slice(1);
 
@@ -110,7 +112,7 @@ export function analyseSession(w, workouts) {
     const weekly = loadOf(weekLoad, g);
     const times = freq[g] || 0;
     if (inSession > 11) {
-      tip(`split-${g}`, `${label} : ${fmtSets(inSession)} séries en une séance`,
+      tip(`split-${g}`, `${label} : ${nSets(inSession)} en une séance`,
         times <= 1
           ? `Au-delà d'environ 10 séries pour un muscle dans la même séance, chaque série de plus rapporte peu. Garde le même total mais coupe-le en deux séances dans la semaine : les dernières séries seront faites moins fatigué.`
           : `Au-delà d'environ 10 séries pour un muscle dans la même séance, chaque série de plus rapporte peu. Tu peux en retirer 2 ou 3 sans rien perdre.`,
@@ -118,17 +120,17 @@ export function analyseSession(w, workouts) {
     }
     const times_ = times >= 2 ? `, en ${times} séances` : '';
     if (weekly < 8) {
-      tip(`low-${g}`, `${label} : ${fmtSets(weekly)} séries sur 7 jours`,
+      tip(`low-${g}`, `${label} : ${nSets(weekly)} sur 7 jours`,
         `La croissance musculaire augmente nettement à partir d'environ 10 séries par muscle et par semaine. Ajoute 2 à 4 séries cette semaine, ou une deuxième séance qui touche ce muscle.`,
         SOURCES.volume);
     } else if (weekly > 25) {
-      tip(`high-${g}`, `${label} : ${fmtSets(weekly)} séries sur 7 jours`,
+      tip(`high-${g}`, `${label} : ${nSets(weekly)} sur 7 jours`,
         `C'est au-dessus de ce que la plupart des pratiquants récupèrent bien (environ 20 séries, en comptant le travail indirect des autres séances). Si tes charges stagnent ou que tu traînes des courbatures, baisse un peu.`,
         SOURCES.landmarks);
     } else if (weekly > 20) {
-      good(`week-${g}`, `${label} : ${fmtSets(weekly)} séries sur 7 jours${times_}`, 'Haut de la fourchette utile (10 à 20 séries, travail indirect compris) : inutile d’en ajouter.', SOURCES.volume);
+      good(`week-${g}`, `${label} : ${nSets(weekly)} sur 7 jours${times_}`, 'Haut de la fourchette utile (10 à 20 séries, travail indirect compris) : inutile d’en ajouter.', SOURCES.volume);
     } else if (weekly >= 10) {
-      good(`week-${g}`, `${label} : ${fmtSets(weekly)} séries sur 7 jours${times_}`, times >= 2 ? 'Dans la zone efficace de 10 à 20 séries, réparties sur 2 séances : idéal.' : 'Dans la zone efficace de 10 à 20 séries par semaine.', times >= 2 ? SOURCES.frequency : SOURCES.volume);
+      good(`week-${g}`, `${label} : ${nSets(weekly)} sur 7 jours${times_}`, times >= 2 ? 'Dans la zone efficace de 10 à 20 séries, réparties sur 2 séances : idéal.' : 'Dans la zone efficace de 10 à 20 séries par semaine.', times >= 2 ? SOURCES.frequency : SOURCES.volume);
     }
   }
 
@@ -203,12 +205,12 @@ export function analyseSession(w, workouts) {
     const last = workouts.find((x) => x.start.getTime() <= end && LEG_GROUPS.some((g) => (muscleLoad(workSets(x)).groups[g] || 0) >= 2));
     const weeks = last ? Math.floor((end - last.start.getTime()) / (7 * DAY)) : null;
     tip('legs', 'Jambes oubliées',
-      `${weeks ? `Dernière vraie séance jambes il y a ${weeks} semaines.` : 'Pas de séance jambes dans ton historique récent.'} Les jambes représentent près de la moitié de ta masse musculaire : une séance par semaine (squat ou presse, leg curl assis, mollets) suffit pour démarrer. Ta course à pied ne les remplace pas pour la force.`,
+      `${weeks === null ? 'Pas de séance jambes dans ton historique récent.' : weeks === 0 ? 'Moins de 4 séries de jambes sur les 4 dernières semaines.' : `Dernière vraie séance jambes il y a ${weeks} semaine${weeks > 1 ? 's' : ''}.`} Les jambes représentent près de la moitié de ta masse musculaire : une séance par semaine (squat ou presse, leg curl assis, mollets) suffit pour démarrer. Ta course à pied ne les remplace pas pour la force.`,
       SOURCES.balance);
   }
-  if (push > 0 && pull > 0 && pull / push < 0.7 && ['pecs', 'push', 'epaules', 'pecs+epaules', 'pecs+triceps', 'epaules+triceps'].includes(zone.key)) {
+  if (push > 0 && pull > 0 && pull / push < 0.7 && ['pecs', 'push', 'epaules', 'epaules+pecs', 'pecs+triceps', 'epaules+triceps'].includes(zone.main.length === 2 ? [...zone.main].sort().join('+') : zone.key)) {
     tip('balance', 'Plus de poussée que de tirage',
-      `Sur 4 semaines : ${fmtSets(push)} séries de poussée pour ${fmtSets(pull)} de tirage. Vise à peu près autant des deux, sinon les épaules s’enroulent vers l’avant. Ajoute des rowings ou des oiseaux.`,
+      `Sur 4 semaines : ${nSets(push)} de poussée pour ${fmtSets(pull)} de tirage. Vise à peu près autant des deux, sinon les épaules s’enroulent vers l’avant. Ajoute des rowings ou des oiseaux.`,
       SOURCES.balance);
   }
 

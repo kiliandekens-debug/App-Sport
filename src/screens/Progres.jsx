@@ -5,7 +5,7 @@ import { LineChart, ExerciseImage, GlassHeader, Icon, Bars } from '../components
 import { fmtKg, fmtDay, fmtInt, isWork, isPlausible } from '../lib/stats.js';
 import { muscleLoad, GROUPS, REGIONS } from '../lib/anatomy.js';
 import { BodyMap } from '../analysis.jsx';
-import { fmtSets } from '../lib/analysis.js';
+import { fmtSets, nSets } from '../lib/analysis.js';
 import { weeklyFacts } from '../lib/coach.js';
 
 const METRICS = [
@@ -54,13 +54,13 @@ export default function Progres() {
             <div className="between"><h2 className="label">7 derniers jours</h2>{data.week.streak > 1 && <span className="row xs" style={{ gap: 4, color: 'var(--ok)', fontWeight: 700 }}><Icon name="flame" size={14} />{data.week.streak} semaines d'affilée</span>}</div>
             <div className="kpis">
               <span><b>{recent.length}</b>séance{recent.length > 1 ? 's' : ''}</span>
-              <span><b>{fmtKg(tonnes)}</b>tonnes</span>
+              <span><b>{fmtKg(tonnes)}</b>tonne{tonnes >= 2 ? 's' : ''}</span>
               <span><b>{fmtKg(km)}</b>km courus</span>
             </div>
             {recentSets.length > 0 && (
               <>
                 <BodyMap regions={load.regions} selected={sel} onPick={(r) => setSel(sel === r ? null : r)} />
-                {sel && <span className="small" style={{ lineHeight: 1.45 }}><b>{REGIONS[sel].name} :</b> {fmtSets(load.regions[sel])} séries. {REGIONS[sel].what}</span>}
+                {sel && <span className="small" style={{ lineHeight: 1.45 }}><b>{REGIONS[sel].name} :</b> {nSets(load.regions[sel])}. {REGIONS[sel].what}</span>}
                 <div className="kpis small-kpis">
                   {topGroups.map(([g, n]) => <span key={g}><b>{fmtSets(n)}</b>{GROUPS[g].toLowerCase()}</span>)}
                 </div>
@@ -137,9 +137,9 @@ export default function Progres() {
           <h2 className="label">Depuis le début</h2>
           <div className="card" style={{ gap: 12 }}>
             <div className="kpis">
-              <span><b>{s.sessions}</b>séances</span>
-              <span><b>{Math.round(s.hours)}</b>heures</span>
-              <span><b>{fmtInt(s.tonnes)}</b>tonnes</span>
+              <span><b>{s.sessions}</b>séance{s.sessions > 1 ? 's' : ''}</span>
+              <span><b>{Math.round(s.hours)}</b>heure{Math.round(s.hours) >= 2 ? 's' : ''}</span>
+              <span><b>{fmtInt(s.tonnes)}</b>tonne{Math.round(s.tonnes) >= 2 ? 's' : ''}</span>
             </div>
             <Bars values={months.map((m) => m.tonnes)} labels={months.map((m) => m.label)} highlight={[peakIdx]} partialLast
               label={`Volume mensuel en tonnes : ${months.map((m) => `${m.date.toLocaleDateString('fr-FR', { month: 'short' })} ${Math.round(m.tonnes)}`).join(', ')}`} />

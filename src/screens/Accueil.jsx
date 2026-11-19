@@ -111,7 +111,7 @@ export default function Accueil({ user }) {
           <div className="stack" style={{ gap: 6 }}>
             <h2 className="label">Salle, à faire ensuite</h2>
             <span className="display" style={{ fontSize: 26 }}>{next.name}</span>
-            <span className="small muted">{next.exercises.length} exercices, {sets(next)} séries{next.last ? `, ${ago(next.last)}` : ''}</span>
+            <span className="small muted">{next.exercises.length} exercice{next.exercises.length > 1 ? 's' : ''}, {sets(next)} série{sets(next) > 1 ? 's' : ''}{next.last ? `, ${ago(next.last)}` : ''}</span>
           </div>
           <div className="stack" style={{ gap: 8 }}>
             {next.exercises.slice(0, 3).map((e) => (

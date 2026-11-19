@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useData } from './data.jsx';
-import { analyseSession, fmtSets } from './lib/analysis.js';
+import { analyseSession, fmtSets, nSets } from './lib/analysis.js';
 import { BODY } from './lib/bodymap.js';
 import { Icon } from './components.jsx';
 
@@ -67,7 +67,7 @@ export function SessionAnalysis({ workout }) {
       <section className="card ana" aria-label="Muscles travaillés">
         <div className="between">
           <h2 className="label">Zone travaillée</h2>
-          <span className="xs muted">{a.sets} séries de travail</span>
+          <span className="xs muted">{a.sets} série{a.sets > 1 ? 's' : ''} de travail</span>
         </div>
         <span className="display ana-zone">{a.zone.name}</span>
 
@@ -85,7 +85,7 @@ export function SessionAnalysis({ workout }) {
                   <span className="ana-dot" style={{ background: heat(m.sets) }} />
                   <span className="grow" style={{ fontWeight: 650 }}>{m.name}</span>
                   {moreMuscles && <span className={`ana-role${m.primary ? ' main' : ''}`}>{m.primary ? 'Ciblé' : 'Soutien'}</span>}
-                  <span className="ana-n">{fmtSets(m.sets)}<small> séries</small></span>
+                  <span className="ana-n">{fmtSets(m.sets)}<small> {nSets(m.sets).replace(/^\S+ /, '')}</small></span>
                   <Icon name="chevron" size={16} />
                 </button>
                 {on && (
