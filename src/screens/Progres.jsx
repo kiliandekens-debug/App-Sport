@@ -38,7 +38,9 @@ export default function Progres() {
   const tonnes = recentSets.reduce((a, x) => a + x.weight_kg * x.reps, 0) / 1000;
   const km = data.runLogs.filter((l) => new Date(l.done_at).getTime() > since).reduce((a, l) => a + Number(l.distance_km || 0), 0);
   const topGroups = Object.entries(load.groups).sort((a, b) => b[1] - a[1]).slice(0, 4);
-  const months = data.months;
+  // Start at the first month with volume: no row of empty bars before the history began.
+  const firstMonth = data.months.findIndex((m) => m.tonnes > 0);
+  const months = firstMonth > 0 ? data.months.slice(firstMonth) : data.months;
   const peakIdx = months.reduce((b, m, i) => (m.tonnes > months[b].tonnes ? i : b), 0);
   const facts = weeklyFacts(data);
   const s = data.summary;
