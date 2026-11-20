@@ -190,7 +190,7 @@ export function analyseSession(w, workouts) {
     const p10 = sorted[Math.floor(sorted.length * 0.1)], p90 = sorted[Math.ceil(sorted.length * 0.9) - 1];
     if (lo > 0.5) tip('heavy', 'Séries très lourdes', 'Plus de la moitié de tes séries font moins de 5 reps. Pour le muscle, des séries de 6 à 15 reps donnent autant de résultat avec moins de fatigue pour les articulations.', SOURCES.load);
     else if (hi > 0.5) tip('light', 'Séries très longues', 'Plus de la moitié de tes séries dépassent 20 reps. Ça marche si tu vas près de l’échec, mais c’est long et dur à doser : une charge pour 8 à 15 reps est plus simple.', SOURCES.load);
-    else good('reps', `Séries de ${p10} à ${p90} reps`, 'Dans la plage efficace pour la masse musculaire, à condition de finir à 1 ou 2 reps de l’échec.', SOURCES.load);
+    else good('reps', p10 === p90 ? `Séries de ${p10} rep${p10 > 1 ? 's' : ''}` : `Séries de ${p10} à ${p90} reps`, 'Dans la plage efficace pour la masse musculaire, à condition de finir à 1 ou 2 reps de l’échec.', SOURCES.load);
   }
 
   // Balance over 4 weeks.
