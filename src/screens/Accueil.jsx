@@ -162,7 +162,7 @@ export default function Accueil({ user }) {
           <div key={r.id} className="prog-item" style={{ padding: '10px 6px 10px 14px' }}>
             <Link to={`/routines/${r.id}`} className="grow stack" style={{ gap: 2, color: 'inherit', textDecoration: 'none' }} aria-label={`Modifier la routine ${r.name}`}>
               <span style={{ fontSize: 15, fontWeight: 600 }}>{r.name}</span>
-              <span className="xs muted">{r.exercises.length} exercices · {r.last ? (sameDay(r.last, today) ? "faite aujourd'hui" : `dernière fois le ${fmtDay(r.last)}`) : 'jamais faite'}</span>
+              <span className="xs muted">{r.exercises.length} exercice{r.exercises.length > 1 ? 's' : ''} · {r.last ? (sameDay(r.last, today) ? "faite aujourd'hui" : `dernière fois le ${fmtDay(r.last)}`) : 'jamais faite'}</span>
             </Link>
             <button className="icon-btn sq" aria-label={`Démarrer ${r.name}`} disabled={session.active} onClick={() => startRoutine(r)}><Icon name="play" size={18} width={2.5} /></button>
           </div>

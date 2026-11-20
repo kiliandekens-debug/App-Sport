@@ -46,7 +46,7 @@ export default function Admin({ user }) {
             <div className="stack" style={{ gap: 2 }}>
               <span style={{ fontWeight: 650, overflowWrap: 'anywhere' }}>{u.email}{u.id === user.id ? ' (toi)' : ''}</span>
               <span className="xs muted">Créé le {day(u.created_at)}, dernière connexion {day(u.last_sign_in_at)}</span>
-              <span className="xs muted">{u.workouts} séances de salle, {u.runs} courses, {u.has_password ? 'mot de passe défini' : 'connexion par lien seulement'}</span>
+              <span className="xs muted">{u.workouts} séance{u.workouts > 1 ? 's' : ''} de salle, {u.runs} course{u.runs > 1 ? 's' : ''}, {u.has_password ? 'mot de passe défini' : 'connexion par lien seulement'}</span>
             </div>
             <div className="seg" role="group" aria-label={`Rôle de ${u.email}`} style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
               {ROLES.map(([k, l]) => (

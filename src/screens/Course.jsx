@@ -71,7 +71,7 @@ function FitCard({ fit }) {
   const b = fit.best;
   return (
     <section className="card stack" style={{ gap: 10 }} aria-label="Ce que disent tes courses">
-      <h2 className="label">Ce que disent tes {fit.runs} courses</h2>
+      <h2 className="label">{fit.runs > 1 ? `Ce que disent tes ${fit.runs} courses` : 'Ce que dit ta course'}</h2>
       {b && <span className="small" style={{ lineHeight: 1.5 }}>Meilleure performance récente : <b>{b.notes || 'course'}</b>, {fmtDay(new Date(b.done_at))} {new Date(b.done_at).getFullYear()}, {fmtKm(b.distance_km)} km en {hms(b.duration_s)}. Niveau (VDOT) : <b>{fmt1(fit.vdotPeak)}</b>.</span>}
       <span className="small" style={{ lineHeight: 1.5 }}>Volume habituel : <b>{Math.round(fit.weeklyUsual)} km par semaine</b>. Plus longue sortie : {fmtKm(fit.longest.distance_km)} km.</span>
       {fit.break && fit.break.days >= 8 && (
@@ -92,7 +92,7 @@ function HistoryCard({ logs, fit }) {
   const max = Math.max(...months.map((m) => m.km), 1);
   return (
     <section className="card stack" style={{ gap: 12 }} aria-label="Ton historique de course">
-      <div className="between"><h2 className="label">Ton historique</h2><span className="xs muted">{fit.runs} courses, {Math.round(fit.totalKm)} km</span></div>
+      <div className="between"><h2 className="label">Ton historique</h2><span className="xs muted">{fit.runs} course{fit.runs > 1 ? 's' : ''}, {Math.round(fit.totalKm)} km</span></div>
       <div className="row" style={{ alignItems: 'flex-end', gap: 4, height: 70 }} role="img" aria-label={`Kilomètres par mois : ${months.map((m) => `${Math.round(m.km)}`).join(', ')}`}>
         {months.map((m, i) => <div key={i} style={{ flex: 1, height: `${Math.max(3, (m.km / max) * 100)}%`, borderRadius: '5px 5px 2px 2px', background: i === months.length - 1 ? 'var(--accent)' : 'var(--z1)', opacity: m.km ? 1 : 0.25 }} />)}
       </div>
