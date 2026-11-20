@@ -6,6 +6,13 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.7.4', date: '2026-11-20', title: 'Corrections de la nuit',
+    items: [
+      'Accords au singulier : « 1 exercice » sous une routine, « 1 course » dans l\'écran Course et l\'administration.',
+      'Analyse de séance : « Séries de 10 reps » quand toutes les séries ont le même nombre de reps, au lieu de « 10 à 10 reps ».',
+    ],
+  },
+  {
     version: '1.7.3', date: '2026-11-19', title: 'Histogramme sans mois vides',
     items: [
       'Progrès : le volume mensuel commence au premier mois où tu t\'es entraîné, sans rangée de barres vides avant.',
