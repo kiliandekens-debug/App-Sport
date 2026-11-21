@@ -6,6 +6,15 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.8.0', date: '2026-11-21', title: 'Échauffement automatique et lest',
+    items: [
+      'Échauffement automatique : 2 séries d\'approche (50 % × 5, 75 % × 3) sur le premier exercice lourd (20 kg ou plus) de chaque muscle. Réglage dans Profil.',
+      'Lest pour tractions et dips : si tu l\'actives dans Profil, le coach propose 2,5 kg de lest dès 12 reps au poids du corps.',
+      'Notification de repos à jour : elle reprend la charge et les reps que tu modifies pendant le repos, et se reprogramme seule après une coupure de réseau.',
+      'Progrès : « Jambes : 0 série sur 288 depuis le début » et « 1 km couru ».',
+    ],
+  },
+  {
     version: '1.7.5', date: '2026-11-21', title: 'Corrections de la nuit',
     items: [
       'Coach : sur un exercice au poids du corps (0 kg), il propose une rep de plus au lieu d\'ajouter 2,5 kg (« 12 reps ou plus à 0 kg »).',
