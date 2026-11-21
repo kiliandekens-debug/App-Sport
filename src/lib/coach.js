@@ -46,6 +46,14 @@ export function reviewLastSession(data) {
         },
       };
     }
+    // Bodyweight (0 kg): adding 2.5 kg to a bodyweight squat makes no sense, aim for one more rep.
+    if (maxKg === 0) {
+      return {
+        name,
+        kind: 'hold',
+        plan: { target_kg: 0, target_reps: minRepsAtTop + 1, reason: 'Poids du corps : une rep de plus' },
+      };
+    }
     if (minRepsAtTop >= repTop) {
       return {
         name,
