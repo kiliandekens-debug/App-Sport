@@ -156,8 +156,10 @@ with sync_playwright() as p:
     body = pg.locator('main').inner_text()
     check('Développé Couché (Haltère)' in body, 'library routine name resolved to history name')
     check('Butterfly (Pec Deck)' in body, 'pec deck resolved to Butterfly history')
-    kg = pg.locator('.wex, .ex-card, main').locator('input').first.input_value()
-    check(kg.replace(',', '.') in ('77', '77.0'), f'coach plan load applied ({kg})')
+    vals = [v.replace(',', '.') for v in pg.locator('main input').evaluate_all('els => els.map(e => e.value)')]
+    check('77' in vals or '77.0' in vals, f'coach plan load applied ({vals[:6]})')
+    # 1.8.0: automatic warm-up (50 % × 5, 75 % × 3) before the first heavy exercise of the muscle.
+    check(vals[:4] == ['38.5', '5', '58', '3'], f'automatic warm-up from the working load ({vals[:4]})')
     pg.screenshot(path=f'{SHOTS}/flow-library-routine.png', full_page=True)
     pg.locator('.session-head').get_by_role('button', name='Terminer').click(); pg.wait_for_timeout(300)
     d = pg.locator('.sheet').get_by_role('button', name='Abandonner')

@@ -9,7 +9,7 @@ import { WhatsNew } from '../update.jsx';
 import { PasswordForm } from '../password.jsx';
 import { pushSupported, pushEnabled, enablePush, disablePush, testPush, isIos, isStandalone, pushEvery, setPushEvery } from '../push.js';
 import { buildPlan } from '../lib/running.js';
-import { useSession, keepAwake, setKeepAwake } from '../session.jsx';
+import { useSession, keepAwake, setKeepAwake, autoWarmup, setAutoWarmup, hasLest, setHasLest } from '../session.jsx';
 import { useUi } from '../ui.jsx';
 import { parseHevyCsv } from '../lib/csv.js';
 import { Icon, GlassHeader } from '../components.jsx';
@@ -27,6 +27,8 @@ export default function Profil({ user }) {
   const [pushMsg, setPushMsg] = useState('');
   const [every, setEvery] = useState(pushEvery);
   const [awake, setAwake] = useState(keepAwake);
+  const [warm, setWarm] = useState(autoWarmup);
+  const [lest, setLest] = useState(hasLest);
   const togglePush = async () => {
     setPushMsg('');
     try {
@@ -134,6 +136,12 @@ export default function Profil({ user }) {
           )}
           <Row icon="sun" tint="#FF9500" right={<button className="switch" role="switch" aria-checked={awake} aria-label="Garder l'écran allumé" onClick={() => { setKeepAwake(!awake); setAwake(!awake); ui.notify(!awake ? 'Écran allumé pendant la séance' : 'L\'écran pourra se verrouiller (effet à la prochaine séance)'); }}><span /></button>}>
             Garder l'écran allumé
+          </Row>
+          <Row icon="flame" tint="#FF2D55" right={<button className="switch" role="switch" aria-checked={warm} aria-label="Échauffement automatique" onClick={() => { setAutoWarmup(!warm); setWarm(!warm); ui.notify(!warm ? 'Échauffement ajouté sur le premier exercice lourd de chaque muscle' : 'Échauffement seulement à la demande'); }}><span /></button>}>
+            Échauffement automatique
+          </Row>
+          <Row icon="dumbbell" tint="#5856D6" right={<button className="switch" role="switch" aria-checked={lest} aria-label="Ceinture de lest pour tractions et dips" onClick={() => { setHasLest(!lest); setLest(!lest); ui.notify(!lest ? 'Le coach proposera du lest dès 12 reps aux tractions et aux dips' : 'Le coach restera au poids du corps'); }}><span /></button>}>
+            Lest pour tractions et dips
           </Row>
           {push && <Row icon="send" tint="#8E8E93" onClick={async () => { try { await testPush(); ui.notify('Notification de test dans 5 secondes'); } catch (e) { ui.notify(e.message || String(e)); } }}>Envoyer une notification de test</Row>}
         </div>

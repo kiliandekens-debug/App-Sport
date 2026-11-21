@@ -4,6 +4,7 @@ import { syncRestPush } from './push.js';
 import { useData } from './data.jsx';
 import { templateFor, lastSetsOf } from './lib/stats.js';
 import { exactImageId } from './lib/images.js';
+import { muscleOf, equipOf } from './lib/exercises.js';
 import { defaultRest, routineFromHistory, toggleSuperset as toggleSS, cleanSupersets } from './lib/routines.js';
 
 const KEY = 'app-sport-session';
@@ -21,6 +22,16 @@ const writeJson = (k, v) => {
 const AWAKE = 'app-sport-keep-awake';
 export const keepAwake = () => { try { return localStorage.getItem(AWAKE) !== '0'; } catch { return true; } };
 export const setKeepAwake = (v) => { try { localStorage.setItem(AWAKE, v ? '1' : '0'); } catch { /* private mode */ } };
+
+// Setting: warm-up sets added by themselves on the first heavy exercise of each muscle (default yes).
+const AUTO_WARM = 'app-sport-auto-warmup';
+export const autoWarmup = () => { try { return localStorage.getItem(AUTO_WARM) !== '0'; } catch { return true; } };
+export const setAutoWarmup = (v) => { try { localStorage.setItem(AUTO_WARM, v ? '1' : '0'); } catch { /* private mode */ } };
+
+// Setting: a dip belt is available, so the coach may add weight to pull-ups and dips (default no).
+const LEST = 'app-sport-lest';
+export const hasLest = () => { try { return localStorage.getItem(LEST) === '1'; } catch { return false; } };
+export const setHasLest = (v) => { try { localStorage.setItem(LEST, v ? '1' : '0'); } catch { /* private mode */ } };
 
 export const num = (v) => parseFloat(String(v ?? '').replace(',', '.')) || 0;
 
@@ -55,6 +66,23 @@ export function withAutoWarmups(sets) {
     ? sets.map((x) => (x.type === 'warmup' && !x.done ? { ...x, auto: true } : x))
     : [...WARM_SCHEMES[3].map(([, reps]) => ({ kg: '', reps: String(reps), type: 'warmup', done: false, auto: true })), ...sets];
   return applyWarmups(next);
+}
+
+// Two warm-up sets (50 % × 5, 75 % × 3) on the first exercise of each muscle group when the
+// working load is 20 kg or more, unless the routine already has its own warm-ups.
+const AUTO_WARM_MIN_KG = 20;
+function withSessionWarmups(exercises) {
+  if (!autoWarmup()) return exercises;
+  const seen = new Set();
+  return exercises.map((e) => {
+    const muscle = muscleOf(e.name);
+    const first = !seen.has(muscle);
+    seen.add(muscle);
+    if (!first || e.superset || equipOf(e.name) === 'Cardio' || e.sets.some((x) => x.type === 'warmup')) return e;
+    if (num(e.sets.find((x) => x.type !== 'warmup')?.kg) < AUTO_WARM_MIN_KG) return e;
+    const warm = WARM_SCHEMES[2].map(([, reps]) => ({ kg: '', reps: String(reps), type: 'warmup', done: false, auto: true }));
+    return { ...e, sets: applyWarmups([...warm, ...e.sets]) };
+  });
 }
 
 function restFor(name) {
@@ -204,22 +232,29 @@ export function SessionProvider({ children }) {
     return () => { stopped = true; document.removeEventListener('visibilitychange', onVis); lock?.release?.().catch(() => {}); };
   }, [active]);
 
-  // End-of-rest notification (iPhone and Apple Watch), kept in step with the timer.
+  // End-of-rest notification (iPhone and Apple Watch), kept in step with the timer and with
+  // the load and reps typed for the next set during the rest.
+  const ex0 = s?.exercises[s.current];
+  const i0 = ex0 ? ex0.sets.findIndex((x) => !x.done) : -1;
+  let restBody = 'C\'est reparti.';
+  if (ex0 && i0 >= 0) {
+    const x = ex0.sets[i0];
+    const p = prevOf(ex0, i0);
+    const kg = x.kg !== '' ? x.kg : p ? String(p.kg).replace('.', ',') : '?';
+    const reps = x.reps !== '' ? x.reps : p ? p.reps : '?';
+    // Bodyweight (0 kg): « Traction : × 8 » rather than « 0 kg × 8 ».
+    restBody = Number(String(kg).replace(',', '.')) === 0 ? `${ex0.name} : × ${reps}` : `${ex0.name} : ${kg} kg × ${reps}`;
+  } else if (s?.exercises.some((e) => e.sets.some((x) => !x.done))) restBody = 'Exercice suivant.';
+  const restUntil = s?.restUntil || null;
+  const lastRestUntil = useRef(null);
   useEffect(() => {
-    if (!s?.restUntil) { syncRestPush(null); return; }
-    const ex = s.exercises[s.current];
-    const i = ex ? ex.sets.findIndex((x) => !x.done) : -1;
-    let body = 'C\'est reparti.';
-    if (ex && i >= 0) {
-      const x = ex.sets[i];
-      const p = prevOf(ex, i);
-      const kg = x.kg !== '' ? x.kg : p ? String(p.kg).replace('.', ',') : '?';
-      const reps = x.reps !== '' ? x.reps : p ? p.reps : '?';
-      // Bodyweight (0 kg): « Traction : × 8 » rather than « 0 kg × 8 ».
-      body = Number(String(kg).replace(',', '.')) === 0 ? `${ex.name} : × ${reps}` : `${ex.name} : ${kg} kg × ${reps}`;
-    } else if (s.exercises.some((e) => e.sets.some((x) => !x.done))) body = 'Exercice suivant.';
-    syncRestPush(s.restUntil, body);
-  }, [s?.restUntil, s?.current]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!restUntil) { lastRestUntil.current = null; syncRestPush(null); return undefined; }
+    // A new timer is sent at once; a text change while typing waits until the typing stops.
+    const delay = restUntil !== lastRestUntil.current ? 0 : 800;
+    lastRestUntil.current = restUntil;
+    const t = setTimeout(() => syncRestPush(restUntil, restBody), delay);
+    return () => clearTimeout(t);
+  }, [restUntil, restBody]);
 
   const resting = Boolean(s?.restUntil && s.restUntil > now);
   useEffect(() => {
@@ -230,7 +265,7 @@ export function SessionProvider({ children }) {
   const update = useCallback((fn) => setS((cur) => (cur ? fn(cur) : cur)), []);
   const mapEx = (ei, fn) => update((c) => ({ ...c, exercises: c.exercises.map((e, i) => (i === ei ? fn(e) : e)) }));
 
-  const begin = (title, exercises) => setS({ title, startedAt: new Date().toISOString(), exercises, current: 0, restUntil: null, restTotal: 0 });
+  const begin = (title, exercises) => setS({ title, startedAt: new Date().toISOString(), exercises: withSessionWarmups(exercises), current: 0, restUntil: null, restTotal: 0 });
 
   const start = useCallback((title) => {
     const r = routineFromHistory(data, title);

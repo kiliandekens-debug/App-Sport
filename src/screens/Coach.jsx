@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useData, savePlan } from '../data.jsx';
 import { useUi } from '../ui.jsx';
 import { reviewLastSession } from '../lib/coach.js';
+import { hasLest } from '../session.jsx';
 import { fmtKg, fmtInt, fmtDay, sameDay, titleKey, isWork, isPlausible } from '../lib/stats.js';
 import { incrementOf } from '../lib/exercises.js';
 import { Icon, ExerciseImage, GlassHeader } from '../components.jsx';
@@ -43,7 +44,7 @@ export default function Coach() {
   const data = useData();
   const ui = useUi();
   const { state } = useLocation();
-  const review = useMemo(() => reviewLastSession(data), [data]);
+  const review = useMemo(() => reviewLastSession(data, { lest: hasLest() }), [data]);
   const [answers, setAnswers] = useState({});
   const [tweak, setTweak] = useState({});
   const [saving, setSaving] = useState(false);
