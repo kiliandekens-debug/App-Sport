@@ -43,7 +43,7 @@ export default function Profil({ user }) {
     const blob = new Blob(['\ufeff' + exportCsv(data.workouts)], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `kadeon-sport-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `kadeon-sport-export-${new Date().toLocaleDateString('sv-SE')}.csv`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
