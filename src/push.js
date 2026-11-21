@@ -70,8 +70,11 @@ export function syncRestPush(restUntil, body) {
 }
 
 async function applyRestPush(restUntil, body) {
+  const key = restUntil ? `${restUntil}|${body}` : null;
+  let ok = false;
   try {
-    await supabase.from('scheduled_pushes').delete().is('sent_at', null).eq('tag', 'rest');
+    const { error } = await supabase.from('scheduled_pushes').delete().is('sent_at', null).eq('tag', 'rest');
+    if (error) throw error;
     if (restUntil && restUntil > Date.now() + 3000) {
       // One notification per step, all with the same tag: each one replaces the previous on the iPhone and the watch.
       const rows = [];
@@ -83,7 +86,15 @@ async function applyRestPush(restUntil, body) {
         }
       }
       rows.push({ send_at: new Date(restUntil).toISOString(), tag: 'rest', title: 'Repos terminé', body, url: '/seance' });
-      await supabase.from('scheduled_pushes').insert(rows);
+      const { error: e2 } = await supabase.from('scheduled_pushes').insert(rows);
+      if (e2) throw e2;
     }
-  } catch { /* offline: the in-app beep still works */ }
+    ok = true;
+  } catch { /* offline: the in-app beep still works, and we retry below */ }
+  // Failed (gym without network): forget the key so the same timer can be scheduled again,
+  // and retry in 10 s unless a newer change has taken over or the rest is already over.
+  if (!ok && last === key) {
+    last = undefined; // matches no key, not even « no rest » (null)
+    if (!restUntil || restUntil > Date.now() + 3000) setTimeout(() => { if (last === undefined) syncRestPush(restUntil, body); }, 10000);
+  }
 }
