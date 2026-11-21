@@ -4,7 +4,13 @@ import { incrementOf } from './exercises.js';
 const kg = (v) => `${fmtKg(v)} kg`;
 
 // Rule-based review of the latest session: one suggestion per exercise.
-export function reviewLastSession(data) {
+// Pull-ups and dips can take a dip belt; assisted, machine and bench versions cannot.
+const LESTABLE = /traction|pull[- ]?up|chin[- ]?up|\bdips?\b/i;
+const NO_LEST = /assist|machine|banc|bande/i;
+export const isLestable = (name) => LESTABLE.test(name) && !NO_LEST.test(name);
+
+// options.lest: a dip belt is available (setting in Profil).
+export function reviewLastSession(data, { lest = false } = {}) {
   const w = data.workouts[0];
   if (!w) return null;
   const work = w.sets.filter((s) => isWork(s) && isPlausible(s));
@@ -46,7 +52,15 @@ export function reviewLastSession(data) {
         },
       };
     }
-    // Bodyweight (0 kg): adding 2.5 kg to a bodyweight squat makes no sense, aim for one more rep.
+    // Bodyweight (0 kg): with a dip belt, pull-ups and dips get 2.5 kg once 12 reps are reached.
+    if (maxKg === 0 && lest && isLestable(name) && minRepsAtTop >= 12) {
+      return {
+        name,
+        kind: 'up',
+        plan: { target_kg: 2.5, target_reps: 8, reason: `${minRepsAtTop} reps au poids du corps : ajoute 2,5 kg de lest` },
+      };
+    }
+    // Otherwise adding 2.5 kg to a bodyweight squat makes no sense: aim for one more rep.
     if (maxKg === 0) {
       return {
         name,
@@ -75,7 +89,7 @@ export function weeklyFacts(data) {
   const facts = [];
   const { legSets, workSets, peak, lastFull } = data.alerts;
   if (workSets > 100 && legSets / workSets < 0.05)
-    facts.push(`Jambes : ${legSets} série${legSets > 1 ? 's' : ''} sur ${workSets.toLocaleString('fr-FR')}. Une séance jambes par semaine équilibrerait le programme.`);
+    facts.push(`Jambes : ${legSets} série${legSets > 1 ? 's' : ''} sur ${workSets.toLocaleString('fr-FR')} depuis le début. Une séance jambes par semaine équilibrerait le programme.`);
   if (peak && lastFull && lastFull.tonnes < peak.tonnes * 0.6)
     facts.push(`Volume du mois dernier : ${Math.round(lastFull.tonnes)} t, contre ${Math.round(peak.tonnes)} t au pic. Tes charges plafonnent depuis que le volume a baissé.`);
   return facts;

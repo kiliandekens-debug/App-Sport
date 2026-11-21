@@ -57,7 +57,7 @@ export default function Progres() {
             <div className="kpis">
               <span><b>{recent.length}</b>séance{recent.length > 1 ? 's' : ''}</span>
               <span><b>{fmtKg(tonnes)}</b>tonne{tonnes >= 2 ? 's' : ''}</span>
-              <span><b>{fmtKg(km)}</b>km courus</span>
+              <span><b>{fmtKg(km)}</b>km couru{km >= 2 ? 's' : ''}</span>
             </div>
             {recentSets.length > 0 && (
               <>
