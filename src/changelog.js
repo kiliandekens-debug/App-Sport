@@ -6,6 +6,13 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.7.5', date: '2026-11-21', title: 'Corrections de la nuit',
+    items: [
+      'Coach : sur un exercice au poids du corps (0 kg), il propose une rep de plus au lieu d\'ajouter 2,5 kg (« 12 reps ou plus à 0 kg »).',
+      'Export CSV : le nom du fichier porte la date du jour en heure belge, plus celle de la veille après minuit.',
+    ],
+  },
+  {
     version: '1.7.4', date: '2026-11-20', title: 'Corrections de la nuit',
     items: [
       'Accords au singulier : « 1 exercice » sous une routine, « 1 course » dans l\'écran Course et l\'administration.',
