@@ -75,11 +75,15 @@ function withSessionWarmups(exercises) {
   if (!autoWarmup()) return exercises;
   const seen = new Set();
   return exercises.map((e) => {
+    // Unclassified exercises (« Autre ») each count as their own muscle.
     const muscle = muscleOf(e.name);
-    const first = !seen.has(muscle);
-    seen.add(muscle);
-    if (!first || e.superset || equipOf(e.name) === 'Cardio' || e.sets.some((x) => x.type === 'warmup')) return e;
-    if (num(e.sets.find((x) => x.type !== 'warmup')?.kg) < AUTO_WARM_MIN_KG) return e;
+    const key = muscle === 'Autre' ? `Autre:${e.name}` : muscle;
+    if (seen.has(key)) return e;
+    const heavy = num(e.sets.find((x) => x.type !== 'warmup')?.kg) >= AUTO_WARM_MIN_KG;
+    const ownWarm = e.sets.some((x) => x.type === 'warmup');
+    // A light exercise (under 20 kg) does not use up the muscle's warm-up: the first heavy one gets it.
+    if (heavy || ownWarm) seen.add(key);
+    if (!heavy || ownWarm || e.superset || equipOf(e.name) === 'Cardio') return e;
     const warm = WARM_SCHEMES[2].map(([, reps]) => ({ kg: '', reps: String(reps), type: 'warmup', done: false, auto: true }));
     return { ...e, sets: applyWarmups([...warm, ...e.sets]) };
   });
