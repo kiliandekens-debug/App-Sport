@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './supabase.js';
 import { syncRestPush } from './push.js';
+import { isNative, nativeKeepAwake } from './native.js';
 import { useData } from './data.jsx';
 import { templateFor, lastSetsOf } from './lib/stats.js';
 import { exactImageId } from './lib/images.js';
@@ -226,6 +227,11 @@ export function SessionProvider({ children }) {
 
   // Keep the screen on during a session (rest timer visible without unlocking the phone).
   useEffect(() => {
+    if (isNative()) {
+      if (!active || !keepAwake()) return undefined;
+      nativeKeepAwake(true).catch(() => {});
+      return () => { nativeKeepAwake(false).catch(() => {}); };
+    }
     if (!active || !('wakeLock' in navigator) || !keepAwake()) return undefined;
     let lock = null;
     let stopped = false;

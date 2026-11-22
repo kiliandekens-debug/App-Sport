@@ -1,7 +1,7 @@
 {
   "name": "app-sport",
   "private": true,
-  "version": "1.8.2",
+  "version": "1.9.0",
   "type": "module",
   "scripts": {
     "ocr": "node scripts/copy-ocr.mjs",
@@ -9,14 +9,22 @@
     "build": "npm run ocr && vite build",
     "preview": "vite preview",
     "postinstall": "node scripts/copy-ocr.mjs",
-    "test:smoke": "python3 tests/smoke.py"
+    "test:smoke": "python3 tests/smoke.py",
+    "ios": "npm run build && npx cap sync ios"
   },
   "dependencies": {
+    "@capacitor-community/keep-awake": "^8.0.1",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/ios": "^8.6.2",
+    "@capacitor/local-notifications": "^8.3.1",
+    "@capacitor/status-bar": "^8.0.4",
     "@fontsource-variable/archivo": "^5.3.0",
     "@fontsource/barlow": "^5.3.0",
     "@fontsource/barlow-condensed": "^5.3.0",
     "@supabase/supabase-js": "^2.45.0",
     "@tesseract.js-data/fra": "^1.0.0",
+    "capacitor-health": "^8.4.0",
     "fflate": "^0.8.3",
     "papaparse": "^5.4.1",
     "react": "^18.3.1",
@@ -25,6 +33,8 @@
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.6.2",
     "@vitejs/plugin-react": "^4.3.1",
     "vite": "^5.4.0"
   }

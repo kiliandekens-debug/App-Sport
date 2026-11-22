@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { supabase } from '../supabase.js';
 import { Link } from 'react-router-dom';
-import { useData, importWorkouts, exportCsv, importRuns } from '../data.jsx';
+import { useData, importWorkouts, exportCsv, importRuns, deleteAccount } from '../data.jsx';
 import { readStravaFile } from '../lib/strava.js';
 import { MonthCalendar } from '../day.jsx';
 import { VERSION, BUILD, BUILT_AT } from '../changelog.js';
@@ -9,6 +9,7 @@ import { WhatsNew } from '../update.jsx';
 import { PasswordForm } from '../password.jsx';
 import { pushSupported, pushEnabled, enablePush, disablePush, testPush, isIos, isStandalone, pushEvery, setPushEvery } from '../push.js';
 import { buildPlan } from '../lib/running.js';
+import { isNative, healthRuns } from '../native.js';
 import { useSession, keepAwake, setKeepAwake, autoWarmup, setAutoWarmup, hasLest, setHasLest } from '../session.jsx';
 import { useUi } from '../ui.jsx';
 import { parseHevyCsv } from '../lib/csv.js';
@@ -94,6 +95,29 @@ export default function Profil({ user }) {
       e.target.value = '';
     }
   };
+  const removeAccount = async () => {
+    if (!(await ui.confirm({ title: 'Supprimer ton compte ?', message: 'Toutes tes séances, courses, routines et réglages seront effacés définitivement. Exporte d\'abord tes séances si tu veux les garder.', ok: 'Continuer', danger: true }))) return;
+    if (!(await ui.confirm({ title: 'Dernière confirmation', message: 'Cette action est irréversible.', ok: 'Supprimer définitivement', danger: true }))) return;
+    try {
+      await deleteAccount();
+      session.cancel();
+      await supabase.auth.signOut();
+    } catch (e) { ui.notify(e.message || String(e)); }
+  };
+  const onHealth = async () => {
+    setBusy(true);
+    setStravaStatus('Lecture d\'Apple Santé…');
+    try {
+      const runs = await healthRuns(365);
+      const res = await importRuns(runs, data.runLogs);
+      await data.refresh();
+      setStravaStatus(runs.length ? `${res.added} course${res.added > 1 ? 's' : ''} ajoutée${res.added > 1 ? 's' : ''}${res.skipped ? `, ${res.skipped} déjà présente${res.skipped > 1 ? 's' : ''}` : ''}.` : 'Aucune course trouvée dans Apple Santé. Vérifie l\'accès dans Réglages › Santé › Accès aux données.');
+    } catch (err) {
+      setStravaStatus(`Échec : ${err.message || err}`);
+    } finally {
+      setBusy(false);
+    }
+  };
   const planned = data.runProfile ? buildPlan(data.runProfile, data.runLogs, data.workouts).weeks.flat() : [];
 
   const Row = ({ icon, tint, children, onClick, to, right, danger, ...rest }) => {
@@ -146,7 +170,7 @@ export default function Profil({ user }) {
           {push && <Row icon="send" tint="#8E8E93" onClick={async () => { try { await testPush(); ui.notify('Notification de test dans 5 secondes'); } catch (e) { ui.notify(e.message || String(e)); } }}>Envoyer une notification de test</Row>}
         </div>
         <span className="gfoot">
-          {isIos() && !isStandalone() && !push
+          {!isNative() && isIos() && !isStandalone() && !push
             ? 'Sur iPhone, les notifications marchent seulement depuis l\'app ajoutée à l\'écran d\'accueil.'
             : !pushSupported() && !isIos() ? 'Ce navigateur ne gère pas les notifications.'
             : 'Sur l\'Apple Watch, les notifications arrivent quand l\'iPhone est verrouillé.'}
@@ -169,6 +193,7 @@ export default function Profil({ user }) {
         <input ref={stravaRef} type="file" accept=".zip,.csv,application/zip,text/csv" hidden onChange={onStrava} />
         <div className="glist">
           <Row icon="list" tint="#007AFF" to="/historique">Historique des séances</Row>
+          {isNative() && <Row icon="flame" tint="#FF2D55" onClick={onHealth} disabled={busy}>Importer depuis Apple Santé</Row>}
           <Row icon="upload" tint="#5856D6" onClick={() => fileRef.current?.click()} disabled={busy}>Importer depuis Hevy</Row>
           <Row icon="run" tint="#FC4C02" onClick={() => stravaRef.current?.click()} disabled={busy}>Importer depuis Strava</Row>
           {s.sessions > 0 && <Row icon="download" tint="#34C759" onClick={download}>Exporter mes séances (.csv)</Row>}
@@ -189,6 +214,10 @@ export default function Profil({ user }) {
           <Row icon="edit" tint="#8E8E93" onClick={() => setPwd(!pwd)} aria-expanded={pwd}>Mot de passe</Row>
           <Row icon="spark" tint="#E8500E" onClick={() => setNews(true)} right={<span className="xs muted">{VERSION}</span>}>Nouveautés</Row>
           <Row onClick={signOut} danger>Se déconnecter</Row>
+        </div>
+        <div className="glist">
+          <Row icon="trash" tint="#FF3B30" onClick={removeAccount} danger>Supprimer mon compte</Row>
+          <Row icon="link" tint="#8E8E93" onClick={() => window.open('https://sport.kadeon.be/confidentialite.html', '_blank')}>Confidentialité</Row>
         </div>
         {pwd && <div className="card"><PasswordForm onDone={() => setPwd(false)} /></div>}
         <span className="gfoot" style={{ textAlign: 'center' }}>{user?.email}<br />Kadeon Sport {VERSION} ({BUILD}), {new Date(BUILT_AT).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>

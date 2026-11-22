@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { supabase, fetchAll } from './supabase.js';
 import { analyse } from './lib/stats.js';
+import { isNative, healthRuns, healthLinked } from './native.js';
 
 const DataCtx = createContext(null);
 
@@ -34,6 +35,17 @@ export function DataProvider({ children }) {
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  // iPhone app linked to Apple Health: new runs come in by themselves at each launch.
+  const [healthDone, setHealthDone] = useState(false);
+  useEffect(() => {
+    if (loading || healthDone || !isNative() || !healthLinked()) return;
+    setHealthDone(true);
+    healthRuns(30)
+      .then((runs) => importRuns(runs, raw.runLogs))
+      .then((res) => { if (res.added) refresh(); })
+      .catch(() => { /* access withdrawn or offline: the manual import still works */ });
+  }, [loading, healthDone, raw.runLogs, refresh]);
 
   const value = useMemo(() => {
     const data = analyse(raw.workouts);
@@ -145,6 +157,14 @@ export async function importRuns(runs, existing) {
     if (error) throw error;
   }
   return { added: todo.length, skipped: runs.length - todo.length };
+}
+
+// App Store requirement: wipes every row of the signed-in user, then the login itself
+// (kept only when another project in the same database still uses it).
+export async function deleteAccount() {
+  const { data, error } = await supabase.rpc('delete_my_account');
+  if (error) throw error;
+  return data;
 }
 
 // Superadmin only (checked again in the database).

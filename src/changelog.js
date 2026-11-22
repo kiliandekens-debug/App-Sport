@@ -6,6 +6,14 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.9.0', date: '2026-11-22', title: 'Préparation de l\'app iPhone',
+    items: [
+      'Profil › Supprimer mon compte : efface toutes tes données (exigence de l\'App Store).',
+      'Profil › Confidentialité : la politique de confidentialité de Kadeon Sport.',
+      'Base de l\'app iPhone : notifications de repos sur le téléphone, écran allumé, import des courses depuis Apple Santé.',
+    ],
+  },
+  {
     version: '1.8.2', date: '2026-11-22', title: 'Nouvelle machine',
     items: [
       'Ajout de « Élévation latérale (machine) » dans la bibliothèque (Épaules, Machine).',

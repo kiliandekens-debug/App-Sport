@@ -1,0 +1,78 @@
+# Builds the iPhone app on a macOS runner.
+# - Always: compiles for the simulator (no Apple account needed) to catch build errors.
+# - When the App Store Connect secrets exist: archives, signs automatically and uploads
+#   the build to TestFlight. Secrets: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (content of
+#   the .p8 file), APPLE_TEAM_ID.
+name: iOS
+
+on:
+  push:
+    branches: [main]
+    paths: ['src/**', 'public/**', 'ios/**', 'package.json', 'package-lock.json', 'capacitor.config.json', '.github/workflows/ios.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: ios
+  cancel-in-progress: true
+
+env:
+  VITE_SUPABASE_URL: https://mrqxkncxksncidkpwlib.supabase.co
+  # Publishable key: public by design (row level security protects the data).
+  VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_YrgfmzKAzCWRk8MGR27kDQ_Oh1eeI59
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync ios
+
+      - name: Build for the simulator
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -n 40
+
+      - name: Check App Store Connect secrets
+        id: asc
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: echo "ready=$([ -n "$ASC_KEY_ID" ] && echo yes || echo no)" >> "$GITHUB_OUTPUT"
+
+      - name: Archive and upload to TestFlight
+        if: steps.asc.outputs.ready == 'yes'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          KEY="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          printf '%s' "$ASC_KEY_P8" > "$KEY"
+          VERSION=$(node -p "require('./package.json').version")
+          AUTH="-allowProvisioningUpdates -authenticationKeyPath $KEY -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID"
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            $AUTH archive | tail -n 40
+          cat > "$RUNNER_TEMP/export.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/export.plist" -exportPath "$RUNNER_TEMP/export" $AUTH | tail -n 40
