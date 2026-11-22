@@ -6,6 +6,13 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.8.1', date: '2026-11-22', title: 'Correction de la nuit',
+    items: [
+      'Échauffement automatique : un exercice léger (moins de 20 kg) en début de séance ne prive plus le premier exercice lourd du même muscle de ses séries d\'approche.',
+      'Les exercices non classés ne se partagent plus un seul échauffement : chacun compte pour lui-même.',
+    ],
+  },
+  {
     version: '1.8.0', date: '2026-11-21', title: 'Échauffement automatique et lest',
     items: [
       'Échauffement automatique : 2 séries d\'approche (50 % × 5, 75 % × 3) sur le premier exercice lourd (20 kg ou plus) de chaque muscle. Réglage dans Profil.',
