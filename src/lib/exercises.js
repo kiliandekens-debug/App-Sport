@@ -31,7 +31,8 @@ export function equipOf(name) {
 // Small increment used by the coach when it proposes a heavier load.
 export function incrementOf(name) {
   const e = equipOf(name);
-  if (/élévation|elevation|oiseau|curl/i.test(name)) return 1;
+  // Light free-weight and cable isolation moves; a machine stack goes up by whole plates.
+  if (/élévation|elevation|oiseau|curl/i.test(name) && e !== 'Machine') return 1;
   if (e === 'Haltères') return 2;
   return 2.5;
 }

@@ -83,6 +83,7 @@ const RAW = [
   ['Élévation latérale unilatérale (haltère)', 'Épaules', 'Haltères', 'One-Arm_Side_Laterals'],
   ['Élévation latérale (poulie)', 'Épaules', 'Poulie', 'Bent_Over_Low-Pulley_Side_Lateral'],
   ['Élévation latérale assis (poulie)', 'Épaules', 'Poulie', 'Cable_Seated_Lateral_Raise'],
+  ['Élévation latérale (machine)', 'Épaules', 'Machine', 'Seated_Side_Lateral_Raise'],
   ['Élévation frontale (haltères)', 'Épaules', 'Haltères', 'Front_Incline_Dumbbell_Raise'],
   ['Élévation frontale (disque)', 'Épaules', 'Autre', 'Front_Plate_Raise'],
   ['Élévation frontale (poulie)', 'Épaules', 'Poulie', 'Front_Raise_And_Pullover'],

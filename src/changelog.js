@@ -6,6 +6,13 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.8.2', date: '2026-11-22', title: 'Nouvelle machine',
+    items: [
+      'Ajout de « Élévation latérale (machine) » dans la bibliothèque (Épaules, Machine).',
+      'Sur machine, le coach monte la charge par paliers de 2,5 kg, y compris pour les élévations, oiseaux et curls.',
+    ],
+  },
+  {
     version: '1.8.1', date: '2026-11-22', title: 'Correction de la nuit',
     items: [
       'Échauffement automatique : un exercice léger (moins de 20 kg) en début de séance ne prive plus le premier exercice lourd du même muscle de ses séries d\'approche.',
