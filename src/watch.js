@@ -194,6 +194,26 @@ export async function sendRunToWatch(session) {
   await Watch.scheduleRun({ workout: JSON.stringify(watchWorkout(session)) });
 }
 
+// Profil › Tester la Dynamic Island: a 30 s demo rest, then what the iPhone says about it.
+export async function testLive(stillIdle) {
+  const now = Date.now();
+  const demo = {
+    title: 'Test', exercise: 'Développé couché', setLabel: 'Série 2/4', next: '80 × 8', record: '80 × 9',
+    restStart: now, restEnd: now + 30000, done: 1, total: 4, ex: -1, name: '', set: -1, kg: 80, reps: 8, rest: 90,
+  };
+  try {
+    await Watch.live({ state: JSON.stringify(demo) });
+  } catch (e) {
+    return `Le module natif ne répond pas : ${e.message || e}`;
+  }
+  await new Promise((r) => { setTimeout(r, 1500); });
+  const info = await Watch.liveInfo();
+  setTimeout(() => { if (stillIdle()) Watch.live({ state: 'null' }).catch(() => {}); }, 35000);
+  if (info.error) return info.error;
+  if (info.running) return 'Activité démarrée : va sur l\'écran d\'accueil ou verrouille l\'iPhone pour voir la mèche (30 s).';
+  return `Aucune activité démarrée (Activités en direct ${info.enabled ? 'activées' : 'désactivées'}).`;
+}
+
 export function WatchSync() {
   return isNative() ? createElement(WatchSyncInner) : null;
 }

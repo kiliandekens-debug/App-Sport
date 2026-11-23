@@ -10,6 +10,7 @@ import { PasswordForm } from '../password.jsx';
 import { pushSupported, pushEnabled, enablePush, disablePush, testPush, isIos, isStandalone, pushEvery, setPushEvery } from '../push.js';
 import { buildPlan } from '../lib/running.js';
 import { isNative, healthRuns } from '../native.js';
+import { testLive } from '../watch.js';
 import { useSession, keepAwake, setKeepAwake, autoWarmup, setAutoWarmup, hasLest, setHasLest } from '../session.jsx';
 import { useUi } from '../ui.jsx';
 import { parseHevyCsv } from '../lib/csv.js';
@@ -41,6 +42,8 @@ export default function Profil({ user }) {
   const [busy, setBusy] = useState(false);
   const [theme, setThemeState] = useState(getTheme);
   const session = useSession();
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
   const ui = useUi();
   const download = () => {
     const blob = new Blob(['\ufeff' + exportCsv(data.workouts)], { type: 'text/csv;charset=utf-8' });
@@ -167,6 +170,7 @@ export default function Profil({ user }) {
           <Row icon="dumbbell" tint="#5856D6" right={<button className="switch" role="switch" aria-checked={lest} aria-label="Ceinture de lest pour tractions et dips" onClick={() => { setHasLest(!lest); setLest(!lest); ui.notify(!lest ? 'Le coach proposera du lest dès 12 reps aux tractions et aux dips' : 'Le coach restera au poids du corps'); }}><span /></button>}>
             Lest pour tractions et dips
           </Row>
+          {isNative() && !session.active && <Row icon="flame" tint="#E8500E" onClick={async () => { const msg = await testLive(() => !sessionRef.current.active); await ui.confirm({ title: 'Dynamic Island', message: msg, ok: 'OK' }); }}>Tester la Dynamic Island</Row>}
           {push && <Row icon="send" tint="#8E8E93" onClick={async () => { try { await testPush(); ui.notify('Notification de test dans 5 secondes'); } catch (e) { ui.notify(e.message || String(e)); } }}>Envoyer une notification de test</Row>}
         </div>
         <span className="gfoot">

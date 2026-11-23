@@ -6,6 +6,13 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.12.1', date: '2026-11-23', title: 'Test de la Dynamic Island',
+    items: [
+      'Profil › Tester la Dynamic Island : une mèche de repos de 30 s pour vérifier l\'affichage, avec la raison si rien n\'apparaît.',
+      'La Dynamic Island démarre depuis le fil principal de l\'app (plus fiable).',
+    ],
+  },
+  {
     version: '1.12.0', date: '2026-11-23', title: 'Dynamic Island : la mèche du repos',
     items: [
       'App iPhone : pendant la séance, la Dynamic Island et l\'écran verrouillé montrent la prochaine série et le repos.',

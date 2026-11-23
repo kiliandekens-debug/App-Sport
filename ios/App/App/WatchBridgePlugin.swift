@@ -13,6 +13,7 @@ public class WatchBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "info", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "scheduleRun", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "live", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "liveInfo", returnType: CAPPluginReturnPromise),
     ]
 
     private var observer: NSObjectProtocol?
@@ -57,6 +58,10 @@ public class WatchBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func live(_ call: CAPPluginCall) {
         LiveSession.shared.apply(json: call.getString("state") ?? "null")
         call.resolve()
+    }
+
+    @objc func liveInfo(_ call: CAPPluginCall) {
+        DispatchQueue.main.async { call.resolve(LiveSession.shared.info) }
     }
 
     @objc func info(_ call: CAPPluginCall) {

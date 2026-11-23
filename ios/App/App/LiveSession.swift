@@ -38,9 +38,29 @@ final class LiveSession {
     }
 
     /// `json` is "null" when there is no session.
+    /// Last problem met, shown by Profil › Tester la Dynamic Island.
+    private(set) var lastError = ""
+
+    var info: [String: Any] {
+        let auth = ActivityAuthorizationInfo()
+        return [
+            "enabled": auth.areActivitiesEnabled,
+            "running": Activity<SessionActivityAttributes>.activities.count,
+            "error": lastError,
+        ]
+    }
+
+    /// `json` is "null" when there is no session.
     func apply(json: String) {
-        guard let data = json.data(using: .utf8), let inc = try? JSONDecoder().decode(Incoming.self, from: data) else {
+        if json == "null" {
             end()
+            return
+        }
+        let inc: Incoming
+        do {
+            inc = try JSONDecoder().decode(Incoming.self, from: Data(json.utf8))
+        } catch {
+            lastError = "Données illisibles : \(error)"
             return
         }
         let st = SessionActivityAttributes.ContentState(
@@ -50,11 +70,20 @@ final class LiveSession {
             ex: inc.ex, name: inc.name, set: inc.set, kg: inc.kg, reps: inc.reps, rest: inc.rest,
             validated: false
         )
-        Task {
-            if let a = activity {
-                await a.update(Self.content(st))
-            } else if ActivityAuthorizationInfo().areActivitiesEnabled {
-                _ = try? Activity.request(attributes: SessionActivityAttributes(title: inc.title), content: Self.content(st), pushType: nil)
+        DispatchQueue.main.async {
+            if let a = self.activity {
+                Task { await a.update(Self.content(st)) }
+                return
+            }
+            guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+                self.lastError = "Activités en direct désactivées (Réglages › Kadeon Sport)."
+                return
+            }
+            do {
+                _ = try Activity.request(attributes: SessionActivityAttributes(title: inc.title), content: Self.content(st), pushType: nil)
+                self.lastError = ""
+            } catch {
+                self.lastError = "Démarrage refusé : \(error)"
             }
         }
     }
