@@ -16,6 +16,16 @@
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
+		9FDAA9037D9C6DE48997574A /* WatchLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC8460E7EF03E56416070739 /* WatchLink.swift */; };
+		A1691879E51C03A314A213ED /* WatchBridgePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7920D7380C2991D4BCC69422 /* WatchBridgePlugin.swift */; };
+		2BD53F138D92ACC9E726E484 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06FB17AB767FC0E295FF02CF /* MainViewController.swift */; };
+		E6005B28E08F53E3B78E1F82 /* KadeonWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80ABA6641352B52BF804A8AF /* KadeonWatchApp.swift */; };
+		FF2773036D0086B7586377F1 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = B382A0BA6777A58B12D77C97 /* Model.swift */; };
+		322D8C71F8452A08E68C0C4E /* WatchStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73B7C2E4F1E11F941F6C8AF4 /* WatchStore.swift */; };
+		536CEFD38B3C7F083BA7CAEA /* WorkoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCE74C73B7A1522C3169A93A /* WorkoutManager.swift */; };
+		7B30CAF894C376D7B80B1166 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6478BCBA43AF8F259D052E14 /* ContentView.swift */; };
+		B5AD287FB25E8AFD266F7021 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 72FC8916A51A52F627D3BBB8 /* Assets.xcassets */; };
+		C73BF638E58C5EFE492867B2 /* KadeonWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 32AC98853214F7B99493D370 /* KadeonWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +40,18 @@
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		EC8460E7EF03E56416070739 /* WatchLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchLink.swift; sourceTree = "<group>"; };
+		7920D7380C2991D4BCC69422 /* WatchBridgePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchBridgePlugin.swift; sourceTree = "<group>"; };
+		06FB17AB767FC0E295FF02CF /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
+		80ABA6641352B52BF804A8AF /* KadeonWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KadeonWatchApp.swift; sourceTree = "<group>"; };
+		B382A0BA6777A58B12D77C97 /* Model.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model.swift; sourceTree = "<group>"; };
+		73B7C2E4F1E11F941F6C8AF4 /* WatchStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchStore.swift; sourceTree = "<group>"; };
+		BCE74C73B7A1522C3169A93A /* WorkoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutManager.swift; sourceTree = "<group>"; };
+		6478BCBA43AF8F259D052E14 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		32AC98853214F7B99493D370 /* KadeonWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KadeonWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		72FC8916A51A52F627D3BBB8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		824DB2534957C49F181BAA44 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		7B6351EFF25E2425B389A2A3 /* KadeonWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KadeonWatch.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -41,6 +63,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		056091E53243A35D5060285F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -49,6 +78,7 @@
 			children = (
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
+				2E07E328C2270B15DE24DA1D /* KadeonWatch */,
 				504EC3051FED79650016851F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -57,6 +87,7 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* App.app */,
+				32AC98853214F7B99493D370 /* KadeonWatch.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -65,6 +96,9 @@
 			isa = PBXGroup;
 			children = (
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
+				EC8460E7EF03E56416070739 /* WatchLink.swift */,
+				7920D7380C2991D4BCC69422 /* WatchBridgePlugin.swift */,
+				06FB17AB767FC0E295FF02CF /* MainViewController.swift */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -77,6 +111,21 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		2E07E328C2270B15DE24DA1D /* KadeonWatch */ = {
+			isa = PBXGroup;
+			children = (
+				80ABA6641352B52BF804A8AF /* KadeonWatchApp.swift */,
+				B382A0BA6777A58B12D77C97 /* Model.swift */,
+				73B7C2E4F1E11F941F6C8AF4 /* WatchStore.swift */,
+				BCE74C73B7A1522C3169A93A /* WorkoutManager.swift */,
+				6478BCBA43AF8F259D052E14 /* ContentView.swift */,
+				72FC8916A51A52F627D3BBB8 /* Assets.xcassets */,
+				824DB2534957C49F181BAA44 /* Info.plist */,
+				7B6351EFF25E2425B389A2A3 /* KadeonWatch.entitlements */,
+			);
+			path = KadeonWatch;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -87,10 +136,12 @@
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
+				47312119FB631164FBB57432 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				900465018CA64EBC87A4A313 /* PBXTargetDependency */,
 			);
 			name = App;
 			packageProductDependencies = (
@@ -98,6 +149,23 @@
 			);
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
+			productType = "com.apple.product-type.application";
+		};
+		33116847747F33C5876F0E9B /* KadeonWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 13F4C58C3DF74F8800E91520 /* Build configuration list for PBXNativeTarget "KadeonWatch" */;
+			buildPhases = (
+				FCC190B8E714CB4FD8AAE0CB /* Sources */,
+				056091E53243A35D5060285F /* Frameworks */,
+				833920F8427771658E287466 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = KadeonWatch;
+			productName = KadeonWatch;
+			productReference = 32AC98853214F7B99493D370 /* KadeonWatch.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -112,6 +180,10 @@
 					504EC3031FED79650016851F = {
 						CreatedOnToolsVersion = 9.2;
 						LastSwiftMigration = 1100;
+						ProvisioningStyle = Automatic;
+					};
+					33116847747F33C5876F0E9B = {
+						CreatedOnToolsVersion = 16.0;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -133,6 +205,7 @@
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
+				33116847747F33C5876F0E9B /* KadeonWatch */,
 			);
 		};
 /* End PBXProject section */
@@ -151,6 +224,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		833920F8427771658E287466 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B5AD287FB25E8AFD266F7021 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -160,6 +241,21 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
+				9FDAA9037D9C6DE48997574A /* WatchLink.swift in Sources */,
+				A1691879E51C03A314A213ED /* WatchBridgePlugin.swift in Sources */,
+				2BD53F138D92ACC9E726E484 /* MainViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FCC190B8E714CB4FD8AAE0CB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E6005B28E08F53E3B78E1F82 /* KadeonWatchApp.swift in Sources */,
+				FF2773036D0086B7586377F1 /* Model.swift in Sources */,
+				322D8C71F8452A08E68C0C4E /* WatchStore.swift in Sources */,
+				536CEFD38B3C7F083BA7CAEA /* WorkoutManager.swift in Sources */,
+				7B30CAF894C376D7B80B1166 /* ContentView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -183,6 +279,38 @@
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */
+
+/* Begin PBXContainerItemProxy section */
+		047F19863556613DC3A90016 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 33116847747F33C5876F0E9B;
+			remoteInfo = KadeonWatch;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		47312119FB631164FBB57432 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				C73BF638E58C5EFE492867B2 /* KadeonWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		900465018CA64EBC87A4A313 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 33116847747F33C5876F0E9B /* KadeonWatch */;
+			targetProxy = 047F19863556613DC3A90016 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		504EC3141FED79650016851F /* Debug */ = {
@@ -340,6 +468,64 @@
 			};
 			name = Release;
 		};
+		F0E960E43B434404931D720C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = KadeonWatch/KadeonWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = KadeonWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Kadeon Sport";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = be.kadeon.sport;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = be.kadeon.sport.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		84E959FF9A15EA78B10F02AA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = KadeonWatch/KadeonWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = KadeonWatch/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Kadeon Sport";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = be.kadeon.sport;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = be.kadeon.sport.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -357,6 +543,15 @@
 			buildConfigurations = (
 				504EC3171FED79650016851F /* Debug */,
 				504EC3181FED79650016851F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		13F4C58C3DF74F8800E91520 /* Build configuration list for PBXNativeTarget "KadeonWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F0E960E43B434404931D720C /* Debug */,
+				84E959FF9A15EA78B10F02AA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

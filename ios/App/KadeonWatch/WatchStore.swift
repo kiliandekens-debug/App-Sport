@@ -1,0 +1,224 @@
+import Foundation
+import Combine
+import WatchConnectivity
+import WatchKit
+
+/// The watch's copy of the session. Actions done here apply at once to this copy and are
+/// sent to the iPhone, which applies them to the real session (src/watch.js). A state from
+/// the iPhone replaces the copy only once it has acknowledged every action sent from here,
+/// so a late message from a sleeping iPhone never undoes a set validated on the wrist.
+final class WatchStore: NSObject, ObservableObject, WCSessionDelegate {
+    static let shared = WatchStore()
+
+    @Published private(set) var session: WSession?
+    @Published private(set) var suggestion: String?
+    @Published private(set) var heardFromPhone = false
+    @Published private(set) var waitingStart = false
+    @Published private(set) var reachable = false
+    @Published var summary: Summary?
+
+    let workout = WorkoutManager()
+
+    private let defaults = UserDefaults.standard
+    private var lastSent: Double
+    private var outbox: [String] = []
+    private var restTimer: Timer?
+    private var bag = Set<AnyCancellable>()
+
+    override init() {
+        lastSent = defaults.double(forKey: "lastSent")
+        if let data = defaults.data(forKey: "session"), let s = try? JSONDecoder().decode(WSession.self, from: data) {
+            session = s
+        }
+        suggestion = defaults.string(forKey: "suggestion")
+        super.init()
+        // Heart rate and calories shown live: forward the workout's changes.
+        workout.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &bag)
+    }
+
+    func activate() {
+        workout.requestAuthorization()
+        scheduleRestAlert()
+        guard WCSession.isSupported() else { return }
+        WCSession.default.delegate = self
+        WCSession.default.activate()
+    }
+
+    // MARK: actions done on the watch
+
+    func start() {
+        guard session == nil else { return }
+        waitingStart = true
+        send(["type": "start"], at: nowMs())
+        workout.start()
+    }
+
+    /// Nothing came back from the iPhone: give up waiting.
+    func cancelStart() {
+        waitingStart = false
+        if session == nil { workout.end(save: false) }
+    }
+
+    func validate(kg: Double, reps: Int) {
+        guard var s = session, let si = s.activeSet, let e = s.exercise else { return }
+        let ei = s.current
+        let at = nowMs()
+        s.validate(ex: ei, set: si, kg: kg, reps: reps, at: at)
+        setSession(s)
+        send(["type": "validate", "ex": ei, "name": e.name, "set": si, "kg": kg, "reps": reps], at: at)
+        WKInterfaceDevice.current().play(.success)
+    }
+
+    func shiftRest(_ seconds: Int) {
+        guard var s = session else { return }
+        let at = nowMs()
+        s.shiftRest(seconds, at: at)
+        setSession(s)
+        send(["type": "rest", "delta": seconds], at: at)
+        WKInterfaceDevice.current().play(.click)
+    }
+
+    func skipRest() {
+        guard var s = session else { return }
+        s.restUntil = 0
+        setSession(s)
+        send(["type": "skip"], at: nowMs())
+    }
+
+    func choose(_ index: Int) {
+        guard var s = session, s.exercises.indices.contains(index) else { return }
+        s.current = index
+        setSession(s)
+        send(["type": "current", "ex": index, "name": s.exercises[index].name], at: nowMs())
+    }
+
+    func finish() {
+        guard let s = session else { return }
+        summary = makeSummary(s)
+        setSession(nil)
+        send(["type": "finish"], at: nowMs())
+        workout.end(save: true)
+    }
+
+    // MARK: state from the iPhone
+
+    private func receive(_ payload: [String: Any]) {
+        guard let json = payload["state"] as? String, let data = json.data(using: .utf8),
+              let st = try? JSONDecoder().decode(PhoneState.self, from: data) else { return }
+        DispatchQueue.main.async { self.apply(st) }
+    }
+
+    private func apply(_ st: PhoneState) {
+        heardFromPhone = true
+        suggestion = st.suggestion
+        defaults.set(st.suggestion, forKey: "suggestion")
+        // The iPhone has not applied our latest actions yet: keep our own copy.
+        if (st.ack ?? 0) < lastSent { return }
+        let before = session
+        let next = st.active ? st.session : nil
+        waitingStart = false
+        if before == nil, next != nil {
+            summary = nil
+        } else if let b = before, next == nil {
+            // Finished or cancelled on the iPhone.
+            let worked = b.done > 0
+            if worked { summary = makeSummary(b) }
+            workout.end(save: worked)
+        }
+        if next != before { setSession(next) }
+        if next != nil, !workout.running {
+            workout.start()
+        } else if next == nil, before == nil, workout.running {
+            // Start asked from the watch, but the iPhone had nothing to start.
+            workout.end(save: false)
+        }
+    }
+
+    // MARK: helpers
+
+    private func setSession(_ s: WSession?) {
+        session = s
+        if let s, let data = try? JSONEncoder().encode(s) {
+            defaults.set(data, forKey: "session")
+        } else {
+            defaults.removeObject(forKey: "session")
+        }
+        scheduleRestAlert()
+    }
+
+    private func makeSummary(_ s: WSession) -> Summary {
+        Summary(
+            title: s.title,
+            minutes: max(0, Int((nowMs() - s.startedAt) / 60000)),
+            sets: s.done,
+            volume: s.volume,
+            heartRate: workout.averageHeartRate,
+            calories: workout.calories
+        )
+    }
+
+    /// Strong taps on the wrist when the rest is over (the workout keeps the app running).
+    private func scheduleRestAlert() {
+        restTimer?.invalidate()
+        restTimer = nil
+        guard let s = session, s.restUntil > nowMs() else { return }
+        let delay = (s.restUntil - nowMs()) / 1000
+        restTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+            WKInterfaceDevice.current().play(.stop)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { WKInterfaceDevice.current().play(.stop) }
+            self?.objectWillChange.send()
+        }
+    }
+
+    /// Actions carry an increasing number (a timestamp, so it keeps growing after a
+    /// reinstall); the iPhone applies each one once and sends back the last one applied.
+    private func send(_ action: [String: Any], at: Double) {
+        var a = action
+        let seq = max(lastSent + 1, at.rounded())
+        lastSent = seq
+        defaults.set(seq, forKey: "lastSent")
+        a["seq"] = seq
+        a["at"] = at
+        guard let data = try? JSONSerialization.data(withJSONObject: a),
+              let json = String(data: data, encoding: .utf8) else { return }
+        outbox.append(json)
+        flush()
+    }
+
+    private func flush() {
+        guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
+        let s = WCSession.default
+        let items = outbox
+        outbox.removeAll()
+        for json in items {
+            let payload = ["action": json]
+            if s.isReachable {
+                s.sendMessage(payload, replyHandler: nil) { _ in s.transferUserInfo(payload) }
+            } else {
+                s.transferUserInfo(payload)
+            }
+        }
+    }
+
+    // MARK: WCSessionDelegate
+
+    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+        DispatchQueue.main.async {
+            self.reachable = session.isReachable
+            self.flush()
+        }
+        if !session.receivedApplicationContext.isEmpty { receive(session.receivedApplicationContext) }
+    }
+
+    func sessionReachabilityDidChange(_ session: WCSession) {
+        DispatchQueue.main.async { self.reachable = session.isReachable }
+    }
+
+    func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
+        receive(applicationContext)
+    }
+
+    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        receive(message)
+    }
+}

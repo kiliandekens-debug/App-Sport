@@ -19,6 +19,7 @@ import Historique from './screens/Historique.jsx';
 import Admin from './screens/Admin.jsx';
 import { PasswordForm } from './password.jsx';
 import { UpdateBanner, WhatsNew, useFreshVersion } from './update.jsx';
+import { WatchSync } from './watch.js';
 
 export default function App() {
   const [session, setSession] = useState(undefined);
@@ -81,6 +82,7 @@ function Shell({ user }) {
       </Routes>
       {!hideNav && <Nav />}
       <UpdateBanner />
+      <WatchSync />
       <WhatsNew open={fresh} onClose={closeFresh} />
     </div>
   );

@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useData, saveRoutine } from '../data.jsx';
 import { useSession } from '../session.jsx';
-import { fmtDay, sameDay, titleKey } from '../lib/stats.js';
-import { routineFromHistory } from '../lib/routines.js';
+import { fmtDay, sameDay } from '../lib/stats.js';
+import { routineFromHistory, nextSession } from '../lib/routines.js';
 import { Icon, ExerciseImage, GlassHeader } from '../components.jsx';
 import { buildPlan, segments, intensityOf } from '../lib/running.js';
 import { DayDetail, WorkoutSheet, RunSheet, dayInfo } from '../day.jsx';
@@ -24,17 +24,8 @@ export default function Accueil({ user }) {
   const today = new Date();
   const run = data.runProfile ? buildPlan(data.runProfile, data.runLogs, data.workouts) : null;
 
-  // Last time each routine was done, matched on the session title.
-  const lastDone = (name) => data.workouts.find((w) => titleKey(w.title) === titleKey(name))?.start || null;
-  const routines = data.routines.map((r) => ({ ...r, last: lastDone(r.name) }));
-  const suggested = routines.length
-    ? [...routines].sort((a, b) => (a.last?.getTime() || 0) - (b.last?.getTime() || 0))[0]
-    : null;
-  // Without routines, the next session is guessed from the usual rotation in the history.
-  const fromHistory = !suggested && data.nextProgram
-    ? { ...routineFromHistory(data, data.nextProgram.title), name: data.nextProgram.title, last: data.nextProgram.last }
-    : null;
-  const next = suggested || fromHistory;
+  // Least recently done routine, or the next one in the usual rotation of the history.
+  const { routines, next } = nextSession(data);
   const last = data.workouts[0] || null;
   // What happened, or is planned, on each day of the week: gym, run, or rest.
   const planned = run ? run.weeks.flat() : [];

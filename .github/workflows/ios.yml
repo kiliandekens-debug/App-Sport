@@ -1,5 +1,6 @@
 # Builds the iPhone app on a macOS runner.
-# - Always: compiles for the simulator (no Apple account needed) to catch build errors.
+# - Always: compiles the iPhone app and its Apple Watch app for the simulator (no Apple
+#   account needed) to catch build errors.
 # - When the App Store Connect secrets exist: archives, signs automatically and uploads
 #   the build to TestFlight. Secrets: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (content of
 #   the .p8 file), APPLE_TEAM_ID.
@@ -34,11 +35,22 @@ jobs:
       - run: npm run build
       - run: npx cap sync ios
 
-      - name: Build for the simulator
+      - name: Build the Apple Watch app for the simulator
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -target KadeonWatch -configuration Debug \
+            -sdk watchsimulator CODE_SIGNING_ALLOWED=NO build > "$RUNNER_TEMP/watch.log" 2>&1 \
+            || { grep -E "error:" "$RUNNER_TEMP/watch.log" | sort -u | head -60; tail -n 30 "$RUNNER_TEMP/watch.log"; exit 1; }
+          echo "Apple Watch app OK"
+
+      - name: Build for the simulator (iPhone app with the watch app inside)
         run: |
           xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
-            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO build | tail -n 40
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build > "$RUNNER_TEMP/app.log" 2>&1 \
+            || { grep -E "error:" "$RUNNER_TEMP/app.log" | sort -u | head -60; tail -n 30 "$RUNNER_TEMP/app.log"; exit 1; }
+          find ~/Library/Developer/Xcode/DerivedData -maxdepth 8 -path '*Debug-iphonesimulator/App.app/Watch/KadeonWatch.app' | grep -q . \
+            || { echo "KadeonWatch.app is not embedded in App.app"; exit 1; }
+          echo "iPhone app with the watch app inside OK"
 
       - name: Check App Store Connect secrets
         id: asc

@@ -1,4 +1,4 @@
-import { templateFor } from './stats.js';
+import { templateFor, titleKey } from './stats.js';
 
 export const LETTERS = 'ABCDEFGH';
 
@@ -54,3 +54,17 @@ export function toggleSuperset(exercises, i) {
 }
 
 export const SUPERSET_COLORS = { A: '#F2B705', B: '#3FBF7F', C: '#F2695C', D: '#B79CFF', E: '#5CC8F2', F: '#F29E4C', G: '#F2B705', H: '#3FBF7F' };
+
+// The session suggested next: the routine done the longest time ago, or, without routines,
+// the next one in the usual rotation of the history. Shared by the home screen and the watch.
+export function nextSession(data) {
+  const lastDone = (name) => data.workouts.find((w) => titleKey(w.title) === titleKey(name))?.start || null;
+  const routines = data.routines.map((r) => ({ ...r, last: lastDone(r.name) }));
+  const suggested = routines.length
+    ? [...routines].sort((a, b) => (a.last?.getTime() || 0) - (b.last?.getTime() || 0))[0]
+    : null;
+  const fromHistory = !suggested && data.nextProgram
+    ? { ...routineFromHistory(data, data.nextProgram.title), name: data.nextProgram.title, last: data.nextProgram.last }
+    : null;
+  return { routines, next: suggested || fromHistory };
+}

@@ -196,6 +196,60 @@ function fillFromPrev(e, j) {
   };
 }
 
+// Marks set si of exercise ei as done (empty fields take last time's values), then moves on:
+// next exercise of a superset, or next open exercise, and starts the rest timer at `at` (ms).
+function afterValidate(c, ei, si, at) {
+  const exercises = c.exercises.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((x, j) => (j === si ? { ...fillFromPrev(e, j), done: true } : x)) }));
+  const e = exercises[ei];
+  const open = (x) => x.sets.some((y) => !y.done);
+  let current = ei;
+  let rest = e.rest ?? 0;
+  if (e.superset) {
+    // Superset: go straight to the next exercise of the group, rest after the last one.
+    const members = exercises.map((x, i) => ({ x, i })).filter((m) => m.x.superset === e.superset);
+    const pos = members.findIndex((m) => m.i === ei);
+    const after = members.slice(pos + 1).find((m) => open(m.x));
+    if (after) return { ...c, exercises, current: after.i, restUntil: null };
+    const first = members.find((m) => open(m.x));
+    rest = Math.max(...members.map((m) => m.x.rest ?? 0));
+    if (first) current = first.i;
+    else {
+      const nx = exercises.findIndex((x, i) => i > members[members.length - 1].i && open(x));
+      if (nx >= 0) current = nx;
+    }
+  } else if (!open(e)) {
+    const nx = exercises.findIndex((x, i) => i > ei && open(x));
+    if (nx >= 0) current = nx;
+  }
+  return { ...c, exercises, current, restUntil: rest > 0 ? at + rest * 1000 : null, restTotal: rest };
+}
+
+// An action done on the Apple Watch, applied to the session when the iPhone receives it
+// (possibly later, if the phone was asleep): `at` is when it happened on the watch.
+// Exercises are checked by name so a stale action never lands on the wrong exercise.
+export function watchAction(c, a) {
+  const e = c.exercises[a.ex];
+  const same = e && e.name === a.name;
+  switch (a.type) {
+    case 'validate': {
+      const x = same ? e.sets[a.set] : null;
+      if (!x || x.done) return c;
+      const kg = String(Math.max(0, Number(a.kg) || 0)).replace('.', ',');
+      const reps = String(Math.max(0, Math.round(Number(a.reps) || 0)));
+      const exercises = c.exercises.map((y, i) => (i !== a.ex ? y : { ...y, sets: y.sets.map((z, j) => (j === a.set ? { ...z, kg, reps } : z)) }));
+      return afterValidate({ ...c, exercises }, a.ex, a.set, a.at || Date.now());
+    }
+    case 'rest': {
+      const at = a.at || Date.now();
+      const until = Math.max(at, (c.restUntil || at) + a.delta * 1000);
+      return { ...c, restUntil: until, restTotal: Math.max(c.restTotal, Math.ceil((until - at) / 1000)) };
+    }
+    case 'skip': return { ...c, restUntil: null };
+    case 'current': return same ? { ...c, current: a.ex } : c;
+    default: return c;
+  }
+}
+
 // A superset must stay a block of neighbours; members cut off by a move leave the group.
 function splitBrokenSupersets(exercises) {
   const out = exercises.map((e) => ({ ...e }));
@@ -387,37 +441,7 @@ export function SessionProvider({ children }) {
           if (best && est > best.e1rm && est > today) record = { kg: kgV, reps: repsV, name: s.exercises[ei].name };
         }
         unlockAudio();
-        update((c) => {
-          const exercises = c.exercises.map((e, i) => (i !== ei ? e : { ...e, sets: e.sets.map((x, j) => (j === si ? { ...fillFromPrev(e, j), done: true } : x)) }));
-          const e = exercises[ei];
-          const open = (x) => x.sets.some((y) => !y.done);
-          let current = ei;
-          let rest = e.rest ?? 0;
-          if (e.superset) {
-            // Superset: go straight to the next exercise of the group, rest after the last one.
-            const members = exercises.map((x, i) => ({ x, i })).filter((m) => m.x.superset === e.superset);
-            const pos = members.findIndex((m) => m.i === ei);
-            const after = members.slice(pos + 1).find((m) => open(m.x));
-            if (after) return { ...c, exercises, current: after.i, restUntil: null };
-            const first = members.find((m) => open(m.x));
-            rest = Math.max(...members.map((m) => m.x.rest ?? 0));
-            if (first) current = first.i;
-            else {
-              const nx = exercises.findIndex((x, i) => i > members[members.length - 1].i && open(x));
-              if (nx >= 0) current = nx;
-            }
-          } else if (!open(e)) {
-            const nx = exercises.findIndex((x, i) => i > ei && open(x));
-            if (nx >= 0) current = nx;
-          }
-          return {
-            ...c,
-            exercises,
-            current,
-            restUntil: rest > 0 ? Date.now() + rest * 1000 : null,
-            restTotal: rest,
-          };
-        });
+        update((c) => afterValidate(c, ei, si, Date.now()));
         return record ? { record } : true;
       },
       unvalidate: (ei, si) => mapEx(ei, (e) => ({ ...e, sets: e.sets.map((x, j) => (j === si ? { ...x, done: false } : x)) })),
@@ -450,6 +474,7 @@ export function SessionProvider({ children }) {
         restTotal: Math.max(c.restTotal, Math.ceil(((c.restUntil || Date.now()) + d * 1000 - Date.now()) / 1000)),
       })),
       skipRest: () => update((c) => ({ ...c, restUntil: null })),
+      fromWatch: (a) => update((c) => watchAction(c, a)),
     };
   }, [s, now, start, startRoutine, startEmpty, addExercise, finish, update]); // eslint-disable-line react-hooks/exhaustive-deps
 
