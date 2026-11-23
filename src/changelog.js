@@ -6,6 +6,14 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.11.0', date: '2026-11-23', title: 'Course : séance envoyée à la montre',
+    items: [
+      'Course › Programmer la séance sur la montre › Envoyer à la montre : la séance du plan arrive dans l\'app Exercice de l\'Apple Watch.',
+      'Échauffement, fractions, récupérations et retour au calme sont déjà réglés, avec une alerte d\'allure sur chaque partie à tenir (trop rapide, trop lent).',
+      'Pendant la course, la montre affiche allure, fréquence cardiaque, cadence, distance et parcours ; la course revient dans Kadeon par Apple Santé.',
+    ],
+  },
+  {
     version: '1.10.0', date: '2026-11-23', title: 'Kadeon Sport sur l\'Apple Watch',
     items: [
       'App iPhone : une app Apple Watch suit la séance en direct, synchronisée avec l\'iPhone.',

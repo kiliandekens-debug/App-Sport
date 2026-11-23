@@ -11,6 +11,7 @@ import { useData } from './data.jsx';
 import { nextSession } from './lib/routines.js';
 import { incrementOf } from './lib/exercises.js';
 import { fmtKg } from './lib/stats.js';
+import { watchWorkout } from './lib/running.js';
 
 const Watch = registerPlugin('WatchBridge');
 const SEQ = 'app-sport-watch-seq';
@@ -130,6 +131,11 @@ function WatchSyncInner() {
   }, [nav]);
 
   return null;
+}
+
+// A running session of the plan, sent to Apple's Workout app on the watch (iPhone app only).
+export async function sendRunToWatch(session) {
+  await Watch.scheduleRun({ workout: JSON.stringify(watchWorkout(session)) });
 }
 
 export function WatchSync() {

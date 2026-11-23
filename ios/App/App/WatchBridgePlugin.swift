@@ -11,6 +11,7 @@ public class WatchBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "drain", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "startWorkout", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "info", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "scheduleRun", returnType: CAPPluginReturnPromise),
     ]
 
     private var observer: NSObjectProtocol?
@@ -36,6 +37,19 @@ public class WatchBridgePlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func startWorkout(_ call: CAPPluginCall) {
         WatchLink.shared.startWatchWorkout { ok in call.resolve(["ok": ok]) }
+    }
+
+    /// A running session of the plan, sent to Apple's Workout app on the watch.
+    @objc func scheduleRun(_ call: CAPPluginCall) {
+        let json = call.getString("workout") ?? ""
+        Task {
+            do {
+                try await RunScheduler.schedule(json: json)
+                call.resolve()
+            } catch {
+                call.reject(error.localizedDescription)
+            }
+        }
     }
 
     @objc func info(_ call: CAPPluginCall) {

@@ -26,6 +26,7 @@
 		7B30CAF894C376D7B80B1166 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6478BCBA43AF8F259D052E14 /* ContentView.swift */; };
 		B5AD287FB25E8AFD266F7021 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 72FC8916A51A52F627D3BBB8 /* Assets.xcassets */; };
 		C73BF638E58C5EFE492867B2 /* KadeonWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 32AC98853214F7B99493D370 /* KadeonWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		DDC07880B731D6E4F8AA8B3E /* RunScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA65AE131D4685EC4AB76C41 /* RunScheduler.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -52,6 +53,7 @@
 		72FC8916A51A52F627D3BBB8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		824DB2534957C49F181BAA44 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7B6351EFF25E2425B389A2A3 /* KadeonWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KadeonWatch.entitlements; sourceTree = "<group>"; };
+		BA65AE131D4685EC4AB76C41 /* RunScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunScheduler.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -96,6 +98,7 @@
 			isa = PBXGroup;
 			children = (
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
+				BA65AE131D4685EC4AB76C41 /* RunScheduler.swift */,
 				EC8460E7EF03E56416070739 /* WatchLink.swift */,
 				7920D7380C2991D4BCC69422 /* WatchBridgePlugin.swift */,
 				06FB17AB767FC0E295FF02CF /* MainViewController.swift */,
@@ -241,6 +244,7 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
+				DDC07880B731D6E4F8AA8B3E /* RunScheduler.swift in Sources */,
 				9FDAA9037D9C6DE48997574A /* WatchLink.swift in Sources */,
 				A1691879E51C03A314A213ED /* WatchBridgePlugin.swift in Sources */,
 				2BD53F138D92ACC9E726E484 /* MainViewController.swift in Sources */,
@@ -362,7 +366,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -413,7 +417,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -431,7 +435,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = App/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -454,7 +458,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = App/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

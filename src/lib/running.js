@@ -619,3 +619,20 @@ export function monthlyKm(logs, now = new Date()) {
   }
   return out;
 }
+
+// The session as a custom workout for Apple's Workout app (sent by the iPhone app with
+// WorkoutKit). Paces are in s/km; each step gets a pace alert on the same range as
+// shown in the app, except warm-up, cool-down, recoveries, hills and strides.
+export function watchWorkout(session) {
+  const alert = (b, tight) => (b.pace && !['hill', 'stride', 'rest', 'warm', 'cool'].includes(b.type)
+    ? { fast: Math.round(b.pace - 5), slow: Math.round(b.pace + (tight ? 5 : 10)) }
+    : null);
+  const step = (b, purpose = 'work') => ({ secs: Math.round(b.mins * 60), purpose, pace: alert(b, !relaxed(b.type)) });
+  const list = [...session.blocks];
+  const warmup = list[0]?.type === 'warm' ? step(list.shift()) : null;
+  const cooldown = list.length && list[list.length - 1].type === 'cool' ? step(list.pop()) : null;
+  const blocks = list.map((b) => (b.type === 'rep'
+    ? { iterations: b.reps, steps: [step(b.work), step(b.rest, 'recovery')] }
+    : { iterations: 1, steps: [step(b)] }));
+  return { name: session.title, ymd: session.ymd, warmup, blocks, cooldown };
+}

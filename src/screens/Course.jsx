@@ -5,6 +5,8 @@ import { useData, saveRunProfile, saveRunLog, deleteRunLog, deleteRunProfile } f
 import { useUi } from '../ui.jsx';
 import { Icon, Bars, GlassHeader } from '../components.jsx';
 import { fmtDay } from '../lib/stats.js';
+import { isNative } from '../native.js';
+import { sendRunToWatch } from '../watch.js';
 import { GOALS, DAYS, DAY_SHORT, SLOT, DEFAULT_SCHEDULE, PHASES, FEEL, buildPlan, appleSteps, segments, intensityOf, mmss, hms, parseDuration, TYPE_LABEL, paceRange, pacesOf, structureText, goalPrediction, betterLevel, runStats, scheduleOf, scheduleIssues, mainType, raceTime, vdotOfProfile, fitnessFromHistory, monthlyKm } from '../lib/running.js';
 
 const FILL = { warm: 'var(--z0)', cool: 'var(--z0)', rest: 'var(--z0)', recovery: 'var(--z0)', easy: 'var(--z1)', steady: 'var(--z1)', race: 'var(--z2)', tempo: 'var(--z3)', fast: 'var(--z4)', rep: 'var(--z4)', hill: 'var(--z4)', stride: 'var(--z4)' };
@@ -275,6 +277,7 @@ export default function Course() {
   // The plan's paces include the coach's current adjustment.
   const [showPlan, setShowPlan] = useState(false);
   const [tab, setTab] = useState('seance');
+  const [sending, setSending] = useState(false);
   const pick = (key) => { setPicked(key); setTab('seance'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const profile = data.runProfile;
 
@@ -304,6 +307,17 @@ export default function Course() {
   const km1 = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
   const weekSessions = plan.weeks[plan.current] || [];
   const apple = next ? appleSteps(next) : null;
+  const sendToWatch = async () => {
+    setSending(true);
+    try {
+      await sendRunToWatch(next);
+      ui.notify(next.ymd === today() ? 'Séance envoyée : ouvre Exercice sur la montre, elle est en haut' : 'Séance envoyée : elle sera dans Exercice le jour prévu');
+    } catch (e) {
+      ui.notify(e.message || String(e));
+    } finally {
+      setSending(false);
+    }
+  };
   const logs = [...data.runLogs].reverse();
 
   const empty = () => ({ distance: '', duration: '', hr: '', cal: '', feel: null, when: toLocalInput() });
@@ -419,6 +433,15 @@ export default function Course() {
                 </span>
                 <Icon name="chevron" size={16} />
               </summary>
+              {isNative() && (
+                <div className="stack" style={{ gap: 6 }}>
+                  <button className="btn primary" onClick={sendToWatch} disabled={sending}>
+                    <Icon name="send" size={16} width={2.5} />{sending ? 'Envoi…' : 'Envoyer à la montre'}
+                  </button>
+                  <span className="xs muted">La séance arrive dans l'app Exercice de la montre, avec les étapes et les alertes d'allure. Ta course revient ensuite dans Kadeon par Apple Santé.</span>
+                </div>
+              )}
+              {isNative() && <span className="xs muted" style={{ fontWeight: 600 }}>Ou à la main :</span>}
               <ol className="stack" style={{ gap: 10, margin: 0, padding: 0, listStyle: 'none' }}>
                 {apple.steps.map((s, i) => (
                   <li key={i} className="row" style={{ alignItems: 'flex-start', gap: 12 }}>
