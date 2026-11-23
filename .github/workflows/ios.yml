@@ -58,6 +58,35 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
         run: echo "ready=$([ -n "$ASC_KEY_ID" ] && echo yes || echo no)" >> "$GITHUB_OUTPUT"
 
+      # The team has no registered device, so Xcode's automatic signing cannot archive.
+      # Each run makes a short-lived distribution certificate and App Store profiles with
+      # the API key (scripts/asc_signing.py), signs manually, then deletes them.
+      - name: Signing certificate and profiles (temporary)
+        if: steps.asc.outputs.ready == 'yes'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          WORK: ${{ runner.temp }}/signing
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet "pyjwt[crypto]"
+          "$RUNNER_TEMP/venv/bin/python" scripts/asc_signing.py setup
+          cd "$WORK"
+          openssl x509 -inform DER -in dist.cer -out dist.pem
+          PASS=$(openssl rand -hex 16)
+          openssl pkcs12 -export -legacy -inkey dist.key -in dist.pem -out dist.p12 -passout "pass:$PASS" 2>/dev/null \
+            || openssl pkcs12 -export -inkey dist.key -in dist.pem -out dist.p12 -passout "pass:$PASS"
+          KC="$RUNNER_TEMP/signing.keychain-db"
+          security create-keychain -p "$PASS" "$KC"
+          security set-keychain-settings -lut 3600 "$KC"
+          security unlock-keychain -p "$PASS" "$KC"
+          security import dist.p12 -k "$KC" -P "$PASS" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$PASS" "$KC" > /dev/null
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          security find-identity -v -p codesigning "$KC"
+
       - name: Archive and upload to TestFlight
         if: steps.asc.outputs.ready == 'yes'
         env:
@@ -70,12 +99,26 @@ jobs:
           KEY="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
           printf '%s' "$ASC_KEY_P8" > "$KEY"
           VERSION=$(node -p "require('./package.json').version")
-          AUTH="-allowProvisioningUpdates -authenticationKeyPath $KEY -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID"
+          APP_PROFILE="Kadeon CI app ${{ github.run_id }}"
+          WATCH_PROFILE="Kadeon CI watch ${{ github.run_id }}"
+          # One profile per target: written into this checkout's project only.
+          python3 - "$APP_PROFILE" "$WATCH_PROFILE" <<'PY'
+          import sys
+          p = "ios/App/App.xcodeproj/project.pbxproj"
+          s = open(p).read()
+          s = s.replace("PRODUCT_BUNDLE_IDENTIFIER = be.kadeon.sport;", f'PRODUCT_BUNDLE_IDENTIFIER = be.kadeon.sport;\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "{sys.argv[1]}";')
+          s = s.replace("PRODUCT_BUNDLE_IDENTIFIER = be.kadeon.sport.watchkitapp;", f'PRODUCT_BUNDLE_IDENTIFIER = be.kadeon.sport.watchkitapp;\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "{sys.argv[2]}";')
+          s = s.replace("CODE_SIGN_STYLE = Automatic;", "CODE_SIGN_STYLE = Manual;")
+          s = s.replace("ProvisioningStyle = Automatic;", "ProvisioningStyle = Manual;")
+          open(p, "w").write(s)
+          PY
           xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
             -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_IDENTITY="Apple Distribution" \
             MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
-            $AUTH archive | tail -n 40
+            archive > "$RUNNER_TEMP/archive.log" 2>&1 \
+            || { grep -E "error:" "$RUNNER_TEMP/archive.log" | sort -u | head -40; tail -n 40 "$RUNNER_TEMP/archive.log"; exit 1; }
+          echo "Archive OK"
           cat > "$RUNNER_TEMP/export.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -83,8 +126,29 @@ jobs:
             <key>method</key><string>app-store-connect</string>
             <key>destination</key><string>upload</string>
             <key>teamID</key><string>$APPLE_TEAM_ID</string>
-            <key>signingStyle</key><string>automatic</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>signingCertificate</key><string>Apple Distribution</string>
+            <key>provisioningProfiles</key><dict>
+              <key>be.kadeon.sport</key><string>$APP_PROFILE</string>
+              <key>be.kadeon.sport.watchkitapp</key><string>$WATCH_PROFILE</string>
+            </dict>
           </dict></plist>
           PLIST
           xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" \
-            -exportOptionsPlist "$RUNNER_TEMP/export.plist" -exportPath "$RUNNER_TEMP/export" $AUTH | tail -n 40
+            -exportOptionsPlist "$RUNNER_TEMP/export.plist" -exportPath "$RUNNER_TEMP/export" \
+            -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            > "$RUNNER_TEMP/export.log" 2>&1 \
+            || { grep -iE "error" "$RUNNER_TEMP/export.log" | sort -u | head -40; tail -n 40 "$RUNNER_TEMP/export.log"; exit 1; }
+          tail -n 15 "$RUNNER_TEMP/export.log"
+          echo "Envoyé sur TestFlight : version $VERSION (build ${{ github.run_number }})"
+
+      - name: Remove the temporary certificate and profiles
+        if: always() && steps.asc.outputs.ready == 'yes'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          WORK: ${{ runner.temp }}/signing
+        run: |
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
+          [ -x "$RUNNER_TEMP/venv/bin/python" ] && "$RUNNER_TEMP/venv/bin/python" scripts/asc_signing.py cleanup || true
