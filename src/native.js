@@ -1,8 +1,26 @@
 // Native iPhone app (Capacitor) features. On the web every function here is a
 // no-op or returns false, so the same code base serves both.
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 
 export const isNative = () => Capacitor.isNativePlatform();
+
+// The app's own native module (ios/App/App/WatchBridgePlugin.swift): Apple Watch, Live
+// Activity, workouts sent to the watch, run intervals read from Apple Health.
+export const WatchBridge = registerPlugin('WatchBridge');
+
+// The Apple Watch app is running the session: it taps the wrist itself at the end of the
+// rest, so the iPhone stays quiet (otherwise its notification would buzz the watch a second time).
+export async function watchOwnsRest() {
+  if (!isNative()) return false;
+  try { return (await WatchBridge.info()).workout === true; } catch { return false; }
+}
+
+// Intervals of the run recorded by the watch between `start` and `end` (Apple Health):
+// [{ secs, meters }], one per step of a workout sent from Kadence, or a single one.
+export async function runIntervals(start, end) {
+  if (!isNative()) return [];
+  try { return (await WatchBridge.runSplits({ start: start.toISOString(), end: end.toISOString() })).intervals || []; } catch { return []; }
+}
 
 // --- Rest notifications, scheduled on the phone itself (no server needed). ---
 const REST_IDS = Array.from({ length: 40 }, (_, i) => 9000 + i);

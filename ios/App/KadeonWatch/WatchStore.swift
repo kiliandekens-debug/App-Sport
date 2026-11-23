@@ -34,6 +34,39 @@ final class WatchStore: NSObject, ObservableObject, WCSessionDelegate {
         super.init()
         // Heart rate and calories shown live: forward the workout's changes.
         workout.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &bag)
+        // Tell the iPhone at once when the workout starts or stops (it then leaves the end-of-rest
+        // alerts to the watch), and every 10 s the heart rate for the Dynamic Island.
+        workout.$running.removeDuplicates().sink { [weak self] _ in
+            DispatchQueue.main.async { self?.sendStatus() }
+        }.store(in: &bag)
+        Timer.publish(every: 10, on: .main, in: .common).autoconnect().sink { [weak self] _ in
+            guard let self, self.workout.running else { return }
+            self.sendStatus()
+        }.store(in: &bag)
+    }
+
+    private func sendStatus() {
+        guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
+        let st: [String: Any] = ["workout": workout.running, "hr": workout.heartRate, "at": nowMs()]
+        guard let data = try? JSONSerialization.data(withJSONObject: st), let json = String(data: data, encoding: .utf8) else { return }
+        try? WCSession.default.updateApplicationContext(["status": json])
+        if WCSession.default.isReachable {
+            WCSession.default.sendMessage(["status": json], replyHandler: nil, errorHandler: nil)
+        }
+    }
+
+    // MARK: heart rate back down during the rest
+
+    private var peakFor: Double = -1
+    private var peak: Double = 0
+
+    /// « Prêt » once the heart rate is 20 bpm under its peak of this rest, or under 100.
+    func ready(for s: WSession) -> Bool {
+        let hr = workout.heartRate
+        guard hr > 0 else { return false }
+        if peakFor != s.restUntil { peakFor = s.restUntil; peak = hr }
+        peak = max(peak, hr)
+        return hr <= peak - 20 || hr < 100
     }
 
     func activate() {
@@ -69,6 +102,29 @@ final class WatchStore: NSObject, ObservableObject, WCSessionDelegate {
         WKInterfaceDevice.current().play(.success)
     }
 
+    /// One more set on the current exercise.
+    func addSet() {
+        guard var s = session else { return }
+        let ei = s.current
+        guard s.exercises.indices.contains(ei) else { return }
+        s.addSet(ex: ei)
+        setSession(s)
+        send(["type": "addSet", "ex": ei, "name": s.exercises[ei].name], at: nowMs())
+        WKInterfaceDevice.current().play(.click)
+    }
+
+    /// Machine taken: another exercise for the same muscle takes the remaining sets.
+    func replace(with alt: WAlt) {
+        guard var s = session else { return }
+        let ei = s.current
+        guard s.exercises.indices.contains(ei) else { return }
+        let name = s.exercises[ei].name
+        s.replace(ex: ei, with: alt)
+        setSession(s)
+        send(["type": "replace", "ex": ei, "name": name, "with": alt.name], at: nowMs())
+        WKInterfaceDevice.current().play(.success)
+    }
+
     func shiftRest(_ seconds: Int) {
         guard var s = session else { return }
         let at = nowMs()
@@ -96,8 +152,11 @@ final class WatchStore: NSObject, ObservableObject, WCSessionDelegate {
         guard let s = session else { return }
         summary = makeSummary(s)
         setSession(nil)
-        send(["type": "finish"], at: nowMs())
-        workout.end(save: true)
+        // The whole session goes with it: the iPhone can save it at once, even locked.
+        var action: [String: Any] = ["type": "finish"]
+        if let data = try? JSONEncoder().encode(s), let obj = try? JSONSerialization.jsonObject(with: data) { action["session"] = obj }
+        send(action, at: nowMs())
+        workout.end(save: true, title: s.title, volume: s.volume)
     }
 
     // MARK: state from the iPhone
@@ -123,7 +182,7 @@ final class WatchStore: NSObject, ObservableObject, WCSessionDelegate {
             // Finished or cancelled on the iPhone.
             let worked = b.done > 0
             if worked { summary = makeSummary(b) }
-            workout.end(save: worked)
+            workout.end(save: worked, title: b.title, volume: b.volume)
         }
         if next != before { setSession(next) }
         if next != nil, !workout.running {

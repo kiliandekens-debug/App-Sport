@@ -1,4 +1,5 @@
 import SwiftUI
+import WatchKit
 
 private let brand = Color(red: 1.0, green: 0.42, blue: 0.17)
 private let ember = Color(red: 1.0, green: 0.66, blue: 0.22)
@@ -145,7 +146,16 @@ struct SetView: View {
     @State private var kgTicks: Double = 0
     @State private var repsTicks: Double = 0
     @State private var field = 0
+    @State private var menu = false
     @FocusState private var focused: Bool
+
+    private var kgFloor: Double { -(set.kg / max(e.step, 0.5)).rounded(.down) }
+
+    /// − / + buttons, for when the Digital Crown is awkward (sweaty fingers, gloves).
+    private func step(_ d: Double) {
+        if field == 0 { kgTicks = max(kgFloor, kgTicks + d) } else { repsTicks = max(-Double(set.reps), repsTicks + d) }
+        WKInterfaceDevice.current().play(.click)
+    }
 
     private var e: WExercise { s.exercises[s.current] }
     private var set: WSet { e.sets[si] }
@@ -177,7 +187,8 @@ struct SetView: View {
                 .foregroundStyle(set.warm ? ember : .secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-            HStack(spacing: 6) {
+            HStack(spacing: 4) {
+                StepButton(icon: "minus", label: field == 0 ? "Moins de charge" : "Une rep de moins") { step(-1) }
                 ValueBox(value: fmtKg(kg), unit: "kg", selected: field == 0, changed: kgTicks != 0)
                     .onTapGesture { field = 0 }
                     .accessibilityLabel("Charge \(fmtKg(kg)) kilos")
@@ -186,12 +197,13 @@ struct SetView: View {
                     .onTapGesture { field = 1 }
                     .accessibilityLabel("\(reps) répétitions")
                     .accessibilityAddTraits(.isButton)
+                StepButton(icon: "plus", label: field == 0 ? "Plus de charge" : "Une rep de plus") { step(1) }
             }
             .focusable(true)
             .focused($focused)
             .digitalCrownRotation(
                 field == 0 ? $kgTicks : $repsTicks,
-                from: field == 0 ? -(set.kg / max(e.step, 0.5)).rounded(.down) : -Double(set.reps),
+                from: field == 0 ? kgFloor : -Double(set.reps),
                 through: field == 0 ? 400 : 100,
                 by: 1,
                 sensitivity: .low,
@@ -209,6 +221,80 @@ struct SetView: View {
             .opacity(reps == 0 ? 0.4 : 1)
         }
         .onAppear { focused = true }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { menu = true } label: { Image(systemName: "ellipsis") }
+                    .accessibilityLabel("Plus d'options")
+            }
+        }
+        .sheet(isPresented: $menu) {
+            SetMenu(s: s).environmentObject(store)
+        }
+    }
+}
+
+struct StepButton: View {
+    let icon: String
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .bold))
+                .frame(width: 26, height: 26)
+                .background(Circle().fill(chip))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+    }
+}
+
+/// Add a set, swap the exercise (machine taken), or go to another one.
+struct SetMenu: View {
+    @EnvironmentObject var store: WatchStore
+    @Environment(\.dismiss) private var dismiss
+    let s: WSession
+
+    var body: some View {
+        let others = s.exercises.indices.filter { $0 != s.current && s.exercises[$0].isOpen }
+        List {
+            Button {
+                store.addSet()
+                dismiss()
+            } label: {
+                Label("Ajouter une série", systemImage: "plus.circle.fill")
+            }
+            if let alts = s.exercise?.alts, !alts.isEmpty {
+                Section("Machine prise ? Remplacer par") {
+                    ForEach(alts, id: \.self) { a in
+                        Button {
+                            store.replace(with: a)
+                            dismiss()
+                        } label: {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(a.name).font(.system(.footnote, design: .rounded).weight(.semibold))
+                                Text(a.kg > 0 ? "Dernière fois \(fmtKg(a.kg)) kg × \(a.reps)" : "Dernière fois × \(a.reps)")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+            if !others.isEmpty {
+                Section("Passer à") {
+                    ForEach(others, id: \.self) { i in
+                        Button {
+                            store.choose(i)
+                            dismiss()
+                        } label: {
+                            Text(s.exercises[i].name).font(.system(.footnote, design: .rounded))
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -252,7 +338,8 @@ struct RestView: View {
     var body: some View {
         let left = max(0, Int(((s.restUntil - now) / 1000).rounded(.up)))
         let pct = s.restTotal > 0 ? min(1, Double(left) / Double(s.restTotal)) : 0
-        let ending = left <= 5
+        let ready = store.ready(for: s)
+        let ending = left <= 5 || ready
         let tint = ending ? go : brand
         VStack(spacing: 5) {
             ZStack {
@@ -267,7 +354,7 @@ struct RestView: View {
                     .shadow(color: tint.opacity(0.6), radius: 4)
                     .animation(.linear(duration: 1), value: pct)
                 VStack(spacing: 0) {
-                    Text(ending ? "PRÊT ?" : "REPOS")
+                    Text(ready ? "PRÊT" : ending ? "PRÊT ?" : "REPOS")
                         .font(.system(size: 10, weight: .heavy, design: .rounded))
                         .foregroundStyle(ending ? go : .secondary)
                     Text(mmss(left))

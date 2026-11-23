@@ -26,6 +26,10 @@ struct SessionActivityAttributes: ActivityAttributes {
         var rest: Int
         /// Validated from the lock screen, waiting for the app to catch up.
         var validated: Bool
+        /// Heart rate measured by the Apple Watch (0 = none), and « ready » during the rest once
+        /// it has come down (20 bpm under the peak of the rest, or under 100).
+        var hr: Int = 0
+        var ready: Bool = false
     }
 
     var title: String

@@ -71,6 +71,9 @@ final class LiveSession {
             validated: false
         )
         DispatchQueue.main.async {
+            var st = st
+            st.hr = self.hr
+            st.ready = self.isReady(st)
             if let a = self.activity {
                 Task { await a.update(Self.content(st)) }
                 return
@@ -86,6 +89,36 @@ final class LiveSession {
                 self.lastError = "Démarrage refusé : \(error)"
             }
         }
+    }
+
+    // MARK: heart rate from the Apple Watch
+
+    private var hr = 0
+    private var peak = 0
+    private var peakRest: Date?
+    private var lastPush = Date.distantPast
+
+    private func isReady(_ st: SessionActivityAttributes.ContentState) -> Bool {
+        guard hr > 0, let end = st.restEnd, end > Date() else { return false }
+        if peakRest != st.restStart { peakRest = st.restStart; peak = hr }
+        peak = max(peak, hr)
+        return hr <= peak - 20 || hr < 100
+    }
+
+    /// Called on the main thread with each value the watch sends (0 when its workout stops).
+    func heartRate(_ bpm: Double) {
+        let value = Int(bpm.rounded())
+        guard let a = activity else { hr = value; return }
+        var st = a.content.state
+        let changed = abs(value - hr) >= 2 || value == 0
+        hr = value
+        st.hr = value
+        let ready = isReady(st)
+        // Live Activity updates are budgeted: only when something visible changes, at most every 5 s.
+        guard changed || ready != st.ready, Date().timeIntervalSince(lastPush) >= 5 || ready != st.ready else { return }
+        st.ready = ready
+        lastPush = Date()
+        Task { await a.update(Self.content(st)) }
     }
 
     func end() {

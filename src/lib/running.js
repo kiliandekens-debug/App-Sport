@@ -174,7 +174,7 @@ function qualityFor(goal, phase, q, slot, p, lighter) {
 /* ---------- Plan ---------- */
 const mondayOf = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
-const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+export const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 export function scheduleOf(profile) {
   const s = Array.isArray(profile.schedule) && profile.schedule.length === 7 ? profile.schedule : DEFAULT_SCHEDULE[Math.min(6, Math.max(2, profile.days_per_week || 3))];
@@ -352,6 +352,16 @@ export function adaptation(logs, planFor, missedRecent) {
     Object.assign(res, { paceScale: 0.98, volScale: 1.05, level: 'harder', message: 'Tes sorties passent facilement. J\'accélère les allures de 2 % et j\'ajoute 5 % de volume.' });
   } else if (r < 0.95 && recent.length >= 2) {
     res.message = 'Tu cours plus vite que prévu sur tes footings. Ralentis : le facile doit rester facile pour que les séances dures portent.';
+  }
+  // Intervals measured by the watch: most parts slower than the target pace means the
+  // paces are too ambitious for now.
+  const measured = recent.filter((l) => l.splits?.matched && l.splits.total);
+  const slowParts = measured.reduce((a, l) => a + l.splits.slow, 0);
+  const allParts = measured.reduce((a, l) => a + l.splits.total, 0);
+  if (allParts >= 3 && slowParts / allParts > 0.5) {
+    Object.assign(res, { paceScale: Math.max(res.paceScale, 1.03), volScale: Math.min(res.volScale, 1), level: 'easier', message: `Sur tes dernières séances, ${slowParts} parties sur ${allParts} étaient plus lentes que l'allure visée (mesuré par la montre). Je ralentis les allures de 3 % pour que tu puisses les tenir.` });
+  } else if (allParts >= 3 && measured.every((l) => l.splits.slow === 0) && measured.some((l) => l.splits.total > 1) && res.level === 'ok') {
+    res.message = 'La montre confirme : tu tiens les allures prévues sur tes dernières séances. On continue comme ça.';
   }
   if (missedRecent >= 2) {
     res.volScale = Math.min(res.volScale, 0.9);
@@ -635,4 +645,51 @@ export function watchWorkout(session) {
     ? { iterations: b.reps, steps: [step(b.work), step(b.rest, 'recovery')] }
     : { iterations: 1, steps: [step(b)] }));
   return { name: session.title, ymd: session.ymd, warmup, blocks, cooldown };
+}
+
+// Steps of the session in the order the watch records them (same as watchWorkout()).
+export function runSteps(session) {
+  const w = watchWorkout(session);
+  const out = [];
+  if (w.warmup) out.push({ ...w.warmup, purpose: 'warm' });
+  for (const b of w.blocks) for (let i = 0; i < b.iterations; i++) for (const st of b.steps) out.push(st);
+  if (w.cooldown) out.push({ ...w.cooldown, purpose: 'cool' });
+  return out;
+}
+
+// What was run against the plan, from the intervals the watch recorded ([{ secs, meters }]).
+// Each part with a target pace is « ok », « slow » or « fast » (off by `off` s/km).
+export function runVerdict(session, intervals) {
+  const steps = runSteps(session);
+  const paceOf = (iv) => (iv && iv.meters > 50 ? iv.secs / (iv.meters / 1000) : null);
+  const tot = intervals.reduce((a, iv) => ({ secs: a.secs + iv.secs, meters: a.meters + iv.meters }), { secs: 0, meters: 0 });
+  let pairs = null;
+  if (intervals.length === steps.length) pairs = steps.map((st, i) => ({ st, iv: intervals[i] }));
+  else if (steps.length === 1) pairs = [{ st: steps[0], iv: tot }];
+  const avg = paceOf(tot);
+  if (!pairs) {
+    return { matched: false, total: 0, ok: 0, slow: 0, fast: 0, pace: avg, text: `Allure moyenne ${avg ? mmss(Math.round(avg)) : '?'} /km. Pour le détail par fraction, lance la séance envoyée depuis Kadence dans Exercice.` };
+  }
+  const parts = pairs.filter((p) => p.st.pace && paceOf(p.iv)).map((p) => {
+    const pace = paceOf(p.iv);
+    const { fast, slow } = p.st.pace;
+    const status = pace > slow ? 'slow' : pace < fast ? 'fast' : 'ok';
+    return { pace: Math.round(pace), fast, slow, status, off: Math.round(status === 'slow' ? pace - slow : status === 'fast' ? fast - pace : 0) };
+  });
+  const count = (k) => parts.filter((x) => x.status === k).length;
+  const v = { matched: true, total: parts.length, ok: count('ok'), slow: count('slow'), fast: count('fast'), pace: avg, parts };
+  const worst = (k) => Math.max(0, ...parts.filter((x) => x.status === k).map((x) => x.off));
+  if (!parts.length) v.text = `Allure moyenne ${avg ? mmss(Math.round(avg)) : '?'} /km.`;
+  else if (parts.length === 1) {
+    const x = parts[0];
+    v.text = x.status === 'ok' ? `Allure ${mmss(x.pace)} /km : dans la plage prévue.`
+      : x.status === 'fast' ? `Allure ${mmss(x.pace)} /km : ${x.off} s/km plus rapide que prévu. Le facile doit rester facile.`
+      : `Allure ${mmss(x.pace)} /km : ${x.off} s/km plus lente que prévu.`;
+  } else {
+    const plural = (n, w) => `${n} ${w}${n > 1 ? 's' : ''}`;
+    v.text = `Allure tenue sur ${v.ok}/${v.total} parties.`
+      + (v.slow ? ` ${plural(v.slow, 'trop lente')} (jusqu'à +${worst('slow')} s/km).` : '')
+      + (v.fast ? ` ${plural(v.fast, 'trop rapide')} (jusqu'à −${worst('fast')} s/km).` : '');
+  }
+  return v;
 }

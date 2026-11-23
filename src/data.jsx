@@ -1,7 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase, fetchAll } from './supabase.js';
 import { analyse } from './lib/stats.js';
-import { isNative, healthRuns, healthLinked } from './native.js';
+import { isNative, healthRuns, healthLinked, runIntervals } from './native.js';
+import { buildPlan, runVerdict, ymd } from './lib/running.js';
 
 const DataCtx = createContext(null);
 
@@ -52,6 +53,18 @@ export function DataProvider({ children }) {
     const plans = new Map(raw.plans.map((p) => [p.exercise, p]));
     return { ...data, custom: raw.custom, routines: raw.routines, runProfile: raw.runProfile, runLogs: raw.runLogs, superadmin: raw.superadmin, plans, loading, error, refresh };
   }, [raw, loading, error, refresh]);
+
+  // Runs imported from Apple Health or Strava are linked to the planned session of the same
+  // day; on the iPhone, the intervals recorded by the watch are compared with the plan.
+  const linking = useRef(false);
+  useEffect(() => {
+    if (loading || linking.current || !raw.runProfile || !raw.runLogs.length) return;
+    linking.current = true;
+    linkRuns(raw.runProfile, raw.runLogs, value.workouts)
+      .then((changed) => { if (changed) refresh(); })
+      .catch(() => { /* offline: next time */ })
+      .finally(() => { linking.current = false; });
+  }, [loading, raw.runProfile, raw.runLogs, value.workouts, refresh]);
 
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;
 }
@@ -157,6 +170,35 @@ export async function importRuns(runs, existing) {
     if (error) throw error;
   }
   return { added: todo.length, skipped: runs.length - todo.length };
+}
+
+// Last 3 weeks: links each run without a planned session to the one of the same day, and
+// (iPhone app) adds the watch's intervals and the verdict against the plan. True if changed.
+async function linkRuns(profile, logs, workouts) {
+  const sessions = buildPlan(profile, logs, workouts).weeks.flat();
+  const since = Date.now() - 21 * 86400000;
+  const taken = new Set(logs.map((l) => l.session_key).filter(Boolean));
+  let changed = false;
+  for (const l of logs) {
+    const at = new Date(l.done_at);
+    if (at.getTime() < since) continue;
+    let s = l.session_key ? sessions.find((x) => x.key === l.session_key) : null;
+    const patch = {};
+    if (!l.session_key) {
+      s = sessions.find((x) => x.ymd === ymd(at) && !taken.has(x.key));
+      if (s) { patch.session_key = s.key; patch.kind = s.kind; taken.add(s.key); }
+    }
+    if (s && !l.splits && l.source === 'apple-health' && isNative()) {
+      const end = new Date(at.getTime() + (l.duration_s || 0) * 1000);
+      const iv = await runIntervals(new Date(at.getTime() - 60000), new Date(end.getTime() + 60000));
+      if (iv.length) patch.splits = runVerdict(s, iv);
+    }
+    if (Object.keys(patch).length) {
+      const { error } = await supabase.from('run_logs').update(patch).eq('id', l.id);
+      if (!error) changed = true;
+    }
+  }
+  return changed;
 }
 
 // App Store requirement: wipes every row of the signed-in user, then the login itself

@@ -6,6 +6,20 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.14.0', date: '2026-11-24', title: 'Montre, course et coach plus malins',
+    items: [
+      'Fin du repos : une seule vibration. Quand la montre suit la séance, l\'iPhone n\'envoie plus sa notification en double.',
+      'Montre : boutons − et + à côté de la charge et des reps, menu « … » pour ajouter une série, remplacer l\'exercice (machine prise) ou passer à un autre.',
+      'Montre : séance finie sur la montre enregistrée tout de suite, même iPhone verrouillé (si la connexion est encore valide).',
+      'Apple Santé : la séance de muscu porte la marque Kadence, le nom de la séance et le volume soulevé.',
+      'Course : les courses d\'Apple Santé et de Strava se rattachent toutes seules à la séance prévue du jour.',
+      'Course : bilan contre le plan, fraction par fraction, avec les mesures de la montre (« allure tenue sur 5/6 parties ») ; le plan s\'adapte si tu ne tiens pas les allures.',
+      'Progrès : 1RM estimé par exercice, avec la tendance (progression, plateau, baisse) et quoi faire.',
+      'Coach : semaine allégée proposée après 6 semaines d\'affilée ou quand ta force baisse ; une fois activée, 60 % des séries et charges −10 % pendant 7 jours.',
+      'Dynamic Island : fréquence cardiaque de la montre, et « Prêt » quand ton cœur est redescendu pendant le repos (aussi sur la montre).',
+    ],
+  },
+  {
     version: '1.13.1', date: '2026-11-23', title: 'Nouvelle icône',
     items: [
       'Nouvelle icône Kadence : un K blanc et son écho sur fond orange, comme une cadence.',

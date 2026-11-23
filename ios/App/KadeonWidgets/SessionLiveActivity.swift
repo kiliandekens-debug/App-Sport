@@ -21,7 +21,7 @@ private struct Look {
     var restOver: Bool { st.restEnd != nil && !resting }
     var record: Bool { !st.record.isEmpty }
     /// The fuse burns orange, or gold when the next set can beat the record.
-    var tint: Color { restOver ? go : record ? gold : brand }
+    var tint: Color { restOver || (resting && st.ready) ? go : record ? gold : brand }
 }
 
 /// The fuse: a bar that burns down from right to left during the rest, with a spark at its end.
@@ -52,6 +52,29 @@ private struct RecordLine: View {
         }
         .foregroundStyle(gold)
         .lineLimit(1)
+    }
+}
+
+/// Heart rate from the Apple Watch, and « prêt » once it has come down during the rest.
+private struct HeartLine: View {
+    let look: Look
+
+    var body: some View {
+        if look.st.hr > 0 {
+            HStack(spacing: 6) {
+                Label("\(look.st.hr)", systemImage: "heart.fill")
+                    .foregroundStyle(.red)
+                    .monospacedDigit()
+                if look.resting && look.st.ready {
+                    Text("Prêt")
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 1)
+                        .background(Capsule().fill(go))
+                        .foregroundStyle(.black)
+                }
+            }
+            .font(.system(.footnote, design: .rounded).weight(.semibold))
+        }
     }
 }
 
@@ -126,6 +149,7 @@ private struct LockScreen: View {
             if look.resting, let r = look.restRange {
                 Fuse(range: r, tint: look.tint)
             }
+            HeartLine(look: look)
             if look.record {
                 RecordLine(text: look.st.record)
             }
@@ -174,6 +198,7 @@ struct SessionLiveActivity: Widget {
                         if look.resting, let r = look.restRange {
                             Fuse(range: r, tint: look.tint)
                         }
+                        HeartLine(look: look)
                         if look.record {
                             RecordLine(text: look.st.record)
                         }

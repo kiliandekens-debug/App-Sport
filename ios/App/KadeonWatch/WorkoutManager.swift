@@ -65,8 +65,9 @@ final class WorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDelegate
         }
     }
 
-    /// Ends the workout: saved to Apple Health, or dropped (session cancelled, or too short).
-    func end(save: Bool) {
+    /// Ends the workout: saved to Apple Health (named after the session, with the volume
+    /// lifted), or dropped (session cancelled, or too short).
+    func end(save: Bool, title: String? = nil, volume: Double = 0) {
         starting = false
         guard let s = session, let b = builder else { return }
         session = nil
@@ -75,7 +76,12 @@ final class WorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDelegate
         s.end()
         b.endCollection(withEnd: Date()) { _, _ in
             if save {
-                b.finishWorkout { _, _ in }
+                var meta: [String: Any] = [HKMetadataKeyWorkoutBrandName: "Kadence"]
+                if let title { meta["KadenceTitle"] = title }
+                if volume > 0 { meta["KadenceVolumeKg"] = volume }
+                b.addMetadata(meta) { _, _ in
+                    b.finishWorkout { _, _ in }
+                }
             } else {
                 b.discardWorkout()
             }

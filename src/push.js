@@ -1,5 +1,5 @@
 import { supabase } from './supabase.js';
-import { isNative, nativeNotifyPermission, nativeCancelRest, nativeScheduleRest } from './native.js';
+import { isNative, nativeNotifyPermission, nativeCancelRest, nativeScheduleRest, watchOwnsRest } from './native.js';
 
 // Web Push: notifications at the end of each rest, on the iPhone and, when it is locked, the Apple Watch.
 // iOS only allows it for the app added to the home screen (iOS 16.4 or later).
@@ -85,7 +85,10 @@ export function syncRestPush(restUntil, body) {
 async function applyRestPush(restUntil, body) {
   const key = restUntil ? `${restUntil}|${body}` : null;
   if (isNative()) {
-    try { await nativeScheduleRest(restUntil, pushEvery(), body); } catch { /* permission withdrawn: nothing to do */ }
+    try {
+      if (restUntil && await watchOwnsRest()) await nativeCancelRest();
+      else await nativeScheduleRest(restUntil, pushEvery(), body);
+    } catch { /* permission withdrawn: nothing to do */ }
     return;
   }
   let ok = false;

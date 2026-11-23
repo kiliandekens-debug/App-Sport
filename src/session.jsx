@@ -31,6 +31,16 @@ export const setAutoWarmup = (v) => { try { localStorage.setItem(AUTO_WARM, v ? 
 
 // Setting: a dip belt is available, so the coach may add weight to pull-ups and dips (default no).
 const LEST = 'app-sport-lest';
+
+// Lighter week suggested by the coach (lib/coach.js deloadAdvice): fewer working sets and
+// 10 % less load on every session started until `until`. `last` remembers the last one.
+const DELOAD = 'app-sport-deload';
+export const deloadState = () => readJson(DELOAD) || {};
+export const deloadActive = () => { const d = deloadState(); return Boolean(d.until && Date.now() < d.until); };
+export const startDeload = (days = 7) => writeJson(DELOAD, { until: Date.now() + days * 86400000, last: Date.now() });
+export const stopDeload = () => writeJson(DELOAD, { ...deloadState(), until: 0 });
+export const deferDeload = () => writeJson(DELOAD, { ...deloadState(), later: Date.now() });
+const lighter = (kg) => (kg === '' || kg == null ? kg : String(Math.round(num(String(kg)) * 0.9 * 2) / 2).replace('.', ','));
 export const hasLest = () => { try { return localStorage.getItem(LEST) === '1'; } catch { return false; } };
 export const setHasLest = (v) => { try { localStorage.setItem(LEST, v ? '1' : '0'); } catch { /* private mode */ } };
 
@@ -132,13 +142,22 @@ function buildExercise(data, routineEx) {
     const reps = usePlan && t.kg == null ? plan.target_reps : t.reps ?? p?.reps;
     return { kg: kg == null ? '' : String(kg).replace('.', ','), reps: reps == null ? '' : String(reps), type, done: false, auto: type === 'warmup' && t.kg == null };
   });
+  // Lighter week: 60 % of the working sets (at least 2), 10 % less load; warm-ups unchanged.
+  let shaped = sets;
+  const deload = deloadActive();
+  if (deload) {
+    const work = sets.filter((x) => x.type !== 'warmup').length;
+    let keep = Math.max(Math.min(2, work), Math.ceil(work * 0.6));
+    shaped = sets.filter((x) => x.type === 'warmup' || keep-- > 0).map((x) => (x.type === 'warmup' ? x : { ...x, kg: lighter(x.kg) }));
+  }
   return {
     name,
     prev,
+    deload,
     rest: routineEx.rest ?? restFor(name),
     superset: routineEx.superset || null,
     plan: plan ? { kg: Number(plan.target_kg), reps: plan.target_reps, reason: plan.reason } : null,
-    sets: applyWarmups(sets),
+    sets: applyWarmups(shaped),
   };
 }
 
@@ -245,6 +264,12 @@ export function watchAction(c, a) {
       return { ...c, restUntil: until, restTotal: Math.max(c.restTotal, Math.ceil((until - at) / 1000)) };
     }
     case 'skip': return { ...c, restUntil: null };
+    case 'addSet': {
+      if (!same) return c;
+      const last = e.sets.filter((x) => x.type !== 'warmup').pop() || e.sets[e.sets.length - 1] || { kg: '', reps: '' };
+      const exercises = c.exercises.map((y, i) => (i !== a.ex ? y : { ...y, sets: [...y.sets, { kg: last.kg, reps: last.reps, type: 'normal', done: false }] }));
+      return { ...c, exercises, current: a.ex };
+    }
     case 'current': return same ? { ...c, current: a.ex } : c;
     default: return c;
   }
@@ -355,7 +380,26 @@ export function SessionProvider({ children }) {
     });
   }, [data]);
 
-  const finish = useCallback(async () => {
+  // save: false when the session was already saved by the iPhone app's native side
+  // (finished on the Apple Watch while the iPhone was locked).
+  // Machine taken: another exercise takes the remaining sets (same set types, its own last
+  // loads and coach plan). Sets already done stay under the first exercise.
+  const replaceExercise = useCallback((ei, name, withName) => {
+    setS((c) => {
+      const e = c?.exercises[ei];
+      if (!e || e.name !== name || !withName || withName === name) return c;
+      const open = e.sets.filter((x) => !x.done);
+      if (!open.length) return c;
+      const fresh = buildExercise(data, { name: withName, rest: e.rest, superset: e.superset, sets: open.map((x) => ({ type: x.type || 'normal' })) });
+      const started = e.sets.some((x) => x.done);
+      const exercises = started
+        ? [...c.exercises.slice(0, ei), { ...e, sets: e.sets.filter((x) => x.done) }, fresh, ...c.exercises.slice(ei + 1)]
+        : c.exercises.map((x, i) => (i === ei ? fresh : x));
+      return { ...c, exercises, current: started ? ei + 1 : ei };
+    });
+  }, [data]);
+
+  const finish = useCallback(async ({ save = true } = {}) => {
     const c = s;
     if (!c) return null;
     const done = c.exercises.flatMap((e, position) =>
@@ -364,7 +408,7 @@ export function SessionProvider({ children }) {
         superset_id: e.superset ? e.superset.charCodeAt(0) - 64 : null,
       })));
     const ended = new Date().toISOString();
-    if (done.length) {
+    if (done.length && save) {
       const { data: w, error } = await supabase.from('workouts').insert({ title: c.title, started_at: c.startedAt, ended_at: ended, source: 'app' }).select('id').single();
       if (error) throw error;
       const { error: e2 } = await supabase.from('sets').insert(done.map((d) => ({ ...d, workout_id: w.id })));
@@ -474,9 +518,10 @@ export function SessionProvider({ children }) {
         restTotal: Math.max(c.restTotal, Math.ceil(((c.restUntil || Date.now()) + d * 1000 - Date.now()) / 1000)),
       })),
       skipRest: () => update((c) => ({ ...c, restUntil: null })),
-      fromWatch: (a) => update((c) => watchAction(c, a)),
+      fromWatch: (a) => (a.type === 'replace' ? replaceExercise(a.ex, a.name, a.with) : update((c) => watchAction(c, a))),
+      replaceExercise,
     };
-  }, [s, now, start, startRoutine, startEmpty, addExercise, finish, update]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [s, now, start, startRoutine, startEmpty, addExercise, finish, update, replaceExercise]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <SessionCtx.Provider value={value}>{children}</SessionCtx.Provider>;
 }

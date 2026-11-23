@@ -4,23 +4,38 @@
 // copy in the meantime, so it keeps going even while the iPhone is locked in a pocket.
 import { createElement, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { registerPlugin } from '@capacitor/core';
-import { isNative } from './native.js';
+import { isNative, WatchBridge as Watch } from './native.js';
 import { useSession, num, prevOf } from './session.jsx';
 import { useData } from './data.jsx';
 import { nextSession } from './lib/routines.js';
-import { incrementOf } from './lib/exercises.js';
+import { incrementOf, muscleOf } from './lib/exercises.js';
+import { supabase, supabaseUrl, supabaseKey } from './supabase.js';
 import { fmtKg } from './lib/stats.js';
 import { watchWorkout } from './lib/running.js';
 
-const Watch = registerPlugin('WatchBridge');
 const SEQ = 'app-sport-watch-seq';
 const readSeq = () => { try { return Number(localStorage.getItem(SEQ)) || 0; } catch { return 0; } };
 const writeSeq = (v) => { try { localStorage.setItem(SEQ, String(v)); } catch { /* private mode */ } };
 
 // What the watch needs, with the values shown in grey (last time) already filled in.
 // No clock-dependent field: the watch computes elapsed time and rest left itself.
-export function watchState(s, suggestion, ack) {
+// Up to 5 other exercises for the same muscle, most recently done first, with their last
+// load: what the watch offers when a machine is taken.
+function alternativesOf(data, name) {
+  const muscle = muscleOf(name);
+  if (muscle === 'Autre') return [];
+  return [...data.exercises.values()]
+    .filter((x) => x.name !== name && x.muscle === muscle && x.history.length)
+    .sort((a, b) => new Date(b.history[b.history.length - 1].date) - new Date(a.history[a.history.length - 1].date))
+    .slice(0, 5)
+    .map((x) => {
+      const h = x.history[x.history.length - 1];
+      const top = (h.sets || []).find((y) => y.weight_kg === h.maxKg);
+      return { name: x.name, kg: Number(h.maxKg) || 0, reps: Number(top?.reps ?? h.maxReps) || 0, step: incrementOf(x.name) };
+    });
+}
+
+export function watchState(s, suggestion, ack, data) {
   if (!s?.active) return { v: 1, ack, active: false, suggestion: suggestion || null, session: null };
   return {
     v: 1,
@@ -39,12 +54,14 @@ export function watchState(s, suggestion, ack) {
         superset: e.superset || '',
         step: incrementOf(e.name),
         coach: e.plan ? `${fmtKg(e.plan.kg)} × ${e.plan.reps}` : '',
+        alts: data ? alternativesOf(data, e.name) : [],
         sets: e.sets.map((x, j) => {
           const p = prevOf(e, j);
           return {
             kg: x.kg !== '' ? num(x.kg) : p ? Number(p.kg) || 0 : 0,
             reps: x.reps !== '' ? Math.round(num(x.reps)) : p ? Number(p.reps) || 0 : 0,
             warm: x.type === 'warmup',
+            type: x.type || 'normal',
             done: Boolean(x.done),
             prev: p ? `${fmtKg(p.kg)} × ${p.reps}` : '',
           };
@@ -118,7 +135,7 @@ function WatchSyncInner() {
 
   // Phone → watch: the whole session after each change (deduplicated on the JSON).
   const { next } = nextSession(data);
-  const json = JSON.stringify(watchState(s, next?.name, ack.current));
+  const json = JSON.stringify(watchState(s, next?.name, ack.current, data));
   useEffect(() => { Watch.update({ state: json }).catch(() => {}); }, [json]);
 
   // Live Activity: started with the session, updated after each change (typing settles first), ended with it.
@@ -127,6 +144,18 @@ function WatchSyncInner() {
     const t = setTimeout(() => { Watch.live({ state: live }).catch(() => {}); }, live === 'null' ? 0 : 300);
     return () => clearTimeout(t);
   }, [live]);
+
+  // Login handed to the native side, so that a session finished on the watch while the
+  // iPhone is locked can be saved right away (only while the access token is still valid).
+  useEffect(() => {
+    const send = (sess) => Watch.setAuth({
+      url: supabaseUrl, key: supabaseKey,
+      access: sess?.access_token || '', expiresAt: sess?.expires_at ? sess.expires_at * 1000 : 0,
+    }).catch(() => {});
+    supabase.auth.getSession().then(({ data: d }) => send(d.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, sess) => send(sess));
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   // A session started on the iPhone opens the watch app and starts the workout there
   // (heart rate, calories, activity rings). Started from the watch: it already runs.
@@ -165,7 +194,8 @@ function WatchSyncInner() {
             await tick();
             try {
               if (!sRef.current.active) continue;
-              const summary = await sRef.current.finish();
+              // Already saved by the native side (iPhone locked): just close the session here.
+              const summary = await sRef.current.finish({ save: !a.saved });
               if (summary) nav('/coach', { state: { summary } });
             } finally {
               done();

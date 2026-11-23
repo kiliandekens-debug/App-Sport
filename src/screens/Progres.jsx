@@ -9,22 +9,46 @@ import { fmtSets, nSets } from '../lib/analysis.js';
 import { weeklyFacts } from '../lib/coach.js';
 
 const METRICS = [
+  ['e1rm', '1RM estimé', (v) => `${fmtKg(Math.round(v * 2) / 2)} kg`],
   ['maxKg', 'Charge max', (v) => `${fmtKg(v)} kg`],
   ['vol', 'Volume', (v) => `${fmtInt(v)} kg`],
   ['maxReps', 'Reps', (v) => `${v} reps`],
 ];
 
+// Strength trend on the estimated 1RM: progress over the last 8 weeks, or a plateau
+// (last 4 sessions within ±1.5 %), with what to do about it.
+function strengthTrend(history) {
+  const h = history.filter((x) => x.e1rm > 0);
+  if (h.length < 3) return null;
+  const last = h[h.length - 1];
+  const tail = h.slice(-4);
+  const hi = Math.max(...tail.map((x) => x.e1rm));
+  const lo = Math.min(...tail.map((x) => x.e1rm));
+  if (tail.length === 4 && hi / lo < 1.015) {
+    return { kind: 'flat', text: `Plateau : ton 1RM estimé ne bouge plus depuis 4 séances (≈ ${fmtKg(Math.round(last.e1rm * 2) / 2)} kg). Change de plage de répétitions (par exemple 6-8 au lieu de 10-12) ou de variante pendant 3 semaines.` };
+  }
+  const from = new Date(last.date).getTime() - 56 * 86400000;
+  const base = h.find((x) => new Date(x.date).getTime() >= from) || h[0];
+  if (base === last) return null;
+  const pct = Math.round(((last.e1rm - base.e1rm) / base.e1rm) * 100);
+  const weeks = Math.max(1, Math.round((new Date(last.date) - new Date(base.date)) / (7 * 86400000)));
+  if (pct >= 2) return { kind: 'up', text: `En progression : +${pct} % de 1RM estimé en ${weeks} semaine${weeks > 1 ? 's' : ''}.` };
+  if (pct <= -3) return { kind: 'down', text: `En baisse : ${pct} % en ${weeks} semaine${weeks > 1 ? 's' : ''}. Fatigue, sommeil ou trop de volume : une semaine allégée peut aider.` };
+  return { kind: 'flat', text: `Stable sur ${weeks} semaine${weeks > 1 ? 's' : ''} (${pct >= 0 ? '+' : ''}${pct} %).` };
+}
+
 export default function Progres() {
   const data = useData();
   const list = data.exerciseList.filter((e) => e.history.length >= 2);
   const [name, setName] = useState(list[0]?.name || '');
-  const [metric, setMetric] = useState('maxKg');
+  const [metric, setMetric] = useState('e1rm');
   const ex = data.exercises.get(name);
   const hist = ex ? ex.history.slice(-12) : [];
   const [, label, fmt] = METRICS.find((m) => m[0] === metric);
   const values = hist.map((h) => h[metric]);
   const last = hist[hist.length - 1];
   const delta = values.length ? Math.round((values[values.length - 1] - values[0]) * 10) / 10 : 0;
+  const trend = ex ? strengthTrend(ex.history) : null;
 
   const [allRecords, setAllRecords] = useState(false);
   const records = data.exerciseList.filter((e) => e.best).slice(0, allRecords ? 30 : 5);
@@ -110,6 +134,12 @@ export default function Progres() {
               </div>
               <LineChart values={values} format={fmt} label={`${label} par séance : ${values.map((v) => fmt(v)).join(', ')}`} />
               <div className="between xs muted"><span>{fmtDay(hist[0].date)}</span><span>{fmtDay(last.date)}</span></div>
+              {trend && (
+                <div className="row" style={{ alignItems: 'flex-start', gap: 8 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 4, marginTop: 6, flexShrink: 0, background: trend.kind === 'up' ? 'var(--ok)' : trend.kind === 'down' ? 'var(--danger)' : 'var(--accent)' }} />
+                  <span className="small" style={{ lineHeight: 1.45 }}>{trend.text}</span>
+                </div>
+              )}
             </div>
           )}
         </>

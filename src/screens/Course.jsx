@@ -61,6 +61,9 @@ function SessionRow({ s, active, onPick }) {
       <span className="grow stack" style={{ gap: 1, minWidth: 0 }}>
         <span style={{ fontWeight: 600 }}>{s.title}</span>
         <span className="xs muted">{s.mins} min, ≈ {String(s.km).replace('.', ',')} km{s.blocks.length === 1 ? `, ${paceRange(s.blocks[0].pace)} /km` : ''}</span>
+        {s.done && s.log?.splits?.text && (
+          <span className="xs" style={{ fontWeight: 600, color: s.log.splits.slow || s.log.splits.fast ? 'var(--accent)' : 'var(--ok)' }}>{s.log.splits.text}</span>
+        )}
       </span>
       {s.done ? <span style={{ width: 26, height: 26, flexShrink: 0, borderRadius: 13, background: 'var(--ok)', color: 'var(--on-ok)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="check" size={14} width={3} /></span>
         : <span className="xs" style={{ color: s.missed ? 'var(--muted)' : 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>{s.today && !active ? "Aujourd'hui" : status}</span>}

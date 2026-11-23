@@ -8,6 +8,16 @@ struct WSet: Codable, Equatable {
     var warm: Bool
     var done: Bool
     var prev: String
+    /// normal, warmup, dropset, failure (missing in states saved by older versions).
+    var type: String?
+}
+
+/// Another exercise for the same muscle, with its last load (machine taken).
+struct WAlt: Codable, Equatable, Hashable {
+    var name: String
+    var kg: Double
+    var reps: Int
+    var step: Double
 }
 
 struct WExercise: Codable, Equatable {
@@ -17,6 +27,7 @@ struct WExercise: Codable, Equatable {
     var step: Double
     var coach: String
     var sets: [WSet]
+    var alts: [WAlt]?
 
     var isOpen: Bool { sets.contains { !$0.done } }
 }
@@ -89,6 +100,36 @@ struct WSession: Codable, Equatable {
         current = cur
         restUntil = rest > 0 ? at + Double(rest) * 1000 : 0
         restTotal = rest
+    }
+
+    /// One more working set on exercise ei, like its last one.
+    mutating func addSet(ex ei: Int) {
+        guard exercises.indices.contains(ei) else { return }
+        let e = exercises[ei]
+        let last = e.sets.last(where: { !$0.warm }) ?? e.sets.last
+        exercises[ei].sets.append(WSet(kg: last?.kg ?? 0, reps: last?.reps ?? 0, warm: false, done: false, prev: "", type: "normal"))
+        current = ei
+    }
+
+    /// Port of replaceExercise() in src/session.jsx: the alternative takes the remaining sets
+    /// (done sets stay with the first exercise). The iPhone refines the loads afterwards.
+    mutating func replace(ex ei: Int, with alt: WAlt) {
+        guard exercises.indices.contains(ei) else { return }
+        let e = exercises[ei]
+        let open = e.sets.filter { !$0.done }
+        guard !open.isEmpty else { return }
+        let sets = open.map { x in
+            WSet(kg: x.warm ? (alt.kg * 0.5 * 2).rounded() / 2 : alt.kg, reps: x.warm ? x.reps : alt.reps, warm: x.warm, done: false, prev: "", type: x.type)
+        }
+        let fresh = WExercise(name: alt.name, rest: e.rest, superset: e.superset, step: alt.step, coach: "", sets: sets, alts: nil)
+        if e.sets.contains(where: { $0.done }) {
+            exercises[ei].sets = e.sets.filter { $0.done }
+            exercises.insert(fresh, at: ei + 1)
+            current = ei + 1
+        } else {
+            exercises[ei] = fresh
+            current = ei
+        }
     }
 
     mutating func shiftRest(_ seconds: Int, at: Double) {

@@ -14,6 +14,8 @@ public class WatchBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "scheduleRun", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "live", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "liveInfo", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setAuth", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "runSplits", returnType: CAPPluginReturnPromise),
     ]
 
     private var observer: NSObjectProtocol?
@@ -58,6 +60,32 @@ public class WatchBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func live(_ call: CAPPluginCall) {
         LiveSession.shared.apply(json: call.getString("state") ?? "null")
         call.resolve()
+    }
+
+    /// Login (url, key, access token, expiry) for saving a session finished on the watch while the iPhone is locked.
+    @objc func setAuth(_ call: CAPPluginCall) {
+        WatchLink.shared.setAuth([
+            "url": call.getString("url") ?? "",
+            "key": call.getString("key") ?? "",
+            "access": call.getString("access") ?? "",
+            "expiresAt": call.getDouble("expiresAt") ?? 0,
+        ])
+        call.resolve()
+    }
+
+    /// Intervals of the run recorded by the watch between `start` and `end` (ISO dates).
+    @objc func runSplits(_ call: CAPPluginCall) {
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        guard let a = call.getString("start").flatMap(iso.date(from:)),
+              let b = call.getString("end").flatMap(iso.date(from:)) else {
+            call.resolve(["intervals": []])
+            return
+        }
+        Task {
+            let list = await RunSplits.intervals(start: a, end: b)
+            call.resolve(["intervals": list])
+        }
     }
 
     @objc func liveInfo(_ call: CAPPluginCall) {

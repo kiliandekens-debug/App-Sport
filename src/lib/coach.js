@@ -94,3 +94,29 @@ export function weeklyFacts(data) {
     facts.push(`Volume du mois dernier : ${Math.round(lastFull.tonnes)} t, contre ${Math.round(peak.tonnes)} t au pic. Tes charges plafonnent depuis que le volume a baissé.`);
   return facts;
 }
+
+// Lighter week suggested when the body needs it: 6 weeks or more in a row without a break,
+// or the estimated 1RM down two sessions running on at least 2 of the main exercises.
+// `state` = deloadState() (session.jsx): nothing suggested within 6 weeks of the last one,
+// or within 7 days of « Plus tard ».
+export function deloadAdvice(data, state = {}) {
+  const now = Date.now();
+  if (state.last && now - state.last < 42 * 86400000) return null;
+  if (state.later && now - state.later < 7 * 86400000) return null;
+  const counts = new Map();
+  for (const w of data.workouts) {
+    if (now - w.start > 42 * 86400000) continue;
+    for (const st of w.sets) counts.set(st.exercise, (counts.get(st.exercise) || 0) + 1);
+  }
+  const main = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([n]) => data.exercises.get(n)).filter((e) => e?.history.length >= 3);
+  const falling = main.filter((e) => {
+    const h = e.history.slice(-3).map((x) => x.e1rm);
+    return h[2] < h[1] && h[1] < h[0];
+  });
+  if (falling.length >= 2) {
+    return { why: `Ton 1RM estimé baisse depuis 2 séances sur ${falling.slice(0, 2).map((e) => e.name).join(' et ')} : signe de fatigue accumulée.` };
+  }
+  const weeks = data.week?.streak || 0;
+  if (weeks >= 6) return { why: `${weeks} semaines d'affilée sans pause. Une semaine plus légère laisse ton corps assimiler, et tu repars plus fort.` };
+  return null;
+}

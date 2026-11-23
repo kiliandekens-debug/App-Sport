@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useData, saveRoutine } from '../data.jsx';
-import { useSession } from '../session.jsx';
+import { useSession, deloadState, deloadActive, startDeload, stopDeload, deferDeload } from '../session.jsx';
+import { deloadAdvice } from '../lib/coach.js';
 import { fmtDay, sameDay } from '../lib/stats.js';
 import { routineFromHistory, nextSession } from '../lib/routines.js';
 import { Icon, ExerciseImage, GlassHeader } from '../components.jsx';
@@ -37,6 +38,10 @@ export default function Accueil({ user }) {
   const [openW, setOpenW] = useState(null);
   const [openR, setOpenR] = useState(null);
   
+  const [deload, setDeload] = useState(() => ({ ...deloadState(), on: deloadActive() }));
+  const reloadDeload = () => setDeload({ ...deloadState(), on: deloadActive() });
+  const advice = !deload.on ? deloadAdvice(data, deload) : null;
+
   const startRoutine = (r) => { session.startRoutine(r); nav('/seance'); };
   const startProgram = (title) => { session.start(title); nav('/seance'); };
   const importFromHistory = async () => {
@@ -88,6 +93,24 @@ export default function Accueil({ user }) {
             <Icon name="chevron" size={18} />
           </span>
         </Link>
+      )}
+
+      {!session.active && deload.on && (
+        <div className="card stack" style={{ margin: '24px 20px 0', gap: 8 }}>
+          <span className="row" style={{ gap: 8 }}><Icon name="spark" size={18} /><span style={{ fontWeight: 650 }}>Semaine allégée en cours</span></span>
+          <span className="small muted" style={{ lineHeight: 1.45 }}>Jusqu'au {fmtDay(new Date(deload.until))} : 60 % des séries de travail et charges réduites de 10 % sur chaque séance démarrée. Garde la technique propre, sans aller à l'échec.</span>
+          <button className="text-btn" style={{ alignSelf: 'flex-start' }} onClick={() => { stopDeload(); reloadDeload(); }}>Arrêter la semaine allégée</button>
+        </div>
+      )}
+      {!session.active && advice && (
+        <div className="card stack" style={{ margin: '24px 20px 0', gap: 8, borderColor: 'var(--accent)' }}>
+          <span className="row" style={{ gap: 8 }}><Icon name="spark" size={18} /><span style={{ fontWeight: 650 }}>Le coach conseille une semaine allégée</span></span>
+          <span className="small muted" style={{ lineHeight: 1.45 }}>{advice.why} Pendant 7 jours : 60 % des séries de travail et charges réduites de 10 %.</span>
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn primary" onClick={() => { startDeload(7); reloadDeload(); }}>Activer 7 jours</button>
+            <button className="btn" onClick={() => { deferDeload(); reloadDeload(); }}>Plus tard</button>
+          </div>
+        </div>
       )}
 
       {session.active ? (
