@@ -1,6 +1,14 @@
 import SwiftUI
 
 private let brand = Color(red: 1.0, green: 0.42, blue: 0.17)
+private let ember = Color(red: 1.0, green: 0.66, blue: 0.22)
+private let go = Color(red: 0.2, green: 0.82, blue: 0.4)
+private let chip = Color.white.opacity(0.14)
+
+/// Orange glow at the top of every screen, fading to black (same mood as the iPhone app).
+private func glow(_ c: Color) -> LinearGradient {
+    LinearGradient(colors: [c.opacity(0.42), c.opacity(0.08), .black], startPoint: .top, endPoint: .bottom)
+}
 
 struct ContentView: View {
     @EnvironmentObject var store: WatchStore
@@ -12,27 +20,32 @@ struct ContentView: View {
     @ViewBuilder private var screen: some View {
         if let sum = store.summary {
             SummaryView(sum: sum)
+                .containerBackground(glow(go), for: .navigation)
         } else if let s = store.session {
             TimelineView(.periodic(from: .now, by: 1)) { ctx in
                 let now = ctx.date.timeIntervalSince1970 * 1000
                 if s.restUntil > now {
                     RestView(s: s, now: now)
                         .modifier(ElapsedToolbar(s: s, now: now))
+                        .containerBackground(glow(brand), for: .navigation)
                 } else if let si = s.activeSet {
                     SetView(s: s, si: si, now: now)
                         .id("\(s.current)-\(si)")
                         .modifier(ElapsedToolbar(s: s, now: now))
+                        .containerBackground(glow(brand), for: .navigation)
                 } else {
                     NextView(s: s)
+                        .containerBackground(glow(brand), for: .navigation)
                 }
             }
         } else {
             IdleView()
+                .containerBackground(glow(brand), for: .navigation)
         }
     }
 }
 
-// MARK: - Elapsed time next to the clock; heart rate and sets done below
+// MARK: - Shared pieces
 
 /// Session time at the top left, beside the watch's clock.
 struct ElapsedToolbar: ViewModifier {
@@ -45,39 +58,79 @@ struct ElapsedToolbar: ViewModifier {
                 Text(mmss(Int((now - s.startedAt) / 1000)))
                     .font(.system(.footnote, design: .rounded).weight(.semibold))
                     .monospacedDigit()
-                    .foregroundStyle(brand)
+                    .foregroundStyle(ember)
             }
         }
     }
 }
 
-struct HeaderRow: View {
+/// Live heart rate: a beating heart, or a crossed one when nothing is measured.
+struct HeartPill: View {
     @EnvironmentObject var store: WatchStore
-    let s: WSession
-    let now: Double
+    var size: CGFloat = 13
 
     var body: some View {
-        HStack(spacing: 6) {
-            let bpm = store.workout.heartRate
-            Label(bpm > 0 ? "\(Int(bpm))" : "--", systemImage: store.workout.running ? "heart.fill" : "heart.slash")
-                .foregroundStyle(bpm > 0 ? .red : .secondary)
-                .labelStyle(CompactLabel())
-                .accessibilityLabel(bpm > 0 ? "Fréquence cardiaque \(Int(bpm))" : "Fréquence cardiaque indisponible")
-            Spacer(minLength: 0)
-            Text("\(s.done)/\(s.total) séries")
-                .foregroundStyle(.secondary)
+        let bpm = store.workout.heartRate
+        HStack(spacing: 3) {
+            Image(systemName: bpm > 0 ? "heart.fill" : "heart.slash")
+                .symbolEffect(.pulse, options: .repeating, isActive: bpm > 0)
+            Text(bpm > 0 ? "\(Int(bpm))" : "--")
+                .monospacedDigit()
         }
-        .font(.system(.footnote, design: .rounded).weight(.semibold))
-        .monospacedDigit()
+        .font(.system(size: size, weight: .semibold, design: .rounded))
+        .foregroundStyle(bpm > 0 ? Color.red : Color.secondary)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(bpm > 0 ? "Fréquence cardiaque \(Int(bpm))" : "Fréquence cardiaque indisponible")
     }
 }
 
-struct CompactLabel: LabelStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 2) {
-            configuration.icon.imageScale(.small)
-            configuration.title
+/// One dot per set of the exercise: done (filled), current (ring), to do (faint); warm-ups smaller.
+struct SetDots: View {
+    let e: WExercise
+    let current: Int
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(e.sets.indices, id: \.self) { i in
+                let x = e.sets[i]
+                let d: CGFloat = x.warm ? 5 : 7
+                Circle()
+                    .fill(x.done ? brand : i == current ? Color.white : Color.white.opacity(0.22))
+                    .frame(width: d, height: d)
+                    .overlay(Circle().stroke(i == current ? brand : .clear, lineWidth: 1.5).frame(width: d + 4, height: d + 4))
+            }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Série \(current + 1) sur \(e.sets.count)")
+    }
+}
+
+/// Round grey chip button, or brand-coloured when prominent.
+struct ChipStyle: ButtonStyle {
+    var fill: Color = chip
+    var fg: Color = .white
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(.footnote, design: .rounded).weight(.bold))
+            .foregroundStyle(fg)
+            .frame(maxWidth: .infinity, minHeight: 34)
+            .background(Capsule().fill(fill))
+            .opacity(configuration.isPressed ? 0.6 : 1)
+            .scaleEffect(configuration.isPressed ? 0.95 : 1)
+    }
+}
+
+/// Main action: a glowing orange capsule.
+struct MainStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(.body, design: .rounded).weight(.bold))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, minHeight: 40)
+            .background(Capsule().fill(LinearGradient(colors: [ember, brand], startPoint: .topLeading, endPoint: .bottomTrailing)))
+            .shadow(color: brand.opacity(0.5), radius: configuration.isPressed ? 2 : 6)
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
     }
 }
 
@@ -109,23 +162,27 @@ struct SetView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HeaderRow(s: s, now: now)
+        VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                SetDots(e: e, current: si)
+                Spacer(minLength: 4)
+                HeartPill()
+            }
             Text(e.name)
                 .font(.system(.headline, design: .rounded))
                 .lineLimit(2)
                 .minimumScaleFactor(0.75)
             Text(subtitle)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                .font(.system(.caption2, design: .rounded))
+                .foregroundStyle(set.warm ? ember : .secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             HStack(spacing: 6) {
-                ValueBox(value: fmtKg(kg), unit: "kg", selected: field == 0)
+                ValueBox(value: fmtKg(kg), unit: "kg", selected: field == 0, changed: kgTicks != 0)
                     .onTapGesture { field = 0 }
                     .accessibilityLabel("Charge \(fmtKg(kg)) kilos")
                     .accessibilityAddTraits(.isButton)
-                ValueBox(value: "\(reps)", unit: "reps", selected: field == 1)
+                ValueBox(value: "\(reps)", unit: "reps", selected: field == 1, changed: repsTicks != 0)
                     .onTapGesture { field = 1 }
                     .accessibilityLabel("\(reps) répétitions")
                     .accessibilityAddTraits(.isButton)
@@ -146,12 +203,10 @@ struct SetView: View {
                 store.validate(kg: kg, reps: reps)
             } label: {
                 Label("Valider", systemImage: "checkmark")
-                    .font(.system(.body, design: .rounded).weight(.semibold))
-                    .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(brand)
+            .buttonStyle(MainStyle())
             .disabled(reps == 0)
+            .opacity(reps == 0 ? 0.4 : 1)
         }
         .onAppear { focused = true }
     }
@@ -161,20 +216,29 @@ struct ValueBox: View {
     let value: String
     let unit: String
     let selected: Bool
+    let changed: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: -2) {
             Text(value)
-                .font(.system(size: 26, weight: .semibold, design: .rounded))
+                .font(.system(size: 28, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .minimumScaleFactor(0.6)
                 .lineLimit(1)
-            Text(unit).font(.caption2).foregroundStyle(.secondary)
+                .foregroundStyle(changed ? ember : .white)
+                .contentTransition(.numericText())
+            HStack(spacing: 2) {
+                Text(unit)
+                if selected { Image(systemName: "digitalcrown.arrow.clockwise").imageScale(.small) }
+            }
+            .font(.system(size: 10, weight: .semibold, design: .rounded))
+            .foregroundStyle(selected ? brand : .secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 4)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.1)))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(selected ? brand : .clear, lineWidth: 2))
+        .padding(.vertical, 5)
+        .background(RoundedRectangle(cornerRadius: 14).fill(selected ? brand.opacity(0.22) : chip))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(selected ? brand : .clear, lineWidth: 2))
+        .animation(.easeOut(duration: 0.15), value: selected)
     }
 }
 
@@ -188,48 +252,67 @@ struct RestView: View {
     var body: some View {
         let left = max(0, Int(((s.restUntil - now) / 1000).rounded(.up)))
         let pct = s.restTotal > 0 ? min(1, Double(left) / Double(s.restTotal)) : 0
-        VStack(spacing: 6) {
+        let ending = left <= 5
+        let tint = ending ? go : brand
+        VStack(spacing: 5) {
             ZStack {
-                Circle().stroke(brand.opacity(0.25), lineWidth: 8)
+                Circle().stroke(Color.white.opacity(0.12), lineWidth: 9)
                 Circle()
                     .trim(from: 0, to: pct)
-                    .stroke(brand, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .stroke(
+                        AngularGradient(colors: ending ? [go, go] : [ember, brand, ember], center: .center),
+                        style: StrokeStyle(lineWidth: 9, lineCap: .round)
+                    )
                     .rotationEffect(.degrees(-90))
+                    .shadow(color: tint.opacity(0.6), radius: 4)
                     .animation(.linear(duration: 1), value: pct)
                 VStack(spacing: 0) {
-                    Text("REPOS").font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary)
+                    Text(ending ? "PRÊT ?" : "REPOS")
+                        .font(.system(size: 10, weight: .heavy, design: .rounded))
+                        .foregroundStyle(ending ? go : .secondary)
                     Text(mmss(left))
-                        .font(.system(size: 30, weight: .semibold, design: .rounded))
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
                         .monospacedDigit()
-                        .foregroundStyle(brand)
-                    if store.workout.heartRate > 0 {
-                        Label("\(Int(store.workout.heartRate))", systemImage: "heart.fill")
-                            .labelStyle(CompactLabel())
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .monospacedDigit()
-                            .foregroundStyle(.red)
-                    }
+                        .foregroundStyle(.white)
+                        .contentTransition(.numericText(countsDown: true))
+                    HeartPill(size: 11)
                 }
             }
-            .frame(width: 96, height: 96)
+            .frame(width: 98, height: 98)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Repos restant \(mmss(left))")
-            Text(s.nextLabel)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .minimumScaleFactor(0.8)
-            HStack(spacing: 4) {
+
+            if let up = s.nextUp {
+                VStack(spacing: 0) {
+                    Text(up.name)
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    if !up.load.isEmpty {
+                        Text(up.load)
+                            .font(.system(.footnote, design: .rounded).weight(.bold))
+                            .foregroundStyle(ember)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                Text("Dernière série faite")
+                    .font(.system(.caption2, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 5) {
                 Button("−15") { store.shiftRest(-15) }
+                    .buttonStyle(ChipStyle())
                     .accessibilityLabel("Retirer 15 secondes")
                 Button("+15") { store.shiftRest(15) }
+                    .buttonStyle(ChipStyle())
                     .accessibilityLabel("Ajouter 15 secondes")
                 Button { store.skipRest() } label: { Image(systemName: "forward.end.fill") }
+                    .buttonStyle(ChipStyle(fill: brand))
                     .accessibilityLabel("Passer le repos")
             }
-            .buttonStyle(.bordered)
-            .font(.system(.footnote, design: .rounded).weight(.semibold))
         }
     }
 }
@@ -247,10 +330,16 @@ struct NextView: View {
             Section {
                 ForEach(remaining, id: \.self) { i in
                     Button { store.choose(i) } label: {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(s.exercises[i].name).font(.system(.footnote, design: .rounded).weight(.semibold))
-                            let open = s.exercises[i].sets.filter { !$0.done }.count
-                            Text(open > 1 ? "\(open) séries" : "1 série").font(.caption2).foregroundStyle(.secondary)
+                        HStack(spacing: 8) {
+                            Image(systemName: "dumbbell.fill").foregroundStyle(brand)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(s.exercises[i].name)
+                                    .font(.system(.footnote, design: .rounded).weight(.semibold))
+                                let open = s.exercises[i].sets.filter { !$0.done }.count
+                                Text(open > 1 ? "\(open) séries" : "1 série")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }
@@ -261,8 +350,9 @@ struct NextView: View {
                 if remaining.isEmpty { store.finish() } else { confirm = true }
             } label: {
                 Label("Terminer la séance", systemImage: "flag.checkered")
-                    .foregroundStyle(remaining.isEmpty ? brand : .primary)
+                    .font(.system(.footnote, design: .rounded).weight(.bold))
             }
+            .listRowBackground(Capsule().fill(remaining.isEmpty ? brand : chip))
         }
         .confirmationDialog("Terminer la séance ?", isPresented: $confirm, titleVisibility: .visible) {
             Button("Terminer") { store.finish() }
@@ -280,24 +370,30 @@ struct IdleView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Kadeon Sport")
-                .font(.system(.footnote, design: .rounded).weight(.semibold))
-                .foregroundStyle(brand)
+            HStack(spacing: 5) {
+                Image(systemName: "flame.fill").foregroundStyle(brand)
+                Text("Kadeon Sport")
+            }
+            .font(.system(.footnote, design: .rounded).weight(.bold))
             if store.waitingStart {
                 Spacer(minLength: 0)
                 HStack(spacing: 6) {
                     ProgressView().frame(width: 20)
-                    Text("Démarrage sur l'iPhone…").font(.footnote)
+                    Text("Démarrage sur l'iPhone…").font(.system(.footnote, design: .rounded))
                 }
                 Text("Ouvre Kadeon Sport sur l'iPhone si rien ne se passe.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 0)
                 Button("Annuler") { store.cancelStart() }
+                    .buttonStyle(ChipStyle())
             } else if let next = store.suggestion {
-                Text("Séance suggérée").font(.caption2).foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                Text("SÉANCE SUGGÉRÉE")
+                    .font(.system(size: 10, weight: .heavy, design: .rounded))
+                    .foregroundStyle(ember)
                 Text(next)
-                    .font(.system(.title3, design: .rounded).weight(.semibold))
+                    .font(.system(.title3, design: .rounded).weight(.bold))
                     .lineLimit(3)
                     .minimumScaleFactor(0.7)
                 Spacer(minLength: 0)
@@ -305,15 +401,12 @@ struct IdleView: View {
                     store.start()
                 } label: {
                     Label("Démarrer", systemImage: "play.fill")
-                        .font(.system(.body, design: .rounded).weight(.semibold))
-                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(brand)
+                .buttonStyle(MainStyle())
             } else {
                 Spacer(minLength: 0)
                 Text(store.heardFromPhone ? "Aucune séance suggérée. Lance une séance sur l'iPhone." : "Ouvre Kadeon Sport sur l'iPhone pour relier la montre.")
-                    .font(.footnote)
+                    .font(.system(.footnote, design: .rounded))
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 0)
             }
@@ -330,30 +423,41 @@ struct SummaryView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Séance terminée")
-                    .font(.system(.footnote, design: .rounded).weight(.semibold))
-                    .foregroundStyle(brand)
-                Text(sum.title).font(.system(.headline, design: .rounded)).lineLimit(2)
-                row("Durée", "\(sum.minutes) min")
-                row("Séries", "\(sum.sets)")
-                row("Volume", "\(fmtInt(sum.volume)) kg")
-                if sum.heartRate > 0 { row("FC moyenne", "\(Int(sum.heartRate)) bpm") }
-                if sum.calories > 0 { row("Calories", "\(Int(sum.calories)) kcal") }
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Séance terminée", systemImage: "checkmark.seal.fill")
+                    .font(.system(.footnote, design: .rounded).weight(.bold))
+                    .foregroundStyle(go)
+                Text(sum.title)
+                    .font(.system(.title3, design: .rounded).weight(.bold))
+                    .lineLimit(2)
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 6), GridItem(.flexible())], spacing: 6) {
+                    tile("clock.fill", "\(sum.minutes) min", "Durée", .white)
+                    tile("square.stack.3d.up.fill", "\(sum.sets)", "Séries", .white)
+                    tile("scalemass.fill", "\(fmtInt(sum.volume)) kg", "Volume", ember)
+                    if sum.heartRate > 0 { tile("heart.fill", "\(Int(sum.heartRate))", "BPM moyen", .red) }
+                    if sum.calories > 0 { tile("flame.fill", "\(Int(sum.calories))", "kcal", brand) }
+                }
                 Text("Le bilan complet est sur l'iPhone.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Button("OK") { store.summary = nil }
-                    .padding(.top, 4)
+                    .buttonStyle(MainStyle())
             }
         }
     }
 
-    private func row(_ k: String, _ v: String) -> some View {
-        HStack {
-            Text(k).font(.footnote).foregroundStyle(.secondary)
-            Spacer()
-            Text(v).font(.system(.body, design: .rounded).weight(.semibold)).monospacedDigit()
+    private func tile(_ icon: String, _ value: String, _ label: String, _ c: Color) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Image(systemName: icon).font(.system(size: 11)).foregroundStyle(c)
+            Text(value)
+                .font(.system(.body, design: .rounded).weight(.bold))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text(label).font(.system(size: 10, design: .rounded)).foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(7)
+        .background(RoundedRectangle(cornerRadius: 12).fill(chip))
     }
 }

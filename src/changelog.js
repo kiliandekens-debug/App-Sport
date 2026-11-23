@@ -6,6 +6,15 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.12.3', date: '2026-11-23', title: 'Nouveau look sur la montre',
+    items: [
+      'Apple Watch : fond orange dégradé, gros chiffres arrondis, boutons en pastilles aux couleurs de l\'app (plus de bleu).',
+      'Série : une pastille par série de l\'exercice (faites, en cours, à faire), cœur qui bat, charge et reps modifiées en orange.',
+      'Repos : anneau dégradé lumineux qui passe au vert les 5 dernières secondes, BPM au centre, prochain exercice et charge en dessous.',
+      'Fin de séance : récap en tuiles (durée, séries, volume, BPM, calories).',
+    ],
+  },
+  {
     version: '1.12.2', date: '2026-11-23', title: 'Fréquence cardiaque sur la montre',
     items: [
       'Apple Watch : la séance demande d\'abord l\'accès à Apple Santé, puis démarre la mesure ; avant, elle pouvait démarrer sans accès et n\'afficher aucun BPM.',

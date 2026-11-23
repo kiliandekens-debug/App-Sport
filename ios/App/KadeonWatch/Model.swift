@@ -38,6 +38,16 @@ struct WSession: Codable, Equatable {
         exercises.reduce(0) { acc, e in acc + e.sets.filter { !$0.warm && $0.done }.reduce(0) { $0 + $1.kg * Double($1.reps) } }
     }
 
+    /// After the rest: the exercise and the load (« 80 × 8 »), shown under the timer.
+    var nextUp: (name: String, load: String)? {
+        if let e = exercise, let i = activeSet {
+            let x = e.sets[i]
+            return (e.name, x.kg > 0 ? "\(fmtKg(x.kg)) kg × \(x.reps)" : "× \(x.reps)")
+        }
+        if let n = exercises.first(where: { $0.isOpen }) { return (n.name, "") }
+        return nil
+    }
+
     /// What comes after the rest, shown under the timer.
     var nextLabel: String {
         if let e = exercise, let i = activeSet {
