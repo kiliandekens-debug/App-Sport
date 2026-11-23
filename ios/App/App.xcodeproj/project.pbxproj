@@ -35,6 +35,7 @@
 		4ACB3EE98CF3FEADE924B251 /* KadeonWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96493291B90A9D53C4B9B40F /* KadeonWidgetsBundle.swift */; };
 		3BDB3A8C582CC6B0B031344D /* SessionLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33B23FD9F6528D972685CA39 /* SessionLiveActivity.swift */; };
 		1B8756505BA61031B78CB862 /* KadeonWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5C66E5A9494BF62370D24559 /* KadeonWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		220ECDFD25A75CFE2825D2CC /* RunSplits.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEEA3357953BD3BFE5B251A2 /* RunSplits.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -69,6 +70,7 @@
 		33B23FD9F6528D972685CA39 /* SessionLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionLiveActivity.swift; sourceTree = "<group>"; };
 		09EB2368C844B4E82F22A644 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		5C66E5A9494BF62370D24559 /* KadeonWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = KadeonWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		BEEA3357953BD3BFE5B251A2 /* RunSplits.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunSplits.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -123,6 +125,7 @@
 			isa = PBXGroup;
 			children = (
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
+				BEEA3357953BD3BFE5B251A2 /* RunSplits.swift */,
 				ACD46B9B6563C081C1DFA31D /* LiveSession.swift */,
 				BA65AE131D4685EC4AB76C41 /* RunScheduler.swift */,
 				EC8460E7EF03E56416070739 /* WatchLink.swift */,
@@ -320,6 +323,7 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
+				220ECDFD25A75CFE2825D2CC /* RunSplits.swift in Sources */,
 				50D8670FFFC9089A57EAB831 /* LiveSession.swift in Sources */,
 				FAC3630E3DCF802BC78D7122 /* SessionActivity.swift in Sources */,
 				8D5877939D43C890174C8C01 /* SessionIntents.swift in Sources */,
