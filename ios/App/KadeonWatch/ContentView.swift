@@ -6,6 +6,10 @@ struct ContentView: View {
     @EnvironmentObject var store: WatchStore
 
     var body: some View {
+        NavigationStack { screen }
+    }
+
+    @ViewBuilder private var screen: some View {
         if let sum = store.summary {
             SummaryView(sum: sum)
         } else if let s = store.session {
@@ -13,9 +17,11 @@ struct ContentView: View {
                 let now = ctx.date.timeIntervalSince1970 * 1000
                 if s.restUntil > now {
                     RestView(s: s, now: now)
+                        .modifier(ElapsedToolbar(s: s, now: now))
                 } else if let si = s.activeSet {
                     SetView(s: s, si: si, now: now)
                         .id("\(s.current)-\(si)")
+                        .modifier(ElapsedToolbar(s: s, now: now))
                 } else {
                     NextView(s: s)
                 }
@@ -26,7 +32,24 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Top line: elapsed time, heart rate, sets done
+// MARK: - Elapsed time next to the clock; heart rate and sets done below
+
+/// Session time at the top left, beside the watch's clock.
+struct ElapsedToolbar: ViewModifier {
+    let s: WSession
+    let now: Double
+
+    func body(content: Content) -> some View {
+        content.toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Text(mmss(Int((now - s.startedAt) / 1000)))
+                    .font(.system(.footnote, design: .rounded).weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(brand)
+            }
+        }
+    }
+}
 
 struct HeaderRow: View {
     @EnvironmentObject var store: WatchStore
@@ -35,15 +58,13 @@ struct HeaderRow: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Text(mmss(Int((now - s.startedAt) / 1000)))
-                .foregroundStyle(brand)
+            let bpm = store.workout.heartRate
+            Label(bpm > 0 ? "\(Int(bpm))" : "--", systemImage: store.workout.running ? "heart.fill" : "heart.slash")
+                .foregroundStyle(bpm > 0 ? .red : .secondary)
+                .labelStyle(CompactLabel())
+                .accessibilityLabel(bpm > 0 ? "Fréquence cardiaque \(Int(bpm))" : "Fréquence cardiaque indisponible")
             Spacer(minLength: 0)
-            if store.workout.heartRate > 0 {
-                Label("\(Int(store.workout.heartRate))", systemImage: "heart.fill")
-                    .foregroundStyle(.red)
-                    .labelStyle(CompactLabel())
-            }
-            Text("\(s.done)/\(s.total)")
+            Text("\(s.done)/\(s.total) séries")
                 .foregroundStyle(.secondary)
         }
         .font(.system(.footnote, design: .rounded).weight(.semibold))
@@ -181,6 +202,13 @@ struct RestView: View {
                         .font(.system(size: 30, weight: .semibold, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(brand)
+                    if store.workout.heartRate > 0 {
+                        Label("\(Int(store.workout.heartRate))", systemImage: "heart.fill")
+                            .labelStyle(CompactLabel())
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(.red)
+                    }
                 }
             }
             .frame(width: 96, height: 96)

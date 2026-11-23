@@ -15,15 +15,32 @@ final class WorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDelegate
     private let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate)!
     private let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
 
-    func requestAuthorization() {
-        guard HKHealthStore.isHealthDataAvailable() else { return }
+    private var starting = false
+
+    func requestAuthorization(_ done: (() -> Void)? = nil) {
+        guard HKHealthStore.isHealthDataAvailable() else { done?(); return }
         let share: Set<HKSampleType> = [HKObjectType.workoutType(), energyType]
         let read: Set<HKObjectType> = [HKObjectType.workoutType(), hrType, energyType]
-        store.requestAuthorization(toShare: share, read: read) { _, _ in }
+        store.requestAuthorization(toShare: share, read: read) { _, _ in
+            DispatchQueue.main.async { done?() }
+        }
     }
 
+    /// Asks for Health access first (heart rate, calories, saving the workout), then starts:
+    /// a workout started before access is granted collects nothing.
     func start() {
-        guard session == nil, HKHealthStore.isHealthDataAvailable() else { return }
+        guard session == nil, !starting, HKHealthStore.isHealthDataAvailable() else { return }
+        starting = true
+        requestAuthorization { [weak self] in
+            // Ended meanwhile (end() clears `starting`): nothing to start.
+            guard let self, self.starting else { return }
+            self.starting = false
+            self.begin()
+        }
+    }
+
+    private func begin() {
+        guard session == nil else { return }
         let config = HKWorkoutConfiguration()
         config.activityType = .traditionalStrengthTraining
         config.locationType = .indoor
@@ -50,6 +67,7 @@ final class WorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDelegate
 
     /// Ends the workout: saved to Apple Health, or dropped (session cancelled, or too short).
     func end(save: Bool) {
+        starting = false
         guard let s = session, let b = builder else { return }
         session = nil
         builder = nil

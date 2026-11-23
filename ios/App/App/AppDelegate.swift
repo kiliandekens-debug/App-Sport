@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import HealthKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -12,6 +13,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Buttons of the Live Activity (rest +15 s, skip, validate) run here.
         SessionIntentRouter.handle = { await LiveSession.shared.handle($0) }
         return true
+    }
+
+    /// The Apple Watch app asks for Health access (heart rate, calories): the request may be shown here on the iPhone.
+    func applicationShouldRequestHealthAuthorization(_ application: UIApplication) {
+        HKHealthStore().handleAuthorizationForExtension { _, _ in }
     }
 
     func applicationWillResignActive(_ application: UIApplication) {

@@ -6,6 +6,15 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.12.2', date: '2026-11-23', title: 'Fréquence cardiaque sur la montre',
+    items: [
+      'Apple Watch : la séance demande d\'abord l\'accès à Apple Santé, puis démarre la mesure ; avant, elle pouvait démarrer sans accès et n\'afficher aucun BPM.',
+      'L\'iPhone peut afficher la demande d\'accès Santé de la montre.',
+      'Le temps de séance est en haut à gauche, à côté de l\'heure ; en dessous, le cœur (ou « -- » tant qu\'il n\'y a pas de mesure) et les séries faites.',
+      'Le BPM s\'affiche aussi pendant le repos, sous le chrono.',
+    ],
+  },
+  {
     version: '1.12.1', date: '2026-11-23', title: 'Test de la Dynamic Island',
     items: [
       'Profil › Tester la Dynamic Island : une mèche de repos de 30 s pour vérifier l\'affichage, avec la raison si rien n\'apparaît.',
