@@ -68,6 +68,13 @@ final class WatchLink: NSObject, WCSessionDelegate {
         return list
     }
 
+    /// An action made on the iPhone outside the web app (Live Activity buttons).
+    func enqueueLocal(_ action: [String: Any]) {
+        guard let data = try? JSONSerialization.data(withJSONObject: action),
+              let json = String(data: data, encoding: .utf8) else { return }
+        enqueue(["action": json])
+    }
+
     private func enqueue(_ payload: [String: Any]) {
         guard let action = payload["action"] as? String else { return }
         lock.lock()

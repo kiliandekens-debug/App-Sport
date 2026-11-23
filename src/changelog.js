@@ -6,6 +6,15 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.12.0', date: '2026-11-23', title: 'Dynamic Island : la mèche du repos',
+    items: [
+      'App iPhone : pendant la séance, la Dynamic Island et l\'écran verrouillé montrent la prochaine série et le repos.',
+      'Pendant le repos, une mèche orange se consume ; à zéro, elle passe au vert : c\'est reparti.',
+      'Record à portée : quand la prochaine série (ou une rep de plus) bat ton record, la mèche devient dorée avec la série à faire.',
+      'Depuis l\'écran verrouillé : +15 s, Passer, et Valider la série sans ouvrir l\'app.',
+    ],
+  },
+  {
     version: '1.11.0', date: '2026-11-23', title: 'Course : séance envoyée à la montre',
     items: [
       'Course › Programmer la séance sur la montre › Envoyer à la montre : la séance du plan arrive dans l\'app Exercice de l\'Apple Watch.',

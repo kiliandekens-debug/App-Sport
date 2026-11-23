@@ -27,6 +27,14 @@
 		B5AD287FB25E8AFD266F7021 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 72FC8916A51A52F627D3BBB8 /* Assets.xcassets */; };
 		C73BF638E58C5EFE492867B2 /* KadeonWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 32AC98853214F7B99493D370 /* KadeonWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		DDC07880B731D6E4F8AA8B3E /* RunScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA65AE131D4685EC4AB76C41 /* RunScheduler.swift */; };
+		50D8670FFFC9089A57EAB831 /* LiveSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD46B9B6563C081C1DFA31D /* LiveSession.swift */; };
+		FAC3630E3DCF802BC78D7122 /* SessionActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = C90C7436E564D72D7718689C /* SessionActivity.swift */; };
+		8D5877939D43C890174C8C01 /* SessionIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF94635593E4DD07C9EB585F /* SessionIntents.swift */; };
+		7E96D3C123E1FE95D56F9243 /* SessionActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = C90C7436E564D72D7718689C /* SessionActivity.swift */; };
+		7DFCA479A1AED0CC26A49BB3 /* SessionIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF94635593E4DD07C9EB585F /* SessionIntents.swift */; };
+		4ACB3EE98CF3FEADE924B251 /* KadeonWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96493291B90A9D53C4B9B40F /* KadeonWidgetsBundle.swift */; };
+		3BDB3A8C582CC6B0B031344D /* SessionLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33B23FD9F6528D972685CA39 /* SessionLiveActivity.swift */; };
+		1B8756505BA61031B78CB862 /* KadeonWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5C66E5A9494BF62370D24559 /* KadeonWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -54,6 +62,13 @@
 		824DB2534957C49F181BAA44 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7B6351EFF25E2425B389A2A3 /* KadeonWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KadeonWatch.entitlements; sourceTree = "<group>"; };
 		BA65AE131D4685EC4AB76C41 /* RunScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunScheduler.swift; sourceTree = "<group>"; };
+		ACD46B9B6563C081C1DFA31D /* LiveSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSession.swift; sourceTree = "<group>"; };
+		C90C7436E564D72D7718689C /* SessionActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionActivity.swift; sourceTree = "<group>"; };
+		FF94635593E4DD07C9EB585F /* SessionIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionIntents.swift; sourceTree = "<group>"; };
+		96493291B90A9D53C4B9B40F /* KadeonWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KadeonWidgetsBundle.swift; sourceTree = "<group>"; };
+		33B23FD9F6528D972685CA39 /* SessionLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionLiveActivity.swift; sourceTree = "<group>"; };
+		09EB2368C844B4E82F22A644 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		5C66E5A9494BF62370D24559 /* KadeonWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = KadeonWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,6 +87,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		841B6DF74FA8082E9233B4B7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -81,6 +103,8 @@
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
 				2E07E328C2270B15DE24DA1D /* KadeonWatch */,
+				5C95F4ECA5F5D3549F7C8603 /* Shared */,
+				229CE784D02955CFEB270EBE /* KadeonWidgets */,
 				504EC3051FED79650016851F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -89,6 +113,7 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* App.app */,
+				5C66E5A9494BF62370D24559 /* KadeonWidgets.appex */,
 				32AC98853214F7B99493D370 /* KadeonWatch.app */,
 			);
 			name = Products;
@@ -98,6 +123,7 @@
 			isa = PBXGroup;
 			children = (
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
+				ACD46B9B6563C081C1DFA31D /* LiveSession.swift */,
 				BA65AE131D4685EC4AB76C41 /* RunScheduler.swift */,
 				EC8460E7EF03E56416070739 /* WatchLink.swift */,
 				7920D7380C2991D4BCC69422 /* WatchBridgePlugin.swift */,
@@ -129,6 +155,25 @@
 			path = KadeonWatch;
 			sourceTree = "<group>";
 		};
+		5C95F4ECA5F5D3549F7C8603 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				C90C7436E564D72D7718689C /* SessionActivity.swift */,
+				FF94635593E4DD07C9EB585F /* SessionIntents.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		229CE784D02955CFEB270EBE /* KadeonWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				96493291B90A9D53C4B9B40F /* KadeonWidgetsBundle.swift */,
+				33B23FD9F6528D972685CA39 /* SessionLiveActivity.swift */,
+				09EB2368C844B4E82F22A644 /* Info.plist */,
+			);
+			path = KadeonWidgets;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -140,11 +185,13 @@
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
 				47312119FB631164FBB57432 /* Embed Watch Content */,
+				09222F6FA11F5871B717509B /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				900465018CA64EBC87A4A313 /* PBXTargetDependency */,
+				927F9A85551DC4DD01796A75 /* PBXTargetDependency */,
 			);
 			name = App;
 			packageProductDependencies = (
@@ -171,6 +218,23 @@
 			productReference = 32AC98853214F7B99493D370 /* KadeonWatch.app */;
 			productType = "com.apple.product-type.application";
 		};
+		2C285C2417901A7555DEBC26 /* KadeonWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 57E8911A15B04A4134FE639D /* Build configuration list for PBXNativeTarget "KadeonWidgets" */;
+			buildPhases = (
+				8F90C8F31EBB301B37AA11B7 /* Sources */,
+				841B6DF74FA8082E9233B4B7 /* Frameworks */,
+				495A4982E0567E123D6BAB74 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = KadeonWidgets;
+			productName = KadeonWidgets;
+			productReference = 5C66E5A9494BF62370D24559 /* KadeonWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -186,6 +250,10 @@
 						ProvisioningStyle = Automatic;
 					};
 					33116847747F33C5876F0E9B = {
+						CreatedOnToolsVersion = 16.0;
+						ProvisioningStyle = Automatic;
+					};
+					2C285C2417901A7555DEBC26 = {
 						CreatedOnToolsVersion = 16.0;
 						ProvisioningStyle = Automatic;
 					};
@@ -209,6 +277,7 @@
 			targets = (
 				504EC3031FED79650016851F /* App */,
 				33116847747F33C5876F0E9B /* KadeonWatch */,
+				2C285C2417901A7555DEBC26 /* KadeonWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -235,6 +304,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		495A4982E0567E123D6BAB74 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -244,6 +320,9 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
+				50D8670FFFC9089A57EAB831 /* LiveSession.swift in Sources */,
+				FAC3630E3DCF802BC78D7122 /* SessionActivity.swift in Sources */,
+				8D5877939D43C890174C8C01 /* SessionIntents.swift in Sources */,
 				DDC07880B731D6E4F8AA8B3E /* RunScheduler.swift in Sources */,
 				9FDAA9037D9C6DE48997574A /* WatchLink.swift in Sources */,
 				A1691879E51C03A314A213ED /* WatchBridgePlugin.swift in Sources */,
@@ -260,6 +339,17 @@
 				322D8C71F8452A08E68C0C4E /* WatchStore.swift in Sources */,
 				536CEFD38B3C7F083BA7CAEA /* WorkoutManager.swift in Sources */,
 				7B30CAF894C376D7B80B1166 /* ContentView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8F90C8F31EBB301B37AA11B7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4ACB3EE98CF3FEADE924B251 /* KadeonWidgetsBundle.swift in Sources */,
+				3BDB3A8C582CC6B0B031344D /* SessionLiveActivity.swift in Sources */,
+				7E96D3C123E1FE95D56F9243 /* SessionActivity.swift in Sources */,
+				7DFCA479A1AED0CC26A49BB3 /* SessionIntents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -292,6 +382,13 @@
 			remoteGlobalIDString = 33116847747F33C5876F0E9B;
 			remoteInfo = KadeonWatch;
 		};
+		9060CBDAB0DD5D92FE7FE4A2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2C285C2417901A7555DEBC26;
+			remoteInfo = KadeonWidgets;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -306,6 +403,17 @@
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		09222F6FA11F5871B717509B /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				1B8756505BA61031B78CB862 /* KadeonWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -313,6 +421,11 @@
 			isa = PBXTargetDependency;
 			target = 33116847747F33C5876F0E9B /* KadeonWatch */;
 			targetProxy = 047F19863556613DC3A90016 /* PBXContainerItemProxy */;
+		};
+		927F9A85551DC4DD01796A75 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2C285C2417901A7555DEBC26 /* KadeonWidgets */;
+			targetProxy = 9060CBDAB0DD5D92FE7FE4A2 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -530,6 +643,56 @@
 			};
 			name = Release;
 		};
+		B617FBF16573753FE53AE79E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = KadeonWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Kadeon Sport";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = be.kadeon.sport.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		2006D793410AF7224299FC14 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = KadeonWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Kadeon Sport";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = be.kadeon.sport.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -556,6 +719,15 @@
 			buildConfigurations = (
 				F0E960E43B434404931D720C /* Debug */,
 				84E959FF9A15EA78B10F02AA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		57E8911A15B04A4134FE639D /* Build configuration list for PBXNativeTarget "KadeonWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B617FBF16573753FE53AE79E /* Debug */,
+				2006D793410AF7224299FC14 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

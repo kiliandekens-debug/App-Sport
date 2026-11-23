@@ -54,6 +54,55 @@ export function watchState(s, suggestion, ack) {
   };
 }
 
+// Live Activity (Dynamic Island, lock screen): the next set, the rest timer, and the set
+// that would beat the personal best (estimated 1RM, as in validate()): the set as planned,
+// or with one more rep.
+export function liveState(s, data) {
+  if (!s?.active) return null;
+  const base = {
+    title: s.title,
+    done: s.done,
+    total: s.total,
+    restStart: s.restUntil ? s.restUntil - (s.restTotal || 0) * 1000 : 0,
+    restEnd: s.restUntil || 0,
+  };
+  const e = s.exercise;
+  const i = s.activeSet;
+  if (!e || i < 0) {
+    const n = s.next;
+    return { ...base, exercise: n ? n.name : s.title, setLabel: n ? 'Exercice suivant' : 'Tout est fait', next: '', record: '', ex: -1, name: '', set: -1, kg: 0, reps: 0, rest: 0 };
+  }
+  const x = e.sets[i];
+  const p = prevOf(e, i);
+  const kg = x.kg !== '' ? num(x.kg) : p ? Number(p.kg) || 0 : 0;
+  const reps = x.reps !== '' ? Math.round(num(x.reps)) : p ? Number(p.reps) || 0 : 0;
+  const warm = x.type === 'warmup';
+  const same = (y) => (y.type === 'warmup') === warm;
+  const rank = e.sets.slice(0, i + 1).filter(same).length;
+  const of = e.sets.filter(same).length;
+  let record = '';
+  const best = data.exercises.get(e.name)?.best;
+  if (!warm && kg > 0 && reps > 0 && best?.e1rm) {
+    const today = Math.max(0, ...e.sets.filter((y) => y.done && y.type !== 'warmup').map((y) => num(y.kg) * (1 + num(y.reps) / 30)));
+    const beats = (r) => kg * (1 + r / 30) > Math.max(best.e1rm, today);
+    if (beats(reps)) record = `${fmtKg(kg)} × ${reps}`;
+    else if (beats(reps + 1)) record = `${fmtKg(kg)} × ${reps + 1}`;
+  }
+  return {
+    ...base,
+    exercise: e.name,
+    setLabel: `${warm ? 'Échauffement' : 'Série'} ${rank}/${of}`,
+    next: kg > 0 ? `${fmtKg(kg)} × ${reps}` : `× ${reps}`,
+    record,
+    ex: s.current,
+    name: e.name,
+    set: i,
+    kg,
+    reps,
+    rest: e.rest ?? 0,
+  };
+}
+
 function WatchSyncInner() {
   const s = useSession();
   const data = useData();
@@ -71,6 +120,13 @@ function WatchSyncInner() {
   const { next } = nextSession(data);
   const json = JSON.stringify(watchState(s, next?.name, ack.current));
   useEffect(() => { Watch.update({ state: json }).catch(() => {}); }, [json]);
+
+  // Live Activity: started with the session, updated after each change (typing settles first), ended with it.
+  const live = JSON.stringify(liveState(s, data));
+  useEffect(() => {
+    const t = setTimeout(() => { Watch.live({ state: live }).catch(() => {}); }, live === 'null' ? 0 : 300);
+    return () => clearTimeout(t);
+  }, [live]);
 
   // A session started on the iPhone opens the watch app and starts the workout there
   // (heart rate, calories, activity rings). Started from the watch: it already runs.

@@ -25,7 +25,9 @@ import urllib.request
 import jwt  # PyJWT with cryptography
 
 API = "https://api.appstoreconnect.apple.com/v1"
-APPS = {"be.kadeon.sport": "app", "be.kadeon.sport.watchkitapp": "watch"}
+APPS = {"be.kadeon.sport": "app", "be.kadeon.sport.watchkitapp": "watch", "be.kadeon.sport.widgets": "widgets"}
+# Identifiers this script may create when missing (no capability needed).
+CREATE = {"be.kadeon.sport.widgets": "Kadeon Sport Widgets"}
 WORK = os.environ.get("WORK", ".")
 STATE = os.path.join(WORK, "signing.json")
 
@@ -85,6 +87,10 @@ def setup():
     for identifier, short in APPS.items():
         found = call("GET", f"/bundleIds?filter[identifier]={identifier}&limit=50")["data"]
         match = [b for b in found if b["attributes"]["identifier"] == identifier]
+        if not match and identifier in CREATE:
+            made = call("POST", "/bundleIds", {"data": {"type": "bundleIds", "attributes": {
+                "identifier": identifier, "name": CREATE[identifier], "platform": "IOS"}}})["data"]
+            match = [made]
         if not match:
             raise SystemExit(f"Identifiant {identifier} introuvable dans Certificates, Identifiers & Profiles.")
         name = f"Kadeon CI {short} {run}"

@@ -69,6 +69,7 @@ jobs:
       # The team has no registered device, so Xcode's automatic signing cannot archive.
       # Each run makes a short-lived distribution certificate and App Store profiles with
       # the API key (scripts/asc_signing.py), signs manually, then deletes them.
+      # Apps: iPhone, Apple Watch, and the widget extension (Live Activity).
       - name: Signing certificate and profiles (temporary)
         if: steps.asc.outputs.ready == 'yes'
         env:
@@ -109,13 +110,15 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           APP_PROFILE="Kadeon CI app ${{ github.run_id }}"
           WATCH_PROFILE="Kadeon CI watch ${{ github.run_id }}"
+          WIDGETS_PROFILE="Kadeon CI widgets ${{ github.run_id }}"
           # One profile per target: written into this checkout's project only.
-          python3 - "$APP_PROFILE" "$WATCH_PROFILE" <<'PY'
+          python3 - "$APP_PROFILE" "$WATCH_PROFILE" "$WIDGETS_PROFILE" <<'PY'
           import sys
           p = "ios/App/App.xcodeproj/project.pbxproj"
           s = open(p).read()
           s = s.replace("PRODUCT_BUNDLE_IDENTIFIER = be.kadeon.sport;", f'PRODUCT_BUNDLE_IDENTIFIER = be.kadeon.sport;\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "{sys.argv[1]}";')
           s = s.replace("PRODUCT_BUNDLE_IDENTIFIER = be.kadeon.sport.watchkitapp;", f'PRODUCT_BUNDLE_IDENTIFIER = be.kadeon.sport.watchkitapp;\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "{sys.argv[2]}";')
+          s = s.replace("PRODUCT_BUNDLE_IDENTIFIER = be.kadeon.sport.widgets;", f'PRODUCT_BUNDLE_IDENTIFIER = be.kadeon.sport.widgets;\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "{sys.argv[3]}";')
           s = s.replace("CODE_SIGN_STYLE = Automatic;", "CODE_SIGN_STYLE = Manual;")
           s = s.replace("ProvisioningStyle = Automatic;", "ProvisioningStyle = Manual;")
           open(p, "w").write(s)
@@ -139,6 +142,7 @@ jobs:
             <key>provisioningProfiles</key><dict>
               <key>be.kadeon.sport</key><string>$APP_PROFILE</string>
               <key>be.kadeon.sport.watchkitapp</key><string>$WATCH_PROFILE</string>
+              <key>be.kadeon.sport.widgets</key><string>$WIDGETS_PROFILE</string>
             </dict>
           </dict></plist>
           PLIST

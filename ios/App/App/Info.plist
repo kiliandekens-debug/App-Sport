@@ -10,6 +10,8 @@
 	<string>Kadeon Sport lit tes courses dans Apple Santé (distance, durée, fréquence cardiaque) pour adapter ton plan de course.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Kadeon Sport enregistre tes séances de musculation faites avec l'Apple Watch dans Apple Santé (durée, fréquence cardiaque, calories).</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>CFBundleDisplayName</key>

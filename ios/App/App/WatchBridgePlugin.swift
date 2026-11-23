@@ -12,6 +12,7 @@ public class WatchBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "startWorkout", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "info", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "scheduleRun", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "live", returnType: CAPPluginReturnPromise),
     ]
 
     private var observer: NSObjectProtocol?
@@ -50,6 +51,12 @@ public class WatchBridgePlugin: CAPPlugin, CAPBridgedPlugin {
                 call.reject(error.localizedDescription)
             }
         }
+    }
+
+    /// Live Activity of the session (Dynamic Island, lock screen): "null" ends it.
+    @objc func live(_ call: CAPPluginCall) {
+        LiveSession.shared.apply(json: call.getString("state") ?? "null")
+        call.resolve()
     }
 
     @objc func info(_ call: CAPPluginCall) {

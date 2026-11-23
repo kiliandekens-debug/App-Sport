@@ -9,6 +9,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Apple Watch link first, so actions sent while the app was closed are not lost.
         WatchLink.shared.activate()
+        // Buttons of the Live Activity (rest +15 s, skip, validate) run here.
+        SessionIntentRouter.handle = { await LiveSession.shared.handle($0) }
         return true
     }
 
