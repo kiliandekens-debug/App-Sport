@@ -595,7 +595,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				INFOPLIST_FILE = KadeonWatch/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Kadeon Sport";
+				INFOPLIST_KEY_CFBundleDisplayName = "Kadence";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = be.kadeon.sport;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -625,7 +625,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				INFOPLIST_FILE = KadeonWatch/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Kadeon Sport";
+				INFOPLIST_KEY_CFBundleDisplayName = "Kadence";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = be.kadeon.sport;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -652,7 +652,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KadeonWidgets/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Kadeon Sport";
+				INFOPLIST_KEY_CFBundleDisplayName = "Kadence";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -677,7 +677,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = KadeonWidgets/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Kadeon Sport";
+				INFOPLIST_KEY_CFBundleDisplayName = "Kadence";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

@@ -5,7 +5,7 @@ import WorkoutKit
 /// Sends a running session of the plan to Apple's Workout app on the watch (WorkoutKit):
 /// warm-up, intervals, cool-down, each with its duration and pace alert. The watch then
 /// does GPS, pace, heart rate, cadence and route, and saves the run to Apple Health, from
-/// where Kadeon Sport imports it. JSON shape: watchWorkout() in src/lib/running.js.
+/// where Kadence imports it. JSON shape: watchWorkout() in src/lib/running.js.
 enum RunScheduler {
     struct Pace: Decodable { let fast: Double; let slow: Double }  // s/km
     struct Step: Decodable { let secs: Double; let purpose: String?; let pace: Pace? }
@@ -17,7 +17,7 @@ enum RunScheduler {
         var errorDescription: String? {
             switch self {
             case .unsupported: return "Il faut une Apple Watch jumelée avec watchOS 10 ou plus récent."
-            case .denied: return "Accès refusé. Autorise Kadeon Sport dans Réglages › Santé › Accès aux données, ou dans l'app Watch."
+            case .denied: return "Accès refusé. Autorise Kadence dans Réglages › Santé › Accès aux données, ou dans l'app Watch."
             case .invalid: return "Séance illisible."
             }
         }

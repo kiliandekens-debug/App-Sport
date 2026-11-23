@@ -1,6 +1,6 @@
 {
   "appId": "be.kadeon.sport",
-  "appName": "Kadeon Sport",
+  "appName": "Kadence",
   "webDir": "dist",
   "ios": {
     "contentInset": "never",

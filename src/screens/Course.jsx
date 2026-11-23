@@ -438,7 +438,7 @@ export default function Course() {
                   <button className="btn primary" onClick={sendToWatch} disabled={sending}>
                     <Icon name="send" size={16} width={2.5} />{sending ? 'Envoi…' : 'Envoyer à la montre'}
                   </button>
-                  <span className="xs muted">La séance arrive dans l'app Exercice de la montre, avec les étapes et les alertes d'allure. Ta course revient ensuite dans Kadeon par Apple Santé.</span>
+                  <span className="xs muted">La séance arrive dans l'app Exercice de la montre, avec les étapes et les alertes d'allure. Ta course revient ensuite dans Kadence par Apple Santé.</span>
                 </div>
               )}
               {isNative() && <span className="xs muted" style={{ fontWeight: 600 }}>Ou à la main :</span>}

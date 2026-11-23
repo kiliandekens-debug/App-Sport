@@ -1,12 +1,12 @@
-// Kadeon Sport service worker: shows notifications pushed by the server (end of rest),
+// Kadence service worker: shows notifications pushed by the server (end of rest),
 // which iOS mirrors to the Apple Watch when the iPhone is locked.
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
 self.addEventListener('push', (event) => {
   let data = {};
-  try { data = event.data ? event.data.json() : {}; } catch { data = { title: 'Kadeon Sport', body: event.data && event.data.text() }; }
-  event.waitUntil(self.registration.showNotification(data.title || 'Kadeon Sport', {
+  try { data = event.data ? event.data.json() : {}; } catch { data = { title: 'Kadence', body: event.data && event.data.text() }; }
+  event.waitUntil(self.registration.showNotification(data.title || 'Kadence', {
     body: data.body || '',
     tag: data.tag || 'kadeon',
     renotify: true,

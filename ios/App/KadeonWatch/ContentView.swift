@@ -372,7 +372,7 @@ struct IdleView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 5) {
                 Image(systemName: "flame.fill").foregroundStyle(brand)
-                Text("Kadeon Sport")
+                Text("Kadence")
             }
             .font(.system(.footnote, design: .rounded).weight(.bold))
             if store.waitingStart {
@@ -381,7 +381,7 @@ struct IdleView: View {
                     ProgressView().frame(width: 20)
                     Text("Démarrage sur l'iPhone…").font(.system(.footnote, design: .rounded))
                 }
-                Text("Ouvre Kadeon Sport sur l'iPhone si rien ne se passe.")
+                Text("Ouvre Kadence sur l'iPhone si rien ne se passe.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 0)
@@ -405,7 +405,7 @@ struct IdleView: View {
                 .buttonStyle(MainStyle())
             } else {
                 Spacer(minLength: 0)
-                Text(store.heardFromPhone ? "Aucune séance suggérée. Lance une séance sur l'iPhone." : "Ouvre Kadeon Sport sur l'iPhone pour relier la montre.")
+                Text(store.heardFromPhone ? "Aucune séance suggérée. Lance une séance sur l'iPhone." : "Ouvre Kadence sur l'iPhone pour relier la montre.")
                     .font(.system(.footnote, design: .rounded))
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 0)

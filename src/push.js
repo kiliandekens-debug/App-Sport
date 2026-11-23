@@ -30,13 +30,13 @@ export async function registerSw() {
 export async function enablePush() {
   // iPhone app: notifications are scheduled on the phone, no subscription needed.
   if (isNative()) {
-    if (!(await nativeNotifyPermission())) throw new Error('Notifications refusées. Tu peux les autoriser dans Réglages › Notifications › Kadeon Sport.');
+    if (!(await nativeNotifyPermission())) throw new Error('Notifications refusées. Tu peux les autoriser dans Réglages › Notifications › Kadence.');
     try { localStorage.setItem(FLAG, '1'); } catch { /* private mode */ }
     return;
   }
   if (!pushSupported()) throw new Error(isIos() && !isStandalone() ? 'Ajoute d\'abord l\'app à l\'écran d\'accueil (Partager › Sur l\'écran d\'accueil), puis ouvre-la depuis l\'icône.' : 'Ce navigateur ne gère pas les notifications.');
   const perm = await Notification.requestPermission();
-  if (perm !== 'granted') throw new Error('Notifications refusées. Tu peux les autoriser dans Réglages › Notifications › Kadeon Sport.');
+  if (perm !== 'granted') throw new Error('Notifications refusées. Tu peux les autoriser dans Réglages › Notifications › Kadence.');
   const reg = (await registerSw()) || (await navigator.serviceWorker.ready);
   let sub = await reg.pushManager.getSubscription();
   if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(VAPID_PUBLIC) });
@@ -60,10 +60,10 @@ export async function disablePush() {
 export async function testPush() {
   if (isNative()) {
     const { LocalNotifications } = await import('@capacitor/local-notifications');
-    await LocalNotifications.schedule({ notifications: [{ id: 8999, title: 'Kadeon Sport', body: 'Les notifications fonctionnent.', schedule: { at: new Date(Date.now() + 5000) } }] });
+    await LocalNotifications.schedule({ notifications: [{ id: 8999, title: 'Kadence', body: 'Les notifications fonctionnent.', schedule: { at: new Date(Date.now() + 5000) } }] });
     return;
   }
-  const { error } = await supabase.from('scheduled_pushes').insert({ send_at: new Date(Date.now() + 5000).toISOString(), tag: 'test', title: 'Kadeon Sport', body: 'Les notifications fonctionnent. Verrouille l\'iPhone : elles arriveront aussi sur ta montre.', url: '/profil' });
+  const { error } = await supabase.from('scheduled_pushes').insert({ send_at: new Date(Date.now() + 5000).toISOString(), tag: 'test', title: 'Kadence', body: 'Les notifications fonctionnent. Verrouille l\'iPhone : elles arriveront aussi sur ta montre.', url: '/profil' });
   if (error) throw error;
 }
 

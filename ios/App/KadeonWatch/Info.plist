@@ -15,8 +15,8 @@
 		<string>workout-processing</string>
 	</array>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Kadeon Sport affiche ta fréquence cardiaque et tes calories pendant la séance de musculation.</string>
+	<string>Kadence affiche ta fréquence cardiaque et tes calories pendant la séance de musculation.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Kadeon Sport enregistre ta séance de musculation dans Apple Santé (durée, fréquence cardiaque, calories), pour tes anneaux d'activité.</string>
+	<string>Kadence enregistre ta séance de musculation dans Apple Santé (durée, fréquence cardiaque, calories), pour tes anneaux d'activité.</string>
 </dict>
 </plist>

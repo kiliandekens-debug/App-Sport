@@ -31,7 +31,7 @@ export default function Admin({ user }) {
       <div className="pad stack" style={{ gap: 12, paddingTop: 8 }}>
         <section className="card stack" style={{ gap: 6 }}>
           <h2 className="label">Application</h2>
-          <span className="small">Kadeon Sport {VERSION}, build {BUILD}</span>
+          <span className="small">Kadence {VERSION}, build {BUILD}</span>
           <span className="xs muted">Publiée le {day(BUILT_AT)}, sur sport.kadeon.be</span>
         </section>
 

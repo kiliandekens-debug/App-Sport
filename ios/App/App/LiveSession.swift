@@ -76,7 +76,7 @@ final class LiveSession {
                 return
             }
             guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-                self.lastError = "Activités en direct désactivées (Réglages › Kadeon Sport)."
+                self.lastError = "Activités en direct désactivées (Réglages › Kadence)."
                 return
             }
             do {

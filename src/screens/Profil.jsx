@@ -224,7 +224,7 @@ export default function Profil({ user }) {
           <Row icon="link" tint="#8E8E93" onClick={() => window.open('https://sport.kadeon.be/confidentialite.html', '_blank')}>Confidentialité</Row>
         </div>
         {pwd && <div className="card"><PasswordForm onDone={() => setPwd(false)} /></div>}
-        <span className="gfoot" style={{ textAlign: 'center' }}>{user?.email}<br />Kadeon Sport {VERSION} ({BUILD}), {new Date(BUILT_AT).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+        <span className="gfoot" style={{ textAlign: 'center' }}>{user?.email}<br />Kadence {VERSION} ({BUILD}), {new Date(BUILT_AT).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
       </div>
       <WhatsNew open={news} onClose={() => setNews(false)} />
     </main>

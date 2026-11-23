@@ -1,4 +1,4 @@
-"""Smoke tests for Kadeon Sport, on synthetic data (no personal data).
+"""Smoke tests for Kadence, on synthetic data (no personal data).
 
 Usage:
   npm run build -- --outDir /tmp/ks-dist   (with VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY set to any value)

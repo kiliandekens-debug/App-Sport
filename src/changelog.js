@@ -6,6 +6,13 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.13.0', date: '2026-11-23', title: 'Kadeon Sport devient Kadence',
+    items: [
+      'Nouveau nom : Kadence, la cadence des séries comme celle des foulées.',
+      'Le nom change sur l\'iPhone, l\'Apple Watch, la Dynamic Island, le site et la page de confidentialité. Tes données ne bougent pas.',
+    ],
+  },
+  {
     version: '1.12.3', date: '2026-11-23', title: 'Nouveau look sur la montre',
     items: [
       'Apple Watch : fond orange dégradé, gros chiffres arrondis, boutons en pastilles aux couleurs de l\'app (plus de bleu).',
