@@ -31,6 +31,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      # App Store Connect only accepts builds made with Xcode 26 (iOS 26 SDK) or later.
+      - name: Select the newest Xcode
+        run: |
+          X=$(ls -d /Applications/Xcode_*.app | grep -E 'Xcode_[0-9.]+\.app$' | sort -V | tail -1)
+          sudo xcode-select -s "$X/Contents/Developer"
+          xcodebuild -version
+          xcodebuild -showsdks | grep -E "iphoneos|watchos|watchsimulator" || true
+
       - run: npm ci
       - run: npm run build
       - run: npx cap sync ios
