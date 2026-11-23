@@ -6,6 +6,13 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.13.1', date: '2026-11-23', title: 'Nouvelle icône',
+    items: [
+      'Nouvelle icône Kadence : un K blanc et son écho sur fond orange, comme une cadence.',
+      'Sur l\'iPhone, l\'Apple Watch, le site et l\'écran de démarrage.',
+    ],
+  },
+  {
     version: '1.13.0', date: '2026-11-23', title: 'Kadeon Sport devient Kadence',
     items: [
       'Nouveau nom : Kadence, la cadence des séries comme celle des foulées.',
