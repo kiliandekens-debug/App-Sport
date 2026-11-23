@@ -6,6 +6,16 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.10.0', date: '2026-11-23', title: 'Kadeon Sport sur l\'Apple Watch',
+    items: [
+      'App iPhone : une app Apple Watch suit la séance en direct, synchronisée avec l\'iPhone.',
+      'Sur la montre : exercice et série en cours, charge et reps à la Digital Crown, bouton Valider.',
+      'Chrono de repos sur la montre, avec vibrations à la fin, +15 s, −15 s et Passer.',
+      'Fréquence cardiaque et calories en direct ; la séance est enregistrée dans Apple Santé et compte dans les anneaux d\'activité.',
+      'Démarrer la séance suggérée depuis la montre. Une séance lancée sur l\'iPhone ouvre l\'app sur la montre.',
+    ],
+  },
+  {
     version: '1.9.0', date: '2026-11-22', title: 'Préparation de l\'app iPhone',
     items: [
       'Profil › Supprimer mon compte : efface toutes tes données (exigence de l\'App Store).',
