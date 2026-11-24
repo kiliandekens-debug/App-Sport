@@ -2,7 +2,8 @@ import { LIBRARY_IMAGES } from './library.js';
 
 // Exercise illustrations from Free Exercise DB (public domain, Unlicense):
 // https://github.com/yuhonas/free-exercise-db — two frames per exercise (start / end).
-const BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
+// Served by the app itself (public/exercises, 640 px WebP) so they never depend on GitHub.
+const BASE = '/exercises/';
 
 const EXACT = {
   'développé couché (haltère)': 'Dumbbell_Bench_Press',
@@ -152,5 +153,5 @@ export function exactImageId(name) {
 
 export function imagesOf(name, base) {
   const id = imageId(name, base);
-  return id ? [`${BASE}${id}/0.jpg`, `${BASE}${id}/1.jpg`] : [];
+  return id ? [`${BASE}${id}/0.webp`, `${BASE}${id}/1.webp`] : [];
 }
