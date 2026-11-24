@@ -63,6 +63,8 @@ export default function Progres() {
   const load = muscleLoad(recentSets);
   const tonnes = recentSets.reduce((a, x) => a + x.weight_kg * x.reps, 0) / 1000;
   const km = data.runLogs.filter((l) => new Date(l.done_at).getTime() > since).reduce((a, l) => a + Number(l.distance_km || 0), 0);
+  const walks = data.walkLogs.filter((l) => new Date(l.done_at).getTime() > since);
+  const dplus = Math.round(walks.reduce((a, l) => a + Number(l.elevation_m || 0), 0));
   const topGroups = Object.entries(load.groups).sort((a, b) => b[1] - a[1]).slice(0, 4);
   // Start at the first month with volume: no row of empty bars before the history began.
   const firstMonth = data.months.findIndex((m) => m.tonnes > 0);
@@ -85,6 +87,7 @@ export default function Progres() {
               <span><b>{fmtKg(tonnes)}</b>tonne{tonnes >= 2 ? 's' : ''}</span>
               <span><b>{fmtKg(km)}</b>km couru{km >= 2 ? 's' : ''}</span>
             </div>
+            {walks.length > 0 && <span className="small"><span className="muted">Marche et tapis : </span><b>{walks.length}</b> séance{walks.length > 1 ? 's' : ''}{dplus ? <>, <b>{dplus}</b> m de dénivelé</> : null}</span>}
             {recentSets.length > 0 && (
               <>
                 <span className="small" style={{ lineHeight: 1.45 }}>

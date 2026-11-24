@@ -6,13 +6,16 @@ import { Icon, ExerciseImage } from './components.jsx';
 import { SessionAnalysis } from './analysis.jsx';
 import { fmtKg, fmtInt, sameDay, isWork, isPlausible } from './lib/stats.js';
 import { mmss, hms, vdotOf, raceTime } from './lib/running.js';
+import { isWalk, logTitle, fmtSpeed, fmtIncline } from './lib/treadmill.js';
+
+const ACTIVITY_LOW = { incline_walk: 'marche inclinée', walk: 'marche dehors', treadmill: 'course sur tapis' };
 
 const volume = (w) => w.sets.filter((s) => isWork(s) && isPlausible(s)).reduce((a, s) => a + s.weight_kg * s.reps, 0);
 
 // Everything about one calendar day: gym sessions, runs done, run planned.
 export function dayInfo(data, date, planned = [], now = new Date()) {
   const gym = data.workouts.filter((w) => sameDay(w.start, date));
-  const runs = data.runLogs.filter((l) => sameDay(new Date(l.done_at), date));
+  const runs = data.allLogs.filter((l) => sameDay(new Date(l.done_at), date));
   const plan = planned.find((s) => sameDay(s.date, date) && !s.done) || null;
   const past = date < new Date(now.getFullYear(), now.getMonth(), now.getDate());
   return { date, gym, runs, plan, past, today: sameDay(date, now), run: runs.length > 0 };
@@ -45,8 +48,8 @@ export function DayDetail({ d, onRun, onGym, onRunLog, hideRunLink = false }) {
         <button key={l.id} className="day-row" onClick={() => onRunLog?.(l.id)}>
           <span className="day-ic k-run"><Icon name="run" size={18} /></span>
           <span className="grow stack" style={{ gap: 1 }}>
-            <span style={{ fontWeight: 650 }}>{l.notes || 'Course'}, {fmtKg(Number(l.distance_km))} km</span>
-            <span className="xs muted">{hms(l.duration_s)}, {mmss(l.duration_s / Number(l.distance_km))} /km{l.avg_hr ? `, ${l.avg_hr} bpm` : ''}</span>
+            <span style={{ fontWeight: 650 }}>{logTitle(l)}, {fmtKg(Number(l.distance_km))} km</span>
+            <span className="xs muted">{hms(l.duration_s)}, {isWalk(l) ? `${l.elevation_m ? `${Math.round(l.elevation_m)} m D+` : fmtSpeed(Number(l.speed_kmh) || 0)}` : `${mmss(l.duration_s / Number(l.distance_km))} /km`}{l.avg_hr ? `, ${l.avg_hr} bpm` : ''}</span>
           </span>
           <Icon name="chevron" size={18} />
         </button>
@@ -225,28 +228,33 @@ export function MonthCalendar({ planned = [] }) {
 export function RunSheet({ id, onClose }) {
   const data = useData();
   const ui = useUi();
-  const l = id ? data.runLogs.find((x) => x.id === id) : null;
+  const l = id ? data.allLogs.find((x) => x.id === id) : null;
   const ref = useModal(!!l, onClose);
   if (!l) return null;
   const km = Number(l.distance_km);
   const date = new Date(l.done_at);
-  const v = km >= 3 && l.duration_s >= 600 ? vdotOf(km, l.duration_s) : null;
+  const walk = isWalk(l);
+  const v = !walk && km >= 3 && l.duration_s >= 600 ? vdotOf(km, l.duration_s) : null;
   const remove = async () => {
-    if (!(await ui.confirm({ title: 'Supprimer cette course ?', message: 'Elle disparaît de tes statistiques et le plan est recalculé.', ok: 'Supprimer', danger: true }))) return;
-    try { await deleteRunLog(l.id); await data.refresh(); onClose(); ui.notify('Course supprimée'); } catch (e) { ui.notify(e.message || String(e)); }
+    if (!(await ui.confirm(walk ? { title: 'Supprimer cette séance ?', message: 'Elle disparaît de ton historique.', ok: 'Supprimer', danger: true } : { title: 'Supprimer cette course ?', message: 'Elle disparaît de tes statistiques et le plan est recalculé.', ok: 'Supprimer', danger: true }))) return;
+    try { await deleteRunLog(l.id); await data.refresh(); onClose(); ui.notify(walk ? 'Séance supprimée' : 'Course supprimée'); } catch (e) { ui.notify(e.message || String(e)); }
   };
+  const speed = Number(l.speed_kmh) || (l.duration_s ? (km / l.duration_s) * 3600 : 0);
   const tiles = [
-    [fmtKg(km), 'km'], [hms(l.duration_s), 'durée'], [mmss(l.duration_s / km), '/km'],
+    [fmtKg(km), 'km'], [hms(l.duration_s), 'durée'],
+    ...(walk || l.activity === 'treadmill' ? [[fmtSpeed(speed).replace(' km/h', ''), 'km/h moy.']] : [[mmss(l.duration_s / km), '/km']]),
+    ...(l.incline_pct != null && Number(l.incline_pct) ? [[fmtIncline(Number(l.incline_pct)).replace(' %', ''), '% de pente']] : []),
+    ...(l.elevation_m ? [[String(Math.round(l.elevation_m)), 'm D+']] : []),
     ...(l.avg_hr ? [[String(l.avg_hr), 'bpm moyen']] : []), ...(l.calories ? [[String(l.calories), 'kcal']] : []), ...(v ? [[fmtKg(Math.round(v * 10) / 10), 'VDOT']] : []),
   ];
   return (
     <div className="overlay" onClick={onClose}>
-      <div ref={ref} tabIndex={-1} className="sheet wsheet" role="dialog" aria-modal="true" aria-label={l.notes || 'Course'} onClick={(e) => e.stopPropagation()}>
+      <div ref={ref} tabIndex={-1} className="sheet wsheet" role="dialog" aria-modal="true" aria-label={logTitle(l)} onClick={(e) => e.stopPropagation()}>
         <span className="sheet-grip" />
         <div className="row" style={{ alignItems: 'flex-start' }}>
           <div className="grow stack" style={{ gap: 4 }}>
             <span className="xs muted" style={{ textTransform: 'capitalize', fontWeight: 600 }}>{date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, {date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
-            <span className="display">{l.notes || 'Course'}</span>
+            <span className="display">{logTitle(l)}</span>
           </div>
           <button className="icon-btn" aria-label="Fermer" onClick={onClose}><Icon name="close" /></button>
         </div>
@@ -254,7 +262,7 @@ export function RunSheet({ id, onClose }) {
           {tiles.map(([val, lab]) => <div key={lab}><b className="display">{val}</b><span>{lab}</span></div>)}
         </div>
         {v && <span className="small muted" style={{ lineHeight: 1.45 }}>À ce niveau, temps équivalents : 5 km en {hms(raceTime(v, 5))}, 10 km en {hms(raceTime(v, 10))}, semi en {hms(raceTime(v, 21.0975))}. Valable si la course était faite à fond ; pour un footing, ton vrai niveau est plus haut.</span>}
-        <span className="xs muted">{l.source === 'strava' ? 'Importée de Strava' : l.source === 'screenshot' ? 'Lue sur une capture' : 'Saisie à la main'}{l.feel ? `, ressenti ${l.feel}/5` : ''}</span>
+        <span className="xs muted">{l.source === 'strava' ? 'Importée de Strava' : l.source === 'screenshot' ? 'Lue sur une capture' : l.source === 'watch' ? 'Enregistrée avec l\'Apple Watch' : l.source === 'timer' ? 'Enregistrée avec le minuteur' : l.source === 'apple-health' ? 'Importée d\'Apple Santé' : 'Saisie à la main'}{walk && l.activity ? `, ${ACTIVITY_LOW[l.activity]}` : ''}{l.feel ? `, ressenti ${l.feel}/5` : ''}</span>
         <button className="btn" style={{ color: 'var(--danger)', background: 'var(--danger-bg)' }} onClick={remove}><Icon name="trash" size={16} />Supprimer</button>
       </div>
     </div>

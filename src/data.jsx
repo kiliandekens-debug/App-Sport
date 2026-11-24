@@ -4,6 +4,7 @@ import { analyse } from './lib/stats.js';
 import { isNative, healthRuns, healthLinked, runIntervals } from './native.js';
 import { buildPlan, runVerdict, ymd } from './lib/running.js';
 import { loadAccess, redeemPendingCode, hasHealthConsent } from './beta.js';
+import { WALKS } from './lib/treadmill.js';
 
 const DataCtx = createContext(null);
 
@@ -63,20 +64,23 @@ export function DataProvider({ children }) {
   const value = useMemo(() => {
     const data = analyse(raw.workouts);
     const plans = new Map(raw.plans.map((p) => [p.exercise, p]));
-    return { ...data, custom: raw.custom, routines: raw.routines, runProfile: raw.runProfile, runLogs: raw.runLogs, superadmin: raw.superadmin, access: raw.access, betaNotice, closeBetaNotice: () => setBetaNotice(null), plans, loading, error, refresh };
+    // Walks (tapis, marche inclinée) are kept apart: they must not change the running level or the plan.
+    const runLogs = raw.runLogs.filter((l) => !WALKS.has(l.activity));
+    const walkLogs = raw.runLogs.filter((l) => WALKS.has(l.activity));
+    return { ...data, custom: raw.custom, routines: raw.routines, runProfile: raw.runProfile, runLogs, walkLogs, allLogs: raw.runLogs, superadmin: raw.superadmin, access: raw.access, betaNotice, closeBetaNotice: () => setBetaNotice(null), plans, loading, error, refresh };
   }, [raw, loading, error, refresh, betaNotice]);
 
   // Runs imported from Apple Health or Strava are linked to the planned session of the same
   // day; on the iPhone, the intervals recorded by the watch are compared with the plan.
   const linking = useRef(false);
   useEffect(() => {
-    if (loading || linking.current || !raw.runProfile || !raw.runLogs.length) return;
+    if (loading || linking.current || !raw.runProfile || !value.runLogs.length) return;
     linking.current = true;
-    linkRuns(raw.runProfile, raw.runLogs, value.workouts)
+    linkRuns(raw.runProfile, value.runLogs, value.workouts)
       .then((changed) => { if (changed) refresh(); })
       .catch(() => { /* offline: next time */ })
       .finally(() => { linking.current = false; });
-  }, [loading, raw.runProfile, raw.runLogs, value.workouts, refresh]);
+  }, [loading, raw.runProfile, value.runLogs, value.workouts, refresh]);
 
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;
 }

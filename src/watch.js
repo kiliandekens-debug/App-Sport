@@ -13,6 +13,7 @@ import { supabase, supabaseUrl, supabaseKey } from './supabase.js';
 import { fmtKg } from './lib/stats.js';
 import { watchWorkout, guidedRun, buildPlan, runVerdict, ymd } from './lib/running.js';
 import { saveRunLog } from './data.jsx';
+import { TEMPLATES, templateSession, summaryOf } from './lib/treadmill.js';
 
 const SEQ = 'app-sport-watch-seq';
 const readSeq = () => { try { return Number(localStorage.getItem(SEQ)) || 0; } catch { return 0; } };
@@ -44,12 +45,36 @@ export function watchRuns(data) {
     .filter((x) => !x.done && x.ymd >= today).slice(0, 7).map(guidedRun);
 }
 
+// Guided tapis sessions (12-3-30…), at the level reached, for the watch's Tapis card.
+export function watchWalks(data) {
+  return TEMPLATES.map((t) => {
+    const x = templateSession(t, data.walkLogs || []);
+    return { key: x.key, ymd: '', title: x.title, mins: x.mins, km: x.km, kind: 'tapis', activity: x.activity, steps: x.steps };
+  });
+}
+
 // A run recorded by Kadence on the watch: saved as a run log, linked to its session of the
 // plan, with the verdict against the plan from the watch's own splits (one per step).
 async function saveWatchRun(a, data) {
   if (!(a.meters > 50) || !(a.secs > 30)) return;
   const done = new Date(a.start);
-  if (data.runLogs.some((l) => Math.abs(new Date(l.done_at).getTime() - done.getTime()) < 3 * 60000)) return;
+  if (data.allLogs.some((l) => Math.abs(new Date(l.done_at).getTime() - done.getTime()) < 3 * 60000)) return;
+  if (a.activity && a.activity !== 'run') {
+    // Tapis or incline walk: speed, incline and paliers set on the watch; D+ from them.
+    const segs = Array.isArray(a.segments) ? a.segments.filter((x) => x.secs > 0).map((x) => ({ secs: Math.round(x.secs), speed: Number(x.speed) || 0, incline: Number(x.incline) || 0 })) : [];
+    const sum = segs.length ? summaryOf(segs, a.weight || 75) : null;
+    const tpl = a.key && String(a.key).startsWith('tpl:') ? TEMPLATES.find((t) => `tpl:${t.id}` === a.key) : null;
+    await saveRunLog({
+      done_at: done.toISOString(), activity: a.activity, session_key: tpl ? a.key : null, notes: tpl?.title || null,
+      distance_km: Math.round(a.meters / 10) / 100, duration_s: Math.round(a.secs),
+      speed_kmh: Math.round(((a.meters / a.secs) * 3.6) * 10) / 10, incline_pct: sum?.incline_pct ?? null,
+      elevation_m: a.elevation > 0 ? Math.round(a.elevation) : sum?.elevation_m ?? null,
+      avg_hr: a.hr > 0 ? Math.round(a.hr) : null, calories: a.kcal > 0 ? Math.round(a.kcal) : sum?.calories ?? null,
+      source: 'watch', segments: segs.length > 1 ? segs : null,
+    });
+    await data.refresh();
+    return;
+  }
   const plan = data.runProfile ? buildPlan(data.runProfile, data.runLogs, data.workouts).weeks.flat() : [];
   const session = a.key ? plan.find((x) => x.key === a.key) : null;
   const splits = session && Array.isArray(a.splits) && a.splits.length ? runVerdict(session, a.splits) : null;
@@ -64,11 +89,13 @@ async function saveWatchRun(a, data) {
 
 export function watchState(s, suggestion, ack, data) {
   const runs = data ? watchRuns(data) : [];
-  if (!s?.active) return { v: 1, ack, active: false, suggestion: suggestion || null, session: null, runs };
+  const walks = data ? watchWalks(data) : [];
+  if (!s?.active) return { v: 1, ack, active: false, suggestion: suggestion || null, session: null, runs, walks };
   return {
     v: 1,
     ack,
     runs,
+    walks,
     active: true,
     suggestion: null,
     session: {
