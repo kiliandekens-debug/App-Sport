@@ -6,6 +6,14 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.17.1', date: '2026-11-24', title: 'Montre : course retravaillée',
+    items: [
+      'Nouvel écran d\'accueil sur la montre : une grande carte pour la muscu, une pour la course.',
+      'Plus de triangle jaune au démarrage d\'une course : on arrive directement sur l\'écran de course.',
+      'Écran de course plus lisible : temps, distance, allure et BPM en grand ; en séance guidée, le temps restant de l\'étape d\'abord.',
+    ],
+  },
+  {
     version: '1.17.0', date: '2026-11-24', title: 'Courir avec la montre, dans Kadence',
     items: [
       'Apple Watch : lance la course du plan (ou une course libre) directement dans Kadence, sans passer par Exercice, même sans l\'iPhone.',
