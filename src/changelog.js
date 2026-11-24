@@ -6,6 +6,17 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.15.0', date: '2026-11-24', title: 'La bêta de Kadence',
+    items: [
+      'Créer un compte directement depuis l\'écran de connexion.',
+      'Code bêta : 50 places, et tout Kadence gratuit pendant un an. À saisir à l\'inscription ou dans Profil › J\'ai un code bêta.',
+      'Profil : ton numéro de bêta-testeur et la date de fin de ta bêta.',
+      'Donner mon avis : un bug, une idée, envoyé en deux secondes depuis le Profil.',
+      'Données de santé : ton accord est demandé avant le premier import depuis Apple Santé ou Strava, et tu peux le retirer à tout moment.',
+      'L\'administration quitte l\'app pour un back-office séparé, plus sûr.',
+    ],
+  },
+  {
     version: '1.14.2', date: '2026-11-24', title: 'Sécurité renforcée',
     items: [
       'Les illustrations des exercices sont maintenant servies par Kadence : plus rapides, et elles s\'affichent même sans réseau dans l\'app iPhone.',
