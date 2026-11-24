@@ -7,7 +7,7 @@ import { Icon, Bars, GlassHeader } from '../components.jsx';
 import { fmtDay } from '../lib/stats.js';
 import { isNative } from '../native.js';
 import { sendRunToWatch } from '../watch.js';
-import { GOALS, DAYS, DAY_SHORT, SLOT, DEFAULT_SCHEDULE, PHASES, FEEL, buildPlan, appleSteps, segments, intensityOf, mmss, hms, parseDuration, TYPE_LABEL, paceRange, pacesOf, structureText, goalPrediction, betterLevel, runStats, scheduleOf, scheduleIssues, mainType, raceTime, vdotOfProfile, fitnessFromHistory, monthlyKm } from '../lib/running.js';
+import { GOALS, DAYS, DAY_SHORT, SLOT, PHASES, buildPlan, appleSteps, sessionSteps, autoSchedule, segments, intensityOf, mmss, hms, parseDuration, TYPE_LABEL, paceRange, pacesOf, goalPrediction, betterLevel, runStats, scheduleOf, scheduleIssues, raceTime, vdotOfProfile, fitnessFromHistory, monthlyKm } from '../lib/running.js';
 
 const FILL = { warm: 'var(--z0)', cool: 'var(--z0)', rest: 'var(--z0)', recovery: 'var(--z0)', easy: 'var(--z1)', steady: 'var(--z1)', race: 'var(--z2)', tempo: 'var(--z3)', fast: 'var(--z4)', rep: 'var(--z4)', hill: 'var(--z4)', stride: 'var(--z4)' };
 const localYmd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -43,7 +43,6 @@ function RunChart({ session }) {
           </span>
         ))}
       </div>
-      <span className="small" style={{ lineHeight: 1.4 }}>{structureText(session)}</span>
     </div>
   );
 }
@@ -121,9 +120,34 @@ function HistoryCard({ logs, fit }) {
 const fmtKm = (v) => String(Math.round(Number(v) * 10) / 10).replace('.', ',');
 const fmt1 = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
 
+// Plan creation: a few simple questions, one per screen. The coach places the week by itself
+// (autoSchedule) around the long-run day, and reads the level from the logged runs.
+const GOAL_TEXT = { '5k': '5 km', '10k': '10 km', semi: 'Semi-marathon', marathon: 'Marathon', forme: 'Être en forme' };
+const RUNS_TEXT = { 2: 'Pour commencer ou reprendre', 3: 'Le bon équilibre, conseillé', 4: 'Pour progresser vraiment', 5: 'Si tu cours déjà beaucoup', 6: 'Coureur confirmé' };
+const LEVELS = [[2400, 'Je débute', '5 km en 40 min environ'], [1980, 'Je cours un peu', '5 km en 33 min environ'], [1680, 'Je cours régulièrement', '5 km en 28 min environ'], [1440, 'Je cours vite', '5 km en 24 min environ']];
+const PLAIN = { width: '100%', background: 'transparent', border: 'none', color: 'inherit', font: 'inherit', textAlign: 'left' };
+const longDayOf = (sched) => { const i = sched.indexOf('long'); return i >= 0 ? i : 6; };
+const fmtDate = (ymdStr) => new Date(`${ymdStr}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+function Choice({ on, title, detail, onClick }) {
+  return (
+    <button onClick={onClick} aria-pressed={on} style={{ textAlign: 'left', width: '100%', color: 'inherit', background: on ? 'var(--raised)' : 'transparent', border: 'none' }}>
+      <span className="grow stack" style={{ gap: 2 }}>
+        <span style={{ fontWeight: on ? 700 : 600, fontSize: 17 }}>{title}</span>
+        {detail && <span className="xs muted">{detail}</span>}
+      </span>
+      {on ? <span style={{ color: 'var(--accent)' }}><Icon name="check" size={18} width={3} /></span> : <Icon name="chevron" size={16} />}
+    </button>
+  );
+}
+
 function Setup({ initial, onSave, onCancel, onStop, fit }) {
+  const initialSched = initial ? scheduleOf(initial) : null;
   const [goal, setGoal] = useState(initial?.goal || '10k');
-  const [schedule, setSchedule] = useState(() => (initial ? scheduleOf(initial) : DEFAULT_SCHEDULE[3]));
+  const [runs, setRuns] = useState(initialSched ? initialSched.filter(Boolean).length : 3);
+  const [longDay, setLongDay] = useState(initialSched ? longDayOf(initialSched) : 6);
+  // Days picked one by one in the advanced settings; otherwise the coach places them.
+  const [custom, setCustom] = useState(() => (initialSched && initialSched.join() !== autoSchedule(initialSched.filter(Boolean).length, longDayOf(initialSched)).join() ? initialSched : null));
   const auto = !initial && fit?.vdotNow ? Math.round(raceTime(fit.vdotNow, 5)) : null;
   const [refKm, setRefKm] = useState(initial?.ref_distance_km || 5);
   const [refTime, setRefTime] = useState(initial ? hms(initial.ref_time_s) : auto ? hms(auto) : '');
@@ -131,96 +155,169 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
   const [date, setDate] = useState(initial?.target_date || '');
   const [reentry, setReentry] = useState(initial ? initial.reentry !== false : true);
   const [start, setStart] = useState(initial?.started_on ? String(initial.started_on).slice(0, 10) : today());
-  const dateIssue = date && start && date <= start ? 'La date de la course doit être après le début du programme.' : null;
+  const steps = ['goal', 'runs', 'long', 'race', ...(initial || auto ? [] : ['level']), 'summary'];
+  const [step, setStep] = useState(initial ? 'summary' : 'goal');
+  const [from, setFrom] = useState(null); // editing one answer from the summary: come back to it
   const [busy, setBusy] = useState(false);
+
+  const schedule = custom || autoSchedule(runs, longDay);
   const secs = parseDuration(refTime);
   const count = schedule.filter(Boolean).length;
   const issues = scheduleIssues(schedule);
+  const dateIssue = date && start && date <= start ? 'La date de la course doit être après le début du programme.' : null;
   const blocking = count < 2 || schedule.filter((x) => x === 'quality').length > 2 || schedule.filter((x) => x === 'long').length > 1;
   const bad = !secs || secs < 600 || secs > 20000 || blocking || !start || !!dateIssue;
   const preview = secs ? raceTime(vdotOfProfile({ ref_distance_km: refKm, ref_time_s: secs }), GOALS[goal].km) : null;
-  const setDay = (i, v) => setSchedule(schedule.map((x, j) => (j === i ? v : x)));
+  const setDay = (i, v) => setCustom(schedule.map((x, j) => (j === i ? v : x)));
+  const idx = steps.indexOf(step);
+  const next = () => { if (from) { setFrom(null); setStep('summary'); } else setStep(steps[Math.min(idx + 1, steps.length - 1)]); window.scrollTo(0, 0); };
+  const back = () => { if (from) { setFrom(null); setStep('summary'); } else setStep(steps[Math.max(idx - 1, 0)]); window.scrollTo(0, 0); };
+  const edit = (k) => { setFrom(k); setStep(k); window.scrollTo(0, 0); };
+  const kindText = { easy: 'Footing', quality: 'Séance rythmée', long: 'Sortie longue' };
 
+  const save = async () => {
+    setBusy(true);
+    try {
+      await onSave({ goal, schedule, days_per_week: count, weekly_km: weekly === '' ? null : Number(String(weekly).replace(',', '.')) || 0, ref_distance_km: Number(refKm), ref_time_s: secs, target_date: date || null, started_on: start, reentry });
+    } finally { setBusy(false); }
+  };
+
+  const question = (title, help, body, canNext = true) => (
+    <main className="screen">
+      <GlassHeader eyebrow={`Ton plan de course, étape ${idx + 1} sur ${steps.length - 1}`} title={title} />
+      <div className="pad stack" style={{ gap: 14, paddingTop: 10 }}>
+        {help && <span className="small muted" style={{ lineHeight: 1.45 }}>{help}</span>}
+        {body}
+        {canNext && <button className="btn primary big" onClick={next}>{from ? 'OK' : 'Suivant'}</button>}
+        {(idx > 0 || from) && <button className="btn" onClick={back}>Retour</button>}
+        {!from && idx === 0 && onCancel && <button className="btn" onClick={onCancel}>Annuler</button>}
+      </div>
+    </main>
+  );
+
+  if (step === 'goal') {
+    return question('Ton objectif ?', fit?.runs > 0 ? `Je connais déjà ton niveau grâce à tes ${fit.runs} course${fit.runs > 1 ? 's' : ''} : il reste quatre questions.` : null, (
+      <div className="list">{Object.keys(GOALS).map((k) => <Choice key={k} on={goal === k} title={GOAL_TEXT[k]} onClick={() => { setGoal(k); next(); }} />)}</div>
+    ), false);
+  }
+  if (step === 'runs') {
+    return question('Combien de sorties par semaine ?', 'Je place les footings et les séances rythmées tout seul, jamais deux jours durs d\'affilée.', (
+      <div className="list">{[2, 3, 4, 5, 6].map((n) => <Choice key={n} on={runs === n && !custom} title={`${n} sorties`} detail={RUNS_TEXT[n]} onClick={() => { setRuns(n); setCustom(null); next(); }} />)}</div>
+    ), false);
+  }
+  if (step === 'long') {
+    return question('Quel jour pour ta sortie longue ?', 'La plus longue course de la semaine, tranquille. Choisis un jour où tu as le temps (souvent le week-end).', (
+      <div className="list">{DAYS.map((d, i) => <Choice key={d} on={longDay === i && !custom} title={d} onClick={() => { setLongDay(i); setCustom(null); next(); }} />)}</div>
+    ), false);
+  }
+  if (step === 'race') {
+    return question('Une course prévue ?', 'Avec une date, le plan se termine le jour J, après quelques jours plus légers pour arriver frais.', (
+      <>
+        <input className="input" type="date" min={start || today()} value={date} onChange={(e) => setDate(e.target.value)} aria-label="Date de la course" />
+        {dateIssue && <span className="small" style={{ color: 'var(--danger)' }}>{dateIssue}</span>}
+        {!date && <button className="btn" onClick={() => { setDate(''); next(); }}>Pas de course prévue</button>}
+      </>
+    ), !!date && !dateIssue);
+  }
+  if (step === 'level') {
+    return question('Ton niveau ?', 'Il fixe tes allures. Pas besoin d\'être précis : le coach s\'ajuste après tes premières sorties.', (
+      <>
+        <div className="list">{LEVELS.map(([t, l, d]) => <Choice key={t} on={Number(refKm) === 5 && secs === t} title={l} detail={d} onClick={() => { setRefKm(5); setRefTime(hms(t)); next(); }} />)}</div>
+        <span className="small muted">Ou ton temps récent sur 5 km :</span>
+        <input className="input" inputMode="text" placeholder="Par exemple 28:30" value={refTime} onChange={(e) => { setRefKm(5); setRefTime(e.target.value); }} aria-label="Temps sur 5 km" />
+      </>
+    ), !!secs);
+  }
+
+  // Summary: every answer, the week the coach built, then create.
+  const order = [0, 1, 2, 3, 4, 5, 6].filter((d) => schedule[d]);
   return (
     <main className="screen">
-      <GlassHeader eyebrow="Plan de course" title={initial ? 'Modifier le plan' : 'Ton objectif'} />
-      <div className="pad stack" style={{ gap: 18, paddingTop: 10 }}>
-        {fit?.runs > 0 && !initial && <FitCard fit={fit} />}
-        <div className="stack" style={{ gap: 6 }}>
-          <h2 className="label">Objectif</h2>
-          <div className="seg" role="group" aria-label="Objectif" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-            {Object.entries(GOALS).map(([k, g]) => <button key={k} className={goal === k ? 'on' : ''} aria-pressed={goal === k} onClick={() => setGoal(k)}>{g.label === 'Semi-marathon' ? 'Semi' : g.label}</button>)}
-          </div>
+      <GlassHeader eyebrow="Plan de course" title={initial ? 'Ton plan' : 'Ton plan est prêt'} />
+      <div className="pad stack" style={{ gap: 14, paddingTop: 10 }}>
+        <div className="list">
+          <button style={PLAIN} onClick={() => edit('goal')}><span className="grow stack" style={{ gap: 1, textAlign: 'left' }}><span className="xs muted">Objectif</span><b>{GOAL_TEXT[goal]}</b></span><span className="xs" style={{ color: 'var(--accent)', fontWeight: 600 }}>Modifier</span></button>
+          <button style={PLAIN} onClick={() => edit('runs')}><span className="grow stack" style={{ gap: 1, textAlign: 'left' }}><span className="xs muted">Sorties par semaine</span><b>{count}</b></span><span className="xs" style={{ color: 'var(--accent)', fontWeight: 600 }}>Modifier</span></button>
+          <button style={PLAIN} onClick={() => edit('long')}><span className="grow stack" style={{ gap: 1, textAlign: 'left' }}><span className="xs muted">Sortie longue</span><b>Le {DAYS[longDayOf(schedule)].toLowerCase()}</b></span><span className="xs" style={{ color: 'var(--accent)', fontWeight: 600 }}>Modifier</span></button>
+          <button style={PLAIN} onClick={() => edit('race')}><span className="grow stack" style={{ gap: 1, textAlign: 'left' }}><span className="xs muted">Course</span><b>{date ? fmtDate(date) : 'Pas de date'}</b></span><span className="xs" style={{ color: 'var(--accent)', fontWeight: 600 }}>Modifier</span></button>
         </div>
 
-        <div className="stack" style={{ gap: 6 }}>
-          <h2 className="label">Ton niveau actuel</h2>
-          <span className="small muted">{auto ? 'Pré-rempli depuis tes courses (équivalent 5 km d\'aujourd\'hui). Tu peux le changer.' : 'Un temps récent sur une distance, même approximatif. Il fixe toutes tes allures (méthode VDOT de Jack Daniels).'}</span>
-          <div className="seg" role="group" aria-label="Distance de référence" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-            {[[3, '3 km'], [5, '5 km'], [10, '10 km']].map(([k, l]) => <button key={k} className={Number(refKm) === k ? 'on' : ''} aria-pressed={Number(refKm) === k} onClick={() => setRefKm(k)}>{l}</button>)}
-          </div>
-          <input className="input" inputMode="text" placeholder={Number(refKm) === 10 ? 'Temps, par exemple 58:30' : 'Temps, par exemple 28:30'} value={refTime} onChange={(e) => setRefTime(e.target.value)} aria-label="Temps de référence" />
-          {preview && goal !== 'forme' && <span className="small muted">Temps estimé aujourd'hui sur {GOALS[goal].label.toLowerCase()} : <b style={{ color: 'var(--text)' }}>{hms(preview)}</b></span>}
-        </div>
+        <section className="card stack" style={{ gap: 10 }} aria-label="Ta semaine type">
+          <h2 className="label">Ta semaine type</h2>
+          {order.map((d) => (
+            <div key={d} className="between">
+              <span style={{ fontWeight: 600 }}>{DAYS[d]}</span>
+              <span className="row small" style={{ gap: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 4, background: schedule[d] === 'quality' ? 'var(--z4)' : schedule[d] === 'long' ? 'var(--z2)' : 'var(--z1)' }} />
+                {kindText[schedule[d]]}
+              </span>
+            </div>
+          ))}
+          <span className="xs muted" style={{ lineHeight: 1.45 }}>Les autres jours : repos (ou salle). Les séances changent chaque semaine et s'adaptent à tes courses.</span>
+          {!!issues.length && <div className="warn">{issues.map((t) => <span key={t} className="small" style={{ lineHeight: 1.4 }}>{t}</span>)}</div>}
+        </section>
 
-        <label className="stack" style={{ gap: 6 }}>
-          <h2 className="label">Kilomètres par semaine en ce moment</h2>
-          <span className="small muted">{fit?.protocol && !initial ? 'Pré-rempli avec ton volume habituel avant la pause. Les premières semaines seront réduites automatiquement (protocole de reprise).' : 'Le volume démarre de là et monte d\'environ 8 % par semaine, jamais plus.'}</span>
-          <input className="input" inputMode="decimal" placeholder="Par exemple 15 (0 si tu reprends)" value={weekly} onChange={(e) => setWeekly(e.target.value)} />
-        </label>
+        <section className="card stack" style={{ gap: 6 }} aria-label="Ton niveau">
+          <h2 className="label">Ton niveau</h2>
+          <span className="small" style={{ lineHeight: 1.45 }}>
+            {secs ? <>Environ <b>{hms(secs)}</b> sur {fmtKm(refKm)} km{auto && refTime === hms(auto) ? ', d\'après tes courses' : ''}.</> : 'À indiquer dans les réglages ci-dessous.'}
+            {preview && goal !== 'forme' ? <> Temps possible aujourd'hui sur {GOALS[goal].label.toLowerCase()} : <b>{hms(preview)}</b>.</> : null}
+          </span>
+          {fit?.protocol && reentry && <span className="small muted" style={{ lineHeight: 1.45 }}>Tu reprends après {fit.break.days} jours : les premières semaines seront plus légères.</span>}
+        </section>
 
-        <div className="stack" style={{ gap: 8 }}>
-          <h2 className="label">Tes jours de course</h2>
-          <span className="small muted">Choisis un modèle, puis ajuste jour par jour : facile, qualité (fractionné, seuil, côtes) ou sortie longue.</span>
-          <div className="seg" role="group" aria-label="Nombre de sorties par semaine" style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}>
-            {[2, 3, 4, 5, 6].map((n) => <button key={n} className={count === n ? 'on' : ''} aria-pressed={count === n} onClick={() => setSchedule(DEFAULT_SCHEDULE[n])}>{n} j</button>)}
-          </div>
-          <div className="list" style={{ marginTop: 4 }}>
-            {DAYS.map((d, i) => (
-              <div key={d} style={{ padding: '8px 8px 8px 14px', gap: 10 }}>
-                <span style={{ width: 76, fontWeight: 600, fontSize: 15 }}>{d}</span>
-                <div className="seg grow" role="group" aria-label={`Sortie du ${d.toLowerCase()}`} style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', background: 'var(--raised)' }}>
-                  {[[null, 'Repos'], ['easy', SLOT.easy], ['quality', SLOT.quality], ['long', SLOT.long]].map(([v, l]) => (
-                    <button key={l} className={schedule[i] === v ? 'on' : ''} aria-pressed={schedule[i] === v} onClick={() => setDay(i, v)} style={{ fontSize: 12.5, height: 36, padding: 0 }}>{l}</button>
-                  ))}
+        <button className="btn primary big" disabled={bad || busy} onClick={save}>{initial ? 'Mettre à jour le plan' : 'Créer mon plan'}</button>
+
+        <details className="card disclose-card">
+          <summary><span className="grow" style={{ fontWeight: 650 }}>Réglages avancés</span><Icon name="chevron" size={16} /></summary>
+          <div className="stack" style={{ gap: 16, padding: '0 18px 18px' }}>
+            <div className="stack" style={{ gap: 6 }}>
+              <span className="label">Temps de référence</span>
+              <span className="xs muted">Un temps récent sur une distance. Il fixe toutes tes allures.</span>
+              <div className="seg" role="group" aria-label="Distance de référence" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+                {[[3, '3 km'], [5, '5 km'], [10, '10 km']].map(([k, l]) => <button key={k} className={Number(refKm) === k ? 'on' : ''} aria-pressed={Number(refKm) === k} onClick={() => setRefKm(k)}>{l}</button>)}
+              </div>
+              <input className="input" inputMode="text" placeholder="Par exemple 28:30" value={refTime} onChange={(e) => setRefTime(e.target.value)} aria-label="Temps de référence" />
+            </div>
+            <label className="stack" style={{ gap: 6 }}>
+              <span className="label">Kilomètres par semaine en ce moment</span>
+              <span className="xs muted">Le volume part de là et monte d'environ 8 % par semaine, jamais plus.</span>
+              <input className="input" inputMode="decimal" placeholder="Par exemple 15 (0 si tu reprends)" value={weekly} onChange={(e) => setWeekly(e.target.value)} />
+            </label>
+            {fit?.protocol && (
+              <div className="stack" style={{ gap: 6 }}>
+                <span className="label">Reprise progressive</span>
+                <div className="seg" role="group" aria-label="Reprise progressive" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+                  <button className={reentry ? 'on' : ''} aria-pressed={reentry} onClick={() => setReentry(true)}>Oui (conseillé)</button>
+                  <button className={!reentry ? 'on' : ''} aria-pressed={!reentry} onClick={() => setReentry(false)}>Non</button>
                 </div>
               </div>
-            ))}
-          </div>
-          {!!issues.length && <div className="warn">{issues.map((t) => <span key={t} className="small" style={{ lineHeight: 1.4 }}>{t}</span>)}</div>}
-        </div>
-
-        {fit?.protocol && (
-          <div className="stack" style={{ gap: 6 }}>
-            <h2 className="label">Reprise progressive</h2>
-            <span className="small muted" style={{ lineHeight: 1.45 }}>Recommandée après {fit.break.days} jours sans entraînement régulier : volume réduit les premières semaines, et tes jours de qualité en version allégée pendant {fit.protocol.easyWeeks} semaine{fit.protocol.easyWeeks > 1 ? 's' : ''}.</span>
-            <div className="seg" role="group" aria-label="Reprise progressive" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-              <button className={reentry ? 'on' : ''} aria-pressed={reentry} onClick={() => setReentry(true)}>Oui (conseillé)</button>
-              <button className={!reentry ? 'on' : ''} aria-pressed={!reentry} onClick={() => setReentry(false)}>Non, plan normal</button>
+            )}
+            <label className="stack" style={{ gap: 6 }}>
+              <span className="label">Début du programme</span>
+              <input className="input" type="date" value={start} onChange={(e) => setStart(e.target.value)} aria-label="Début du programme" />
+              {initial && start !== String(initial.started_on).slice(0, 10) && <span className="xs" style={{ color: 'var(--warm)', lineHeight: 1.4 }}>Changer la date de début recale toutes les séances : celles déjà cochées ne seront plus reliées au plan (tes courses restent enregistrées).</span>}
+            </label>
+            <div className="stack" style={{ gap: 6 }}>
+              <span className="label">Choisir mes jours moi-même</span>
+              <span className="xs muted">Seulement si la semaine proposée ne te convient pas.</span>
+              <div className="list">
+                {DAYS.map((d, i) => (
+                  <div key={d} style={{ padding: '8px 8px 8px 12px', gap: 8 }}>
+                    <span style={{ width: 70, fontWeight: 600, fontSize: 14 }}>{d}</span>
+                    <div className="seg grow" role="group" aria-label={`Sortie du ${d.toLowerCase()}`} style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', background: 'var(--raised)' }}>
+                      {[[null, 'Repos'], ['easy', SLOT.easy], ['quality', SLOT.quality], ['long', SLOT.long]].map(([v, l]) => (
+                        <button key={l} className={schedule[i] === v ? 'on' : ''} aria-pressed={schedule[i] === v} onClick={() => setDay(i, v)} style={{ fontSize: 12, height: 34, padding: 0 }}>{l}</button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {custom && <button className="text-btn" style={{ alignSelf: 'flex-start' }} onClick={() => setCustom(null)}>Revenir à la semaine du coach</button>}
             </div>
           </div>
-        )}
+        </details>
 
-        <div className="stack" style={{ gap: 6 }}>
-          <h2 className="label">Début du programme</h2>
-          <span className="small muted">La première semaine commence ce jour-là. Par défaut aujourd'hui.</span>
-          <input className="input" type="date" value={start} onChange={(e) => setStart(e.target.value)} aria-label="Début du programme" />
-          {initial && start !== String(initial.started_on).slice(0, 10) && <span className="small" style={{ color: 'var(--warm)', lineHeight: 1.4 }}>Changer la date de début recale toutes les séances : celles déjà cochées ne seront plus reliées au plan (tes courses restent enregistrées).</span>}
-        </div>
-
-        <div className="stack" style={{ gap: 6 }}>
-          <h2 className="label">Date de la course (facultatif)</h2>
-          <span className="small muted">Avec une date, le plan se cale dessus et finit par l'affûtage puis le jour J.</span>
-          <input className="input" type="date" min={start || today()} value={date} onChange={(e) => setDate(e.target.value)} aria-label="Date de la course" />
-          {dateIssue && <span className="small" style={{ color: 'var(--danger)' }}>{dateIssue}</span>}
-        </div>
-
-        <button className="btn primary big" disabled={bad || busy} onClick={async () => {
-          setBusy(true);
-          try {
-            await onSave({ goal, schedule, days_per_week: count, weekly_km: weekly === '' ? null : Number(String(weekly).replace(',', '.')) || 0, ref_distance_km: Number(refKm), ref_time_s: secs, target_date: date || null, started_on: start, reentry });
-          } finally { setBusy(false); }
-        }}>{initial ? 'Mettre à jour le plan' : 'Créer mon plan'}</button>
         {onCancel && <button className="btn" onClick={onCancel}>Annuler les modifications</button>}
         {onStop && <button className="btn" style={{ color: 'var(--danger)' }} onClick={onStop}><Icon name="trash" size={16} />Arrêter ce programme</button>}
       </div>
@@ -281,6 +378,7 @@ export default function Course() {
   const [showPlan, setShowPlan] = useState(false);
   const [tab, setTab] = useState('seance');
   const [sending, setSending] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
   const pick = (key) => { setPicked(key); setTab('seance'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const profile = data.runProfile;
 
@@ -382,7 +480,7 @@ export default function Course() {
       <div className="pad stack" style={{ gap: 12, paddingTop: 10 }}>
         {!draft && (
           <div className="seg" role="tablist" aria-label="Sections de la course" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-            {[['seance', 'Séance'], ['plan', 'Programme'], ['suivi', 'Suivi']].map(([k, l]) => (
+            {[['seance', 'Aujourd\'hui'], ['plan', 'Mon plan'], ['suivi', 'Mes courses']].map(([k, l]) => (
               <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>
             ))}
           </div>
@@ -413,59 +511,67 @@ export default function Course() {
                 <span><b>{next.mins}</b>min</span>
                 <span><b>≈ {String(next.km).replace('.', ',')}</b>km</span>
               </div>
-              {(next.recover || next.taper) && <span className="small" style={{ fontWeight: 600 }}>{next.taper ? 'Semaine d\'affûtage : on garde les jambes fraîches.' : 'Semaine allégée : volume réduit de 20 % pour assimiler.'}</span>}
+              {(next.recover || next.taper) && <span className="small" style={{ fontWeight: 600 }}>{next.taper ? 'Semaine d\'affûtage : on garde les jambes fraîches.' : 'Semaine plus légère : volume réduit de 20 % pour assimiler.'}</span>}
             </div>
 
-            <section className="card stack" style={{ gap: 12 }} aria-label="La séance">
-              <RunChart session={next} />
-              <div className="row" style={{ alignItems: 'flex-start', gap: 10 }}>
-                <span style={{ width: 10, height: 10, borderRadius: 5, marginTop: 5, flexShrink: 0, background: FILL[mainType(next)] }} />
-                <span className="small" style={{ lineHeight: 1.45 }}><b>Ressenti :</b> {FEEL[mainType(next)] || FEEL.easy}</span>
-              </div>
+            <section className="card stack" style={{ gap: 14 }} aria-label="Ce que tu fais">
+              <h2 className="label">Ce que tu fais</h2>
+              <ol className="stack" style={{ gap: 14, margin: 0, padding: 0, listStyle: 'none' }}>
+                {sessionSteps(next).map((st, i) => (
+                  <li key={i} className="row" style={{ alignItems: 'flex-start', gap: 12 }}>
+                    <span className="display" style={{ minWidth: 28, height: 28, borderRadius: 9, background: 'var(--chip)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>{i + 1}</span>
+                    <div className="grow stack" style={{ gap: 3, minWidth: 0 }}>
+                      <span style={{ fontWeight: 650, lineHeight: 1.3 }}>{st.title}</span>
+                      {st.lines.map((l, j) => <span key={j} className="small muted" style={{ lineHeight: 1.45 }}>{l}</span>)}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <span className="xs muted" style={{ lineHeight: 1.45 }}>Les allures sont par kilomètre. Pas de montre ? Fie-toi aux sensations décrites : elles comptent plus que les chiffres.</span>
               <details className="disclose">
                 <summary>Pourquoi cette séance</summary>
                 <p className="small" style={{ lineHeight: 1.5 }}>{next.why}</p>
               </details>
+              <details className="disclose">
+                <summary>Voir le profil de la séance</summary>
+                <div style={{ paddingTop: 8 }}><RunChart session={next} /></div>
+              </details>
             </section>
 
+            {isNative() && (
+              <button className="btn big" onClick={sendToWatch} disabled={sending}>
+                <Icon name="send" size={16} width={2.5} />{sending ? 'Envoi…' : 'Envoyer à la montre'}
+              </button>
+            )}
             <details className="card stack disclose-card" aria-label="À saisir dans Exercice">
               <summary>
                 <span className="grow stack" style={{ gap: 2 }}>
-                  <span style={{ fontWeight: 650 }}>Programmer la séance sur la montre</span>
+                  <span style={{ fontWeight: 650 }}>{isNative() ? 'Ou la programmer à la main' : 'Programmer la séance sur la montre'}</span>
                   <span className="xs muted">{apple.where}</span>
                 </span>
                 <Icon name="chevron" size={16} />
               </summary>
-              {isNative() && (
-                <div className="stack" style={{ gap: 6 }}>
-                  <button className="btn primary" onClick={sendToWatch} disabled={sending}>
-                    <Icon name="send" size={16} width={2.5} />{sending ? 'Envoi…' : 'Envoyer à la montre'}
-                  </button>
-                  <span className="xs muted">La séance arrive dans l'app Exercice de la montre, avec les étapes et les alertes d'allure. Ta course revient ensuite dans Kadence par Apple Santé.</span>
-                </div>
-              )}
-              {isNative() && <span className="xs muted" style={{ fontWeight: 600 }}>Ou à la main :</span>}
               <ol className="stack" style={{ gap: 10, margin: 0, padding: 0, listStyle: 'none' }}>
-                {apple.steps.map((s, i) => (
+                {apple.steps.map((st, i) => (
                   <li key={i} className="row" style={{ alignItems: 'flex-start', gap: 12 }}>
                     <span className="display" style={{ minWidth: 26, height: 26, borderRadius: 8, background: 'var(--chip)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>{i + 1}</span>
                     <div className="grow stack" style={{ gap: 1 }}>
-                      <span style={{ fontWeight: 600 }}>{s.title}</span>
-                      <span className="small muted">{s.detail}</span>
+                      <span style={{ fontWeight: 600 }}>{st.title}</span>
+                      <span className="small muted">{st.detail}</span>
                     </div>
                   </li>
                 ))}
               </ol>
             </details>
 
-            {plan.reentry && plan.reentry.weeks.length > 0 && (
-              <div className="warn" style={{ gap: 4 }}>
-                <span className="xs" style={{ fontWeight: 700 }}>Reprise après {plan.reentry.gap} jours</span>
-                <span className="small" style={{ lineHeight: 1.45 }}>Volume à {plan.reentry.weeks.map((x) => `${Math.round(x * 100)} %`).join(' puis ')}.{plan.reentry.easyWeeks ? ` Séances de qualité allégées ; les vraies reviennent ${plan.reentry.backOn}.` : ''}</span>
+            {plan.note && <div className="warn"><span className="xs" style={{ fontWeight: 700 }}>Jambes</span><span className="small" style={{ lineHeight: 1.4 }}>{plan.note}</span></div>}
+            {((plan.reentry && plan.reentry.weeks.length > 0) || (plan.adj.message && !isPicked)) && (
+              <div className="card stack" style={{ gap: 4 }}>
+                <span className="xs" style={{ fontWeight: 700 }}>Le coach</span>
+                {plan.reentry && plan.reentry.weeks.length > 0 && <span className="small" style={{ lineHeight: 1.45 }}>Tu reprends après {plan.reentry.gap} jours : volume réduit les premières semaines{plan.reentry.easyWeeks ? `, séances rythmées allégées jusqu'à ${plan.reentry.backOn}` : ''}.</span>}
+                {plan.adj.message && !isPicked && <span className="small" style={{ lineHeight: 1.45 }}>{plan.adj.message}</span>}
               </div>
             )}
-            {plan.note && <div className="warn"><span className="xs" style={{ fontWeight: 700 }}>Jambes</span><span className="small" style={{ lineHeight: 1.4 }}>{plan.note}</span></div>}
-            {plan.adj.message && !isPicked && <div className="card"><span className="small">{plan.adj.message}</span></div>}
             {better && (
               <div className="card stack" style={{ gap: 8 }}>
                 <span style={{ fontWeight: 600 }}>Tu as progressé</span>
@@ -475,13 +581,20 @@ export default function Course() {
             )}
 
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => readCapture(e.target.files?.[0])} />
-            <button className="btn primary big" disabled={reading} onClick={() => fileRef.current?.click()}>
-              <Icon name="plus" size={18} />{reading ? 'Lecture de la capture…' : 'J\'ai couru : envoyer la capture'}
-            </button>
-            <div className="row" style={{ justifyContent: 'center', gap: 4 }}>
-              <button className="text-btn" onClick={manual}>Saisir à la main</button>
-              <button className="text-btn" onClick={pasteText}>Coller le texte</button>
-            </div>
+            {!logOpen ? (
+              <button className="btn primary big" disabled={reading} onClick={() => setLogOpen(true)}>
+                <Icon name="plus" size={18} />{reading ? 'Lecture de la capture…' : 'J\'ai couru'}
+              </button>
+            ) : (
+              <div className="card stack" style={{ gap: 8 }}>
+                <span style={{ fontWeight: 650 }}>Enregistrer ta course</span>
+                <button className="btn primary" disabled={reading} onClick={() => { setLogOpen(false); fileRef.current?.click(); }}>Avec une capture d'écran</button>
+                <button className="btn" onClick={() => { setLogOpen(false); manual(); }}>Saisir à la main</button>
+                <button className="btn" onClick={() => { setLogOpen(false); pasteText(); }}>Coller le texte de la capture</button>
+                <button className="text-btn" onClick={() => setLogOpen(false)}>Annuler</button>
+                {isNative() && <span className="xs muted" style={{ lineHeight: 1.4 }}>Avec la montre, ta course arrive toute seule depuis Apple Santé : rien à faire.</span>}
+              </div>
+            )}
           </>
         )}
 
@@ -510,14 +623,14 @@ export default function Course() {
             <section className="card stack" style={{ gap: 12 }} aria-label="Tes allures">
               <div className="between">
                 <h2 className="label">Tes allures</h2>
-                <span className="xs muted">VDOT {Math.round(paces.vdot * 10) / 10}, par km</span>
+                <span className="xs muted">par km</span>
               </div>
               <div className="stack" style={{ gap: 9 }}>
-                {[['Facile (E)', `${mmss(paces.easyFast)} – ${mmss(paces.easySlow)}`, 'footings, sortie longue', 'var(--z1)'],
+                {[['Footing', `${mmss(paces.easyFast)} – ${mmss(paces.easySlow)}`, 'footings et sortie longue : tu peux parler', 'var(--z1)'],
                   [`Objectif ${GOALS[profile.goal]?.label === 'Forme' ? '5 km' : GOALS[profile.goal]?.label.toLowerCase()}`, mmss(paces.race), 'allure de course', 'var(--z2)'],
-                  ['Seuil (T)', mmss(paces.threshold), 'tenable environ 1 h', 'var(--z3)'],
-                  ['VMA (I)', mmss(paces.interval), 'blocs de 3 à 5 min', 'var(--z4)'],
-                  ['Vitesse (R)', mmss(paces.rep), 'courts et relâchés', 'var(--z4)']].map(([l, v, d, c]) => (
+                  ['Soutenu (seuil)', mmss(paces.threshold), 'confortablement dur, tenable environ 1 h', 'var(--z3)'],
+                  ['Vite (VMA)', mmss(paces.interval), 'dur, par blocs de 3 à 5 min', 'var(--z4)'],
+                  ['Très vite', mmss(paces.rep), 'efforts courts et relâchés', 'var(--z4)']].map(([l, v, d, c]) => (
                   <div key={l} className="row" style={{ gap: 10 }}>
                     <span style={{ width: 4, height: 30, borderRadius: 2, background: c, flexShrink: 0 }} />
                     <span className="grow stack" style={{ gap: 0 }}><b style={{ fontSize: 15 }}>{l}</b><span className="xs muted">{d}</span></span>

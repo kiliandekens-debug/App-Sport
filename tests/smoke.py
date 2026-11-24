@@ -174,11 +174,21 @@ with sync_playwright() as p:
     if d.count(): d.click(); pg.wait_for_timeout(500)
 
     # Running plan creation from history.
+    # 1.16.0: four simple questions, the coach places the week around the long-run day.
     pg.goto(BASE + '/course'); pg.wait_for_timeout(1200)
+    pg.get_by_role('button', name='10 km').click(); pg.wait_for_timeout(200)
+    pg.get_by_role('button', name='3 sorties').click(); pg.wait_for_timeout(200)
+    pg.get_by_role('button', name='Samedi').click(); pg.wait_for_timeout(200)
+    pg.get_by_role('button', name='Pas de course prévue').click(); pg.wait_for_timeout(400)
     check(pg.get_by_label('Temps de référence').input_value() != '', 'running level prefilled from history')
+    week = pg.locator('section[aria-label="Ta semaine type"]').inner_text()
+    check('Samedi' in week and 'Sortie longue' in week and 'Séance rythmée' in week, 'coach places the week around the long-run day')
+    pg.screenshot(path=f'{SHOTS}/flow-course-summary.png', full_page=True)
     pg.get_by_role('button', name='Créer mon plan').click(); pg.wait_for_timeout(1200)
     check(len(T['run_profile']) == 1, 'running plan saved')
     check(pg.locator('.hero').count() > 0, 'running plan shows next session')
+    check(pg.locator('section[aria-label="Ce que tu fais"] li').count() >= 1, 'session explained step by step')
+    check(T['run_profile'][-1]['schedule'][5] == 'long', 'long run saved on the chosen day')
     pg.screenshot(path=f'{SHOTS}/flow-course.png', full_page=True)
 
     # 1.15.0: beta code, feedback, /admin gone from the app.

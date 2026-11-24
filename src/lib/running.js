@@ -20,7 +20,7 @@ export const GOALS = {
 
 export const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 export const DAY_SHORT = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'];
-export const SLOT = { easy: 'Facile', quality: 'Qualité', long: 'Longue' };
+export const SLOT = { easy: 'Footing', quality: 'Rythmée', long: 'Longue' };
 
 // Sensible default weeks (Monday = 0): hard days never back to back, long run on Sunday.
 export const DEFAULT_SCHEDULE = {
@@ -105,7 +105,7 @@ export function pacesOf(profile, scale = 1) {
 /* ---------- Blocks ---------- */
 export const TYPE_LABEL = {
   warm: 'Échauffement', cool: 'Retour au calme', easy: 'Facile', recovery: 'Très facile', steady: 'Endurance',
-  race: 'Allure objectif', tempo: 'Seuil', fast: 'VMA', rep: 'Vitesse', hill: 'Côte', stride: 'Ligne droite', rest: 'Récupération',
+  race: 'Allure objectif', tempo: 'Seuil', fast: 'VMA', rep: 'Vitesse', hill: 'Côte', stride: 'Accélération', rest: 'Récupération',
 };
 const INTENSITY = { warm: 0.3, cool: 0.3, rest: 0.22, recovery: 0.32, easy: 0.4, steady: 0.48, race: 0.64, tempo: 0.74, fast: 0.9, rep: 0.97, hill: 0.92, stride: 0.95 };
 export const intensityOf = (type) => INTENSITY[type] ?? 0.4;
@@ -136,13 +136,13 @@ const LIB = {
     blocks: [B('warm', 15, p.easy), R(n, B('hill', 1, p.interval), B('rest', 2, p.recovery)), B('cool', 10, p.easy)] }),
   fartlek: (p, n) => ({ family: 'fartlek', title: 'Fartlek', why: 'Des changements de rythme libres, pour réveiller la vitesse en douceur.',
     blocks: [B('warm', 12, p.easy), R(n, B('fast', 1, p.interval), B('rest', 1.5, p.easy)), B('cool', 10, p.easy)] }),
-  reps: (p, n) => ({ family: 'reps', title: 'Vitesse (allure R)', why: 'Améliore la vitesse et l\'économie de course : tu dépenses moins d\'énergie à la même allure (Daniels, allure R).',
+  reps: (p, n) => ({ family: 'reps', title: 'Vitesse : accélérations courtes', why: 'Améliore la vitesse et l\'économie de course : tu dépenses moins d\'énergie à la même allure (Daniels, allure R).',
     blocks: [B('warm', 15, p.easy), R(n, B('rep', 1, p.rep), B('rest', 2, p.recovery)), B('cool', 10, p.easy)] }),
   cruise: (p, n, m) => ({ family: 'threshold', title: 'Seuil fractionné', why: 'Repousse ton seuil lactique : tu tiendras une allure plus rapide plus longtemps (Daniels, allure T en « cruise intervals »).',
     blocks: [B('warm', 15, p.easy), R(n, B('tempo', m, p.threshold), B('rest', 1, p.easy)), B('cool', 10, p.easy)] }),
   tempo: (p, m) => ({ family: 'threshold', title: 'Tempo continu', why: 'Un bloc continu à allure seuil : la séance clé pour le 10 km et le semi.',
     blocks: [B('warm', 15, p.easy), B('tempo', m, p.threshold), B('cool', 10, p.easy)] }),
-  vo2: (p, n, m) => ({ family: 'vo2', title: 'VMA (allure I)', why: 'Développe ta VO2max, la taille de ton moteur aérobie (Daniels, allure I). Récupération aussi longue que l\'effort.',
+  vo2: (p, n, m) => ({ family: 'vo2', title: 'Fractionné VMA', why: 'Développe ta VO2max, la taille de ton moteur aérobie (Daniels, allure I). Récupération aussi longue que l\'effort.',
     blocks: [B('warm', 15, p.easy), R(n, B('fast', m, p.interval), B('rest', m * 0.8, p.recovery)), B('cool', 10, p.easy)] }),
   racePace: (p, n, m) => ({ family: 'race', title: 'Allure objectif', why: 'Habitue le corps et la tête à l\'allure exacte de ta course.',
     blocks: [B('warm', 15, p.easy), R(n, B('race', m, p.race), B('rest', 2, p.easy)), B('cool', 10, p.easy)] }),
@@ -179,6 +179,42 @@ export const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStar
 export function scheduleOf(profile) {
   const s = Array.isArray(profile.schedule) && profile.schedule.length === 7 ? profile.schedule : DEFAULT_SCHEDULE[Math.min(6, Math.max(2, profile.days_per_week || 3))];
   return s.map((x) => (x === 'easy' || x === 'quality' || x === 'long' ? x : null));
+}
+
+// The coach places the week by itself from the number of runs and the long-run day:
+// hard days (rythmée, longue) never back to back, rythmées as far as possible from the long
+// run and from each other, and rest days spread out. Monday = 0.
+export function autoSchedule(n, longDay = 6) {
+  const runs = Math.min(6, Math.max(2, n));
+  const qualities = runs >= 5 ? 2 : 1;
+  const others = [0, 1, 2, 3, 4, 5, 6].filter((d) => d !== longDay);
+  const dist = (a, b) => Math.min(Math.abs(a - b), 7 - Math.abs(a - b));
+  let best = null;
+  const choose = (from, k, start = 0, acc = []) => {
+    if (acc.length === k) return [acc];
+    const out = [];
+    for (let i = start; i < from.length; i++) out.push(...choose(from, k, i + 1, [...acc, from[i]]));
+    return out;
+  };
+  for (const days of choose(others, runs - 1)) {
+    for (const q of choose(days, qualities)) {
+      const week = Array(7).fill(null);
+      week[longDay] = 'long';
+      for (const d of days) week[d] = q.includes(d) ? 'quality' : 'easy';
+      const hard = (d) => week[(d + 7) % 7] === 'quality' || week[(d + 7) % 7] === 'long';
+      let score = 0;
+      for (let d = 0; d < 7; d++) {
+        if (hard(d) && hard(d + 1)) score -= 100; // two hard days in a row
+        if (week[d] && week[(d + 1) % 7] && week[(d + 2) % 7]) score -= 6; // three runs in a row
+        if (week[d] && week[(d + 1) % 7]) score -= 2;
+      }
+      for (const d of q) score += 3 * dist(d, longDay);
+      if (q.length === 2) score += 3 * dist(q[0], q[1]);
+      if (q.some((d) => (d + 1) % 7 === longDay)) score -= 20; // no quality the day before the long run
+      if (!best || score > best.score) best = { score, week };
+    }
+  }
+  return best.week;
 }
 
 // Warnings a coach would give about a week layout.
@@ -257,8 +293,8 @@ function buildWeek(profile, w, total, adj, qualityCount, opts = {}) {
     if (opts.noQuality) {
       // Back from a break: the quality day stays a quality day, in a light form (Daniels: strides first, then short pick-ups).
       const light = opts.reentryWeek < Math.ceil(opts.easyWeeks / 2)
-        ? { family: 'reentry', title: 'Qualité en reprise : lignes droites', blocks: [B('easy', 25, p.easy), R(6, B('stride', 1 / 3, p.rep), B('rest', 1, p.recovery)), B('cool', 5, p.easy)] }
-        : { family: 'reentry', title: 'Qualité en reprise : fartlek doux', blocks: [B('warm', 15, p.easy), R(6, B('fast', 0.5, p.interval), B('rest', 1.5, p.easy)), B('cool', 10, p.easy)] };
+        ? { family: 'reentry', title: 'Reprise : footing + accélérations', blocks: [B('easy', 25, p.easy), R(6, B('stride', 1 / 3, p.rep), B('rest', 1, p.recovery)), B('cool', 5, p.easy)] }
+        : { family: 'reentry', title: 'Reprise : fartlek doux', blocks: [B('warm', 15, p.easy), R(6, B('fast', 0.5, p.interval), B('rest', 1.5, p.easy)), B('cool', 10, p.easy)] };
       out.push({ d, kind: 'quality', ...light, why: `Ton jour de qualité, en version allégée : tu reprends après une pause, et les tendons se réadaptent moins vite que le souffle. Les vraies séances (fractionné, seuil) reviennent ${opts.backOn}.` });
       continue;
     }
@@ -315,7 +351,7 @@ function buildWeek(profile, w, total, adj, qualityCount, opts = {}) {
     const s = recovery
       ? { family: 'recovery', title: 'Footing de récupération', why: 'Fait circuler le sang après la séance dure de la veille, sans ajouter de fatigue. Ralentis franchement.', blocks }
       : strides
-        ? { family: 'easy', title: 'Footing + lignes droites', why: 'L\'essentiel de ta progression vient du facile (80/20). Les 6 lignes droites de 20 s entretiennent la vitesse et la foulée sans fatigue.', blocks }
+        ? { family: 'easy', title: 'Footing + accélérations', why: 'L\'essentiel de ta progression vient du facile (80/20). Les 6 accélérations de 20 s entretiennent la vitesse et la foulée sans fatigue.', blocks }
         : { family: 'easy', title: 'Footing facile', why: 'L\'essentiel de ta progression vient du facile : 80 % de ton temps de course devrait être à cette allure.', blocks };
     if (idx >= 0) out[idx] = { d, kind: recovery ? 'recovery' : 'easy', ...s };
     else out.push({ d, kind: recovery ? 'recovery' : 'easy', ...s });
@@ -460,6 +496,44 @@ export function appleSteps(session) {
     }
   }
   return { where: 'Exercice › Course (extérieur) › ⋯ › Séance personnalisée', steps };
+}
+
+// What to do, step by step, in plain words: duration, pace (per km) and how it should feel.
+// Complete enough to run the session without looking at anything else.
+const HOW = {
+  warm: 'Footing tranquille pour chauffer : tu peux parler sans souffler.',
+  cool: 'Footing très tranquille pour redescendre, puis marche un peu.',
+  easy: 'Tu dois pouvoir parler en phrases complètes. Si tu souffles, ralentis.',
+  recovery: 'Plus lent que d\'habitude, sans aucune ambition de vitesse.',
+  steady: 'Régulier et aisé : tu dois finir en te disant que tu aurais pu continuer.',
+  race: 'L\'allure exacte de ta course objectif : contrôlé, pas à fond.',
+  tempo: 'Confortablement dur : tu ne peux dire que quelques mots.',
+  fast: 'Dur : un rythme que tu pourrais tenir 3 à 5 minutes, pas plus.',
+  rep: 'Rapide mais relâché : épaules basses, foulée souple.',
+  hill: 'Fort en montée, buste droit, petits pas rapides. L\'allure ne compte pas en côte.',
+  stride: 'Accélère progressivement jusqu\'à rapide, relâché, sans sprinter à fond.',
+};
+const VERB = { fast: 'vite', rep: 'vite', tempo: 'soutenu (seuil)', race: 'à ton allure objectif', stride: 'en accélération', hill: 'en côte' };
+const NAME = { easy: 'Footing', recovery: 'Footing très lent', steady: 'Endurance', tempo: 'Soutenu (seuil)', race: 'Allure objectif', fast: 'Vite (VMA)', rep: 'Vite' };
+const paceText = (b) => (b.type === 'hill' ? '' : relaxed(b.type) ? `${paceRange(b.pace)} /km` : `${paceRange(b.pace, 5, 5)} /km`);
+
+export function sessionSteps(session) {
+  const one = session.blocks.length === 1;
+  return session.blocks.map((b) => {
+    if (b.type === 'rep') {
+      const w = b.work, r = b.rest;
+      return {
+        title: `${b.reps} fois : ${fmtMin(w.mins)} ${VERB[w.type] || 'vite'}, puis ${fmtMin(r.mins)} ${w.type === 'hill' ? 'en redescendant' : 'tout doucement'}`,
+        lines: [
+          `${w.type === 'hill' ? 'Montée' : 'Effort'} : ${fmtMin(w.mins)}${paceText(w) ? `, vers ${paceText(w)}` : ''}. ${HOW[w.type] || ''}`.trim(),
+          `Récupération : ${fmtMin(r.mins)} en trottinant${w.type === 'hill' ? '' : ` (${paceRange(r.pace)} /km)`}, ou en marchant si besoin. Repars quand le souffle est revenu.`,
+        ],
+      };
+    }
+    const name = b.type === 'warm' ? 'Échauffement' : b.type === 'cool' ? 'Retour au calme'
+      : one && b.type === 'steady' ? 'Sortie longue' : NAME[b.type] || TYPE_LABEL[b.type];
+    return { title: `${name} : ${fmtMin(b.mins)}`, lines: [`Allure : ${paceText(b)}.`, HOW[b.type] || HOW.easy] };
+  });
 }
 
 export function segments(session) {
