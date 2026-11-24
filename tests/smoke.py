@@ -36,6 +36,8 @@ while d < now - timedelta(days=1):
                          'weight_kg': round(kg * (0.6 if k == 0 else 1) + i * 0.2, 1), 'reps': random.choice([6, 7, 8, 10]), 'duration_seconds': None, 'distance_km': None, 'superset_id': None})
     d += timedelta(days=random.choice([2, 2, 3]))
 runs = [{'id': f'r{j}', 'done_at': (now - timedelta(days=60 - j * 5)).isoformat(), 'distance_km': 5 + j % 4, 'duration_s': int((5 + j % 4) * 370), 'avg_hr': 150, 'calories': 400, 'feel': 3, 'source': 'strava', 'notes': f'Course {j}', 'session_key': None} for j in range(10)]
+# 1.18.0: one incline walk (12-3-30, felt easy): must not count as a run, and raises the template's level.
+runs.append({'id': 'w1', 'done_at': (now - timedelta(days=3)).isoformat(), 'distance_km': 2.4, 'duration_s': 1800, 'avg_hr': 130, 'calories': 250, 'feel': 2, 'source': 'timer', 'notes': '12-3-30', 'session_key': 'tpl:12-3-30', 'activity': 'incline_walk', 'speed_kmh': 4.8, 'incline_pct': 12, 'elevation_m': 288, 'segments': None})
 
 T = {'grants': [], 'feedback': [], 'workouts': workouts, 'sets': sets, 'custom_exercises': [], 'coach_plans': [], 'routines': [], 'run_profile': [], 'run_logs': runs, 'scheduled_pushes': [], 'push_subscriptions': []}
 writes, errors, rpcs = [], [], []
@@ -91,7 +93,7 @@ with sync_playwright() as p:
         pg.route(re.compile(r'.*/version\.json.*'), lambda r, q: r.fulfill(status=404, body=''))
         pg.add_init_script(f"localStorage.setItem('sb-{REF}-auth-token', JSON.stringify({json.dumps(sess)}))")
         pg.emulate_media(color_scheme=mode)
-        for path in ['/', '/exercices', '/progres', '/course', '/coach', '/profil', '/historique', '/variante']:
+        for path in ['/', '/exercices', '/progres', '/course', '/coach', '/profil', '/historique', '/variante', '/tapis']:
             pg.goto(BASE + path); pg.wait_for_timeout(1200)
             sw = pg.evaluate('document.documentElement.scrollWidth')
             check(sw <= 390, f'{mode} {path} no horizontal overflow ({sw})')
@@ -215,6 +217,36 @@ with sync_playwright() as p:
     check(pg.locator('.list').last.locator(':scope > div').count() <= 3, 'three latest records by default')
     pg.locator('.metric-pick').select_option('maxKg'); pg.wait_for_timeout(300)
     check('Charge max' in pg.locator('.metric-pick').evaluate("e => e.options[e.selectedIndex].text"), 'metric menu switches the chart')
+
+    # 1.18.0: tapis and incline walking: guided session on the phone, saved with its D+.
+    pg.close()
+    pg = b.new_page(viewport={'width': 390, 'height': 844})
+    pg.on('pageerror', lambda e: errors.append(f'tapis PAGEERR {e}'))
+    pg.route(re.compile(r'.*supabase\.co/.*'), handle)
+    pg.add_init_script(f"localStorage.setItem('sb-{REF}-auth-token', JSON.stringify({json.dumps(sess)}))")
+    pg.clock.install()
+    pg.goto(BASE + '/tapis'); pg.wait_for_timeout(1200)
+    body = pg.locator('main').inner_text()
+    check('12-3-30' in body and 'niveau 2' in body, 'tapis: templates listed, level raised after an easy session')
+    check('Tes dernières séances' in body and '288 m D+' in body, 'tapis: history with D+')
+    pg.get_by_role('button', name=re.compile('^12-3-30 · niveau')).click(); pg.wait_for_timeout(300)
+    check('13 %' in pg.locator('main').inner_text(), 'tapis: next 12-3-30 at 13 %')
+    pg.get_by_role('button', name='Démarrer sur le téléphone').click(); pg.wait_for_timeout(500)
+    dlg = pg.get_by_role('dialog')
+    check('Règle le tapis' in dlg.inner_text(), 'tapis: timer tells how to set the tapis')
+    pg.get_by_role('button', name='Pente plus').click(); pg.wait_for_timeout(200)
+    pg.clock.fast_forward('05:00'); pg.wait_for_timeout(500)
+    check('13,5 %' in dlg.inner_text(), 'tapis: incline changed by hand')
+    pg.screenshot(path=f'{SHOTS}/flow-tapis-timer.png')
+    pg.get_by_role('button', name='Terminer').click(); pg.wait_for_timeout(300)
+    pg.locator('.sheet').get_by_role('button', name='Terminer').click(); pg.wait_for_timeout(500)
+    pg.get_by_role('button', name='Facile', exact=True).click()
+    pg.screenshot(path=f'{SHOTS}/flow-tapis-end.png', full_page=True)
+    pg.get_by_role('button', name='Enregistrer', exact=True).click(); pg.wait_for_timeout(1000)
+    w = T['run_logs'][-1]
+    check(w.get('activity') == 'incline_walk' and w.get('session_key') == 'tpl:12-3-30' and (w.get('elevation_m') or 0) > 0 and w.get('calories', 0) > 0, f"tapis: walk saved with D+ ({w.get('elevation_m')} m, {w.get('distance_km')} km, {w.get('calories')} kcal)")
+    pg.goto(BASE + '/course'); pg.wait_for_timeout(1000)
+    check(pg.get_by_role('link', name=re.compile('Tapis et marche inclinée')).count() == 1, 'course links to the tapis screen')
 
     # Sign-up form (logged out).
     lo = b.new_page(viewport={'width': 390, 'height': 844})

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { readRunScreenshot, parseRunText } from '../lib/runocr.js';
 import { useData, saveRunProfile, saveRunLog, deleteRunLog, deleteRunProfile } from '../data.jsx';
 import { useUi } from '../ui.jsx';
@@ -129,6 +129,17 @@ const PLAIN = { width: '100%', background: 'transparent', border: 'none', color:
 const longDayOf = (sched) => { const i = sched.indexOf('long'); return i >= 0 ? i : 6; };
 const fmtDate = (ymdStr) => new Date(`${ymdStr}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
+const TAPIS_LINK = (
+  <Link to="/tapis" className="card row" style={{ gap: 12, color: 'inherit', textDecoration: 'none' }}>
+    <span className="tile-icon" style={{ width: 40, height: 40, background: 'color-mix(in srgb, var(--ok) 20%, var(--chip))' }}><Icon name="up" size={20} /></span>
+    <span className="grow stack" style={{ gap: 1 }}>
+      <span style={{ fontWeight: 650 }}>Tapis et marche inclinée</span>
+      <span className="xs muted">12-3-30 et séances guidées, vitesse et pente, dénivelé</span>
+    </span>
+    <Icon name="chevron" size={16} />
+  </Link>
+);
+
 function Choice({ on, title, detail, onClick }) {
   return (
     <button onClick={onClick} aria-pressed={on} style={{ textAlign: 'left', width: '100%', color: 'inherit', background: on ? 'var(--raised)' : 'transparent', border: 'none' }}>
@@ -201,7 +212,11 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
 
   if (step === 'goal') {
     return question('Ton objectif ?', auto ? `Ton niveau, je le connais déjà grâce à tes ${fit.runs} course${fit.runs > 1 ? 's' : ''}. Trois questions et ton plan est prêt.` : 'Quelques questions et ton plan est prêt.', (
-      <div className="list">{Object.keys(GOALS).map((k) => <Choice key={k} on={goal === k} title={GOAL_TEXT[k]} onClick={() => { setGoal(k); next(); }} />)}</div>
+      <>
+        <div className="list">{Object.keys(GOALS).map((k) => <Choice key={k} on={goal === k} title={GOAL_TEXT[k]} onClick={() => { setGoal(k); next(); }} />)}</div>
+        {!initial && <span className="label" style={{ paddingTop: 8 }}>Plutôt tapis ou marche ?</span>}
+        {!initial && TAPIS_LINK}
+      </>
     ), false);
   }
   if (step === 'week') {
@@ -622,6 +637,7 @@ export default function Course() {
             )}
           </>
         )}
+        {!draft && tab === 'seance' && TAPIS_LINK}
 
         {!draft && tab === 'plan' && (
           <>

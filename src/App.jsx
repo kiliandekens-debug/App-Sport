@@ -16,6 +16,7 @@ import Montre from './screens/Montre.jsx';
 import Routine from './screens/Routine.jsx';
 import Course from './screens/Course.jsx';
 import Historique from './screens/Historique.jsx';
+import Tapis from './screens/Tapis.jsx';
 import { PasswordForm } from './password.jsx';
 import { UpdateBanner, WhatsNew, useFreshVersion } from './update.jsx';
 import { WatchSync } from './watch.js';
@@ -73,6 +74,7 @@ function Shell({ user }) {
         <Route path="/coach" element={<Coach />} />
         <Route path="/course" element={<Course />} />
         <Route path="/historique" element={<Historique />} />
+        <Route path="/tapis" element={<Tapis user={user} />} />
         <Route path="/profil" element={<Profil user={user} />} />
         <Route path="/montre" element={<Montre />} />
         <Route path="/routines/:id" element={<Routine key={pathname} />} />

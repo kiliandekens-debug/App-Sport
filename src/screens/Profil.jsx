@@ -62,6 +62,15 @@ export default function Profil({ user }) {
     session.cancel();
     supabase.auth.signOut();
   };
+  // Body weight: only used to count the calories of walks and tapis sessions.
+  const editWeight = async () => {
+    const v = await ui.prompt({ title: 'Ton poids (kg)', message: 'Sert seulement à calculer les calories de la marche et du tapis.', value: user?.user_metadata?.weight_kg ? String(user.user_metadata.weight_kg).replace('.', ',') : '', placeholder: '75', ok: 'Enregistrer' });
+    if (v == null) return;
+    const kg = Math.round(Number(v.replace(',', '.')) * 10) / 10;
+    if (!(kg >= 30 && kg <= 250)) { ui.notify('Poids entre 30 et 250 kg'); return; }
+    const { error } = await supabase.auth.updateUser({ data: { weight_kg: kg } });
+    ui.notify(error ? error.message : 'Poids enregistré');
+  };
   const { summary: s } = data;
   const name = user?.user_metadata?.name || 'Kilian';
 
@@ -94,7 +103,7 @@ export default function Profil({ user }) {
     try {
       const runs = await readStravaFile(file);
       if (!runs.length) throw new Error('Aucune course trouvée dans ce fichier.');
-      const res = await importRuns(runs, data.runLogs);
+      const res = await importRuns(runs, data.allLogs);
       await data.refresh();
       setStravaStatus(`${res.added} course${res.added > 1 ? 's' : ''} ajoutée${res.added > 1 ? 's' : ''}${res.skipped ? `, ${res.skipped} déjà présente${res.skipped > 1 ? 's' : ''}` : ''}.`);
     } catch (err) {
@@ -120,7 +129,7 @@ export default function Profil({ user }) {
     setStravaStatus('Lecture d\'Apple Santé…');
     try {
       const runs = await healthRuns(365);
-      const res = await importRuns(runs, data.runLogs);
+      const res = await importRuns(runs, data.allLogs);
       await data.refresh();
       setStravaStatus(runs.length ? `${res.added} course${res.added > 1 ? 's' : ''} ajoutée${res.added > 1 ? 's' : ''}${res.skipped ? `, ${res.skipped} déjà présente${res.skipped > 1 ? 's' : ''}` : ''}.` : 'Aucune course trouvée dans Apple Santé. Vérifie l\'accès dans Réglages › Santé › Accès aux données.');
     } catch (err) {
@@ -252,6 +261,7 @@ export default function Profil({ user }) {
         <h2 className="label">Compte</h2>
         <div className="glist">
           {data.superadmin && <Row icon="user" tint="#8E8E93" onClick={() => window.open('https://admin.kadeon.be', '_blank')}>Back-office</Row>}
+          <Row icon="user" tint="#34C759" onClick={editWeight} right={<span className="xs muted">{user?.user_metadata?.weight_kg ? `${String(user.user_metadata.weight_kg).replace('.', ',')} kg` : 'À indiquer'}</span>}>Poids</Row>
           <Row icon="edit" tint="#8E8E93" onClick={() => setPwd(!pwd)} aria-expanded={pwd}>Mot de passe</Row>
           <Row icon="spark" tint="#E8500E" onClick={() => setNews(true)} right={<span className="xs muted">{VERSION}</span>}>Nouveautés</Row>
           <Row onClick={signOut} danger>Se déconnecter</Row>
