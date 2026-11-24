@@ -6,6 +6,12 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.14.1', date: '2026-11-24', title: 'Coach course plus juste',
+    items: [
+      'Course : le coach ne dit plus « la montre confirme, tu tiens les allures » quand tes fractions étaient trop rapides. Le conseil de ralentir reste affiché.',
+    ],
+  },
+  {
     version: '1.14.0', date: '2026-11-24', title: 'Montre, course et coach plus malins',
     items: [
       'Fin du repos : une seule vibration. Quand la montre suit la séance, l\'iPhone n\'envoie plus sa notification en double.',

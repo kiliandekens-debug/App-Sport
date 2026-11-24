@@ -360,7 +360,7 @@ export function adaptation(logs, planFor, missedRecent) {
   const allParts = measured.reduce((a, l) => a + l.splits.total, 0);
   if (allParts >= 3 && slowParts / allParts > 0.5) {
     Object.assign(res, { paceScale: Math.max(res.paceScale, 1.03), volScale: Math.min(res.volScale, 1), level: 'easier', message: `Sur tes dernières séances, ${slowParts} parties sur ${allParts} étaient plus lentes que l'allure visée (mesuré par la montre). Je ralentis les allures de 3 % pour que tu puisses les tenir.` });
-  } else if (allParts >= 3 && measured.every((l) => l.splits.slow === 0) && measured.some((l) => l.splits.total > 1) && res.level === 'ok') {
+  } else if (allParts >= 3 && measured.every((l) => l.splits.slow === 0 && !l.splits.fast) && measured.some((l) => l.splits.total > 1) && res.level === 'ok') {
     res.message = 'La montre confirme : tu tiens les allures prévues sur tes dernières séances. On continue comme ça.';
   }
   if (missedRecent >= 2) {
