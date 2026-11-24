@@ -6,6 +6,14 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.14.2', date: '2026-11-24', title: 'Sécurité renforcée',
+    items: [
+      'Les illustrations des exercices sont maintenant servies par Kadence : plus rapides, et elles s\'affichent même sans réseau dans l\'app iPhone.',
+      'Site protégé par des règles de sécurité plus strictes (contenu autorisé, connexion chiffrée imposée, pas d\'affichage dans un autre site).',
+      'Vérification automatique que personne ne peut voir ni modifier les données d\'un autre compte.',
+    ],
+  },
+  {
     version: '1.14.1', date: '2026-11-24', title: 'Coach course plus juste',
     items: [
       'Course : le coach ne dit plus « la montre confirme, tu tiens les allures » quand tes fractions étaient trop rapides. Le conseil de ralentir reste affiché.',
