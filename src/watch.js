@@ -11,7 +11,8 @@ import { nextSession } from './lib/routines.js';
 import { incrementOf, muscleOf } from './lib/exercises.js';
 import { supabase, supabaseUrl, supabaseKey } from './supabase.js';
 import { fmtKg } from './lib/stats.js';
-import { watchWorkout } from './lib/running.js';
+import { watchWorkout, guidedRun, buildPlan, runVerdict, ymd } from './lib/running.js';
+import { saveRunLog } from './data.jsx';
 
 const SEQ = 'app-sport-watch-seq';
 const readSeq = () => { try { return Number(localStorage.getItem(SEQ)) || 0; } catch { return 0; } };
@@ -35,11 +36,39 @@ function alternativesOf(data, name) {
     });
 }
 
+// The next sessions of the running plan (today first), for Kadence's running screen on the watch.
+export function watchRuns(data) {
+  if (!data?.runProfile) return [];
+  const today = ymd(new Date());
+  return buildPlan(data.runProfile, data.runLogs, data.workouts).weeks.flat()
+    .filter((x) => !x.done && x.ymd >= today).slice(0, 7).map(guidedRun);
+}
+
+// A run recorded by Kadence on the watch: saved as a run log, linked to its session of the
+// plan, with the verdict against the plan from the watch's own splits (one per step).
+async function saveWatchRun(a, data) {
+  if (!(a.meters > 50) || !(a.secs > 30)) return;
+  const done = new Date(a.start);
+  if (data.runLogs.some((l) => Math.abs(new Date(l.done_at).getTime() - done.getTime()) < 3 * 60000)) return;
+  const plan = data.runProfile ? buildPlan(data.runProfile, data.runLogs, data.workouts).weeks.flat() : [];
+  const session = a.key ? plan.find((x) => x.key === a.key) : null;
+  const splits = session && Array.isArray(a.splits) && a.splits.length ? runVerdict(session, a.splits) : null;
+  await saveRunLog({
+    done_at: done.toISOString(), session_key: session?.key || null, kind: session?.kind || null,
+    distance_km: Math.round(a.meters / 10) / 100, duration_s: Math.round(a.secs),
+    avg_hr: a.hr > 0 ? Math.round(a.hr) : null, calories: a.kcal > 0 ? Math.round(a.kcal) : null,
+    source: 'watch', splits,
+  });
+  await data.refresh();
+}
+
 export function watchState(s, suggestion, ack, data) {
-  if (!s?.active) return { v: 1, ack, active: false, suggestion: suggestion || null, session: null };
+  const runs = data ? watchRuns(data) : [];
+  if (!s?.active) return { v: 1, ack, active: false, suggestion: suggestion || null, session: null, runs };
   return {
     v: 1,
     ack,
+    runs,
     active: true,
     suggestion: null,
     session: {
@@ -200,6 +229,8 @@ function WatchSyncInner() {
             } finally {
               done();
             }
+          } else if (a.type === 'run') {
+            try { await saveWatchRun(a, dataRef.current); } catch { /* offline: the run is in Apple Health and comes back with the next import */ }
           } else if (cur.active) {
             cur.fromWatch(a);
           }

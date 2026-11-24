@@ -536,6 +536,36 @@ export function sessionSteps(session) {
   });
 }
 
+// The session for Kadence's own running screen on the watch: one step per part, in the
+// order the watch runs them (same order as runSteps(), so its splits fit runVerdict()).
+// phase: work (orange), recovery (blue), easy (green). fast/slow: target pace band in s/km
+// (0 = none); alert: warn when outside the band (efforts only, not hills or 20 s strides).
+const SHORT = {
+  warm: 'Footing tranquille', cool: 'Très tranquille', easy: 'Tu peux parler', recovery: 'Plus lent que d\'habitude',
+  steady: 'Aisé et régulier', race: 'Allure de course, contrôlé', tempo: 'Quelques mots seulement', fast: 'Dur, 3 à 5 min max',
+  rep: 'Rapide et relâché', hill: 'Fort, petits pas', stride: 'Accélère, relâché', rest: 'Trottine tout doucement',
+};
+export function guidedRun(session) {
+  const one = session.blocks.length === 1;
+  const steps = [];
+  const add = (b, title) => {
+    const work = !relaxed(b.type);
+    const band = b.pace && b.type !== 'hill' ? (work ? [b.pace - 5, b.pace + 5] : [b.pace - 5, b.pace + 10]) : [0, 0];
+    steps.push({
+      secs: Math.round(b.mins * 60), phase: b.type === 'rest' ? 'recovery' : work ? 'work' : 'easy', title, hint: SHORT[b.type] || '',
+      fast: Math.round(band[0]), slow: Math.round(band[1]), alert: work && b.type !== 'hill' && b.type !== 'stride',
+    });
+  };
+  for (const b of session.blocks) {
+    if (b.type === 'rep') {
+      for (let i = 0; i < b.reps; i++) { add(b.work, `${fmtMin(b.work.mins)} ${VERB[b.work.type] || 'vite'}`); add(b.rest, 'Récupération'); }
+    } else {
+      add(b, b.type === 'warm' ? 'Échauffement' : b.type === 'cool' ? 'Retour au calme' : one && b.type === 'steady' ? 'Sortie longue' : one && b.type === 'easy' ? 'Footing' : NAME[b.type] || TYPE_LABEL[b.type]);
+    }
+  }
+  return { key: session.key, ymd: session.ymd, title: session.title, mins: session.mins, km: session.km, kind: session.kind, steps };
+}
+
 export function segments(session) {
   const out = [];
   for (const b of session.blocks) {
