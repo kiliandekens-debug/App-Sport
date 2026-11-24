@@ -6,6 +6,16 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.16.2', date: '2026-11-24', title: 'Progrès plus lisible',
+    items: [
+      'L\'écran Progrès en trois blocs : ta semaine, un exercice, tes records.',
+      'Les séries par muscle en nombres entiers, sur une ligne. Le schéma du corps est replié.',
+      '« À surveiller » ramené au conseil le plus utile.',
+      'Une seule phrase de progression (« +7 kg (+9 %) depuis… »), et la mesure se choisit dans un petit menu.',
+      'Les 3 derniers records d\'abord ; le volume par mois est replié.',
+    ],
+  },
+  {
     version: '1.16.1', date: '2026-11-24', title: 'Plan de course en trois questions',
     items: [
       'Nombre de sorties et jour de la sortie longue sur le même écran, avec ta semaine qui se met à jour en direct.',
