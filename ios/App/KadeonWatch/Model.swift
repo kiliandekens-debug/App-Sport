@@ -145,6 +145,100 @@ struct PhoneState: Codable {
     var active: Bool
     var suggestion: String?
     var session: WSession?
+    /// Next sessions of the running plan (today first). Missing from older iPhone versions.
+    var runs: [WRun]?
+}
+
+// MARK: - Running (same shapes as guidedRun() in src/lib/running.js)
+
+/// One part of a run: phase work (orange), recovery (blue) or easy (green). fast/slow is the
+/// target pace band in seconds per km (0 = none); alert = warn when outside it.
+struct WRunStep: Codable, Equatable, Hashable {
+    var secs: Double
+    var phase: String
+    var title: String
+    var hint: String
+    var fast: Double
+    var slow: Double
+    var alert: Bool
+}
+
+struct WRun: Codable, Equatable, Hashable, Identifiable {
+    var key: String
+    var ymd: String
+    var title: String
+    var mins: Int
+    var km: Double
+    var kind: String?
+    var steps: [WRunStep]
+
+    var id: String { key }
+
+    /// A free run: no plan, no steps.
+    static let free = WRun(key: "", ymd: "", title: "Course libre", mins: 0, km: 0, kind: nil, steps: [])
+
+    /// « Aujourd'hui », « Demain » or « mer. 3 ».
+    var when: String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "fr_FR")
+        f.dateFormat = "yyyy-MM-dd"
+        guard let d = f.date(from: ymd) else { return "" }
+        let cal = Calendar.current
+        if cal.isDateInToday(d) { return "Aujourd'hui" }
+        if cal.isDateInTomorrow(d) { return "Demain" }
+        f.dateFormat = "EEE d"
+        return f.string(from: d)
+    }
+    var isToday: Bool { when == "Aujourd'hui" }
+
+    /// « 15 min footing · 4 × 6 min soutenu · 10 min retour au calme ».
+    var outline: [String] {
+        var out: [String] = []
+        var i = 0
+        while i < steps.count {
+            let s = steps[i]
+            if s.phase != "easy", i + 1 < steps.count, steps[i + 1].phase == "recovery" {
+                var n = 0
+                var j = i
+                while j + 1 < steps.count, steps[j].title == s.title, steps[j + 1].phase == "recovery" { n += 1; j += 2 }
+                out.append("\(n) × \(s.title)")
+                i = j
+            } else {
+                out.append("\(Int((s.secs / 60).rounded())) min \(s.title.lowercased())")
+                i += 1
+            }
+        }
+        return out
+    }
+}
+
+/// End of a run, shown on the watch.
+struct RunSummary: Equatable {
+    var title: String
+    var seconds: Double
+    var meters: Double
+    var heartRate: Double
+    var calories: Double
+    /// One per effort with a target pace: "ok", "fast" or "slow".
+    var efforts: [String]
+    var note: String
+}
+
+/// 341 → "5:41" (seconds per km).
+func fmtPace(_ secPerKm: Double) -> String {
+    guard secPerKm.isFinite, secPerKm > 0, secPerKm < 3600 else { return "--:--" }
+    return mmss(Int(secPerKm.rounded()))
+}
+
+/// 3420 m → "3,42".
+func fmtKm(_ meters: Double) -> String {
+    String(format: "%.2f", max(0, meters) / 1000).replacingOccurrences(of: ".", with: ",")
+}
+
+/// 1:02:05 or 38:20.
+func hms(_ seconds: Double) -> String {
+    let t = max(0, Int(seconds))
+    return t >= 3600 ? String(format: "%d:%02d:%02d", t / 3600, (t % 3600) / 60, t % 60) : mmss(t)
 }
 
 struct Summary: Equatable {

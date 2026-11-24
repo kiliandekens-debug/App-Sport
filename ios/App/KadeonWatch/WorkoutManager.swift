@@ -1,5 +1,7 @@
 import Foundation
 import HealthKit
+import CoreLocation
+import WatchKit
 
 /// Strength training workout on the watch: live heart rate and calories, saved to Apple
 /// Health at the end (it then counts in the activity rings).
@@ -123,5 +125,392 @@ final class WorkoutManager: NSObject, ObservableObject, HKWorkoutSessionDelegate
             if let avg { self.averageHeartRate = avg }
             if let kcal { self.calories = kcal }
         }
+    }
+}
+
+// MARK: - Running, recorded by Kadence itself (GPS, heart rate, guided steps)
+
+
+/// An outdoor run on the watch: a running workout (distance, heart rate, calories, saved to
+/// Apple Health with its GPS route), guided step by step through the session of the plan,
+/// with a vibration at each change of step, at each kilometre, and when the pace leaves the
+/// target band. Ends with the splits of each step, sent to the iPhone for the verdict.
+final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HKLiveWorkoutBuilderDelegate, CLLocationManagerDelegate {
+    enum Phase: Equatable { case idle, countdown(Int), running, paused, saving }
+
+    @Published private(set) var phase: Phase = .idle
+    @Published private(set) var run: WRun?
+    @Published private(set) var elapsed: Double = 0           // active time, pauses excluded
+    @Published private(set) var meters: Double = 0
+    @Published private(set) var heartRate: Double = 0
+    @Published private(set) var averageHeartRate: Double = 0
+    @Published private(set) var calories: Double = 0
+    @Published private(set) var pace: Double = 0              // s/km over the last ~30 s, 0 = unknown
+    @Published private(set) var stepIndex = 0
+    @Published private(set) var paceWarning = 0               // -1 too slow, 1 too fast
+    @Published private(set) var autoPaused = false
+    @Published private(set) var kmToast: (km: Int, pace: Double)?
+    @Published private(set) var gpsReady = false
+    @Published var summary: RunSummary?
+
+    /// Called with the finished run (for the iPhone): start, secs, meters, hr, kcal, splits.
+    var onFinish: (([String: Any]) -> Void)?
+
+    private let store = HKHealthStore()
+    private var session: HKWorkoutSession?
+    private var builder: HKLiveWorkoutBuilder?
+    private var route: HKWorkoutRouteBuilder?
+    private let location = CLLocationManager()
+    private var ticker: Timer?
+    private var startDate = Date()
+    private var samples: [(t: Double, m: Double)] = []
+    private var stepStart: (t: Double, m: Double) = (0, 0)
+    private var splits: [[String: Double]] = []
+    private var effortResults: [String] = []
+    private var lastKm = 0
+    private var lastKmAt: (t: Double, m: Double) = (0, 0)
+    private var outside = 0
+    private var lastWarnAt: Double = -100
+    private var still = 0
+    private var moving = 0
+    private var manualPause = false
+
+    private let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate)!
+    private let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
+    private let distanceType = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning)!
+
+    var active: Bool { phase != .idle }
+    var steps: [WRunStep] { run?.steps ?? [] }
+    var step: WRunStep? { steps.indices.contains(stepIndex) ? steps[stepIndex] : nil }
+    var guided: Bool { !steps.isEmpty }
+    var finishedPlan: Bool { guided && stepIndex >= steps.count }
+
+    /// Seconds left in the current step.
+    var stepLeft: Double {
+        guard step != nil else { return 0 }
+        return max(0, stepEnd(stepIndex) - elapsed)
+    }
+    var stepProgress: Double {
+        guard let s = step, s.secs > 0 else { return 0 }
+        return min(1, max(0, 1 - stepLeft / s.secs))
+    }
+    /// « 2 / 4 » among the steps of the same phase.
+    var stepRank: (Int, Int) {
+        guard let s = step else { return (0, 0) }
+        let same = steps.indices.filter { steps[$0].phase == s.phase }
+        return ((same.firstIndex(of: stepIndex) ?? 0) + 1, same.count)
+    }
+    var nextStep: WRunStep? { steps.indices.contains(stepIndex + 1) ? steps[stepIndex + 1] : nil }
+    var averagePace: Double { meters > 50 ? elapsed / (meters / 1000) : 0 }
+
+    private func stepEnd(_ i: Int) -> Double { steps.prefix(i + 1).reduce(0) { $0 + $1.secs } }
+
+    // MARK: before the start
+
+    /// Health and location access, then the GPS warms up while the runner gets ready.
+    func prepare() {
+        location.delegate = self
+        location.activityType = .fitness
+        location.desiredAccuracy = kCLLocationAccuracyBest
+        if location.authorizationStatus == .notDetermined { location.requestWhenInUseAuthorization() }
+        location.startUpdatingLocation()
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        let share: Set<HKSampleType> = [HKObjectType.workoutType(), energyType, distanceType, HKSeriesType.workoutRoute()]
+        let read: Set<HKObjectType> = [HKObjectType.workoutType(), hrType, energyType, distanceType]
+        store.requestAuthorization(toShare: share, read: read) { _, _ in }
+    }
+
+    /// Leaving the start screen without running.
+    func unprepare() {
+        if phase == .idle { location.stopUpdatingLocation() }
+    }
+
+    /// 3, 2, 1, then the workout starts.
+    func start(_ r: WRun) {
+        guard phase == .idle else { return }
+        run = r
+        summary = nil
+        prepare()
+        phase = .countdown(3)
+        WKInterfaceDevice.current().play(.click)
+        var n = 3
+        Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] t in
+            guard let self else { t.invalidate(); return }
+            n -= 1
+            if n > 0 {
+                self.phase = .countdown(n)
+                WKInterfaceDevice.current().play(.click)
+            } else {
+                t.invalidate()
+                self.begin()
+            }
+        }
+    }
+
+    /// Countdown cancelled.
+    func cancel() {
+        if case .countdown = phase {
+            phase = .idle
+            run = nil
+            location.stopUpdatingLocation()
+        }
+    }
+
+    private func begin() {
+        let config = HKWorkoutConfiguration()
+        config.activityType = .running
+        config.locationType = .outdoor
+        do {
+            let s = try HKWorkoutSession(healthStore: store, configuration: config)
+            let b = s.associatedWorkoutBuilder()
+            b.dataSource = HKLiveWorkoutDataSource(healthStore: store, workoutConfiguration: config)
+            s.delegate = self
+            b.delegate = self
+            session = s
+            builder = b
+            route = HKWorkoutRouteBuilder(healthStore: store, device: nil)
+            resetCounters()
+            startDate = Date()
+            s.startActivity(with: startDate)
+            b.beginCollection(withStart: startDate) { _, _ in }
+            phase = .running
+            WKInterfaceDevice.current().play(.start)
+            ticker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.tick() }
+        } catch {
+            phase = .idle
+            run = nil
+        }
+    }
+
+    private func resetCounters() {
+        elapsed = 0; meters = 0; heartRate = 0; averageHeartRate = 0; calories = 0; pace = 0
+        stepIndex = 0; paceWarning = 0; autoPaused = false; kmToast = nil
+        samples = []; stepStart = (0, 0); splits = []; effortResults = []
+        lastKm = 0; lastKmAt = (0, 0); outside = 0; lastWarnAt = -100; still = 0; moving = 0; manualPause = false
+    }
+
+    // MARK: every second
+
+    private func tick() {
+        guard let b = builder else { return }
+        elapsed = b.elapsedTime(at: Date())
+        guard phase == .running else { return }
+
+        // Pace over the last ~30 s of running.
+        samples.append((elapsed, meters))
+        samples.removeAll { elapsed - $0.t > 35 }
+        if let first = samples.first, elapsed - first.t >= 15, meters - first.m >= 20 {
+            pace = (elapsed - first.t) / ((meters - first.m) / 1000)
+        } else if elapsed > 20 {
+            pace = 0
+        }
+
+        // Steps: vibration and 3-2-1 before each change.
+        if guided, !finishedPlan {
+            let left = stepEnd(stepIndex) - elapsed
+            if left <= 3.5, left > 0.5 { WKInterfaceDevice.current().play(.click) }
+            if left <= 0 { nextStepNow(auto: true) }
+            checkPace()
+        }
+
+        // Every kilometre.
+        let km = Int(meters / 1000)
+        if km > lastKm {
+            let split = (elapsed - lastKmAt.t) / max(0.001, (meters - lastKmAt.m) / 1000)
+            lastKm = km
+            lastKmAt = (elapsed, meters)
+            kmToast = (km, split)
+            WKInterfaceDevice.current().play(.notification)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+                if self?.kmToast?.km == km { self?.kmToast = nil }
+            }
+        }
+    }
+
+    /// Outside the target band for 10 s in a row: one warning, at most every 30 s.
+    private func checkPace() {
+        guard let s = step, s.alert, s.fast > 0, pace > 0, elapsed - stepStart.t > 20 else { paceWarning = 0; outside = 0; return }
+        let w = pace < s.fast ? 1 : pace > s.slow ? -1 : 0
+        if w == 0 { outside = 0; paceWarning = 0; return }
+        outside += 1
+        if outside >= 10 {
+            paceWarning = w
+            if elapsed - lastWarnAt > 30 {
+                lastWarnAt = elapsed
+                WKInterfaceDevice.current().play(w > 0 ? .directionDown : .directionUp)
+            }
+        }
+    }
+
+    /// Closes the current step (its split) and moves to the next one.
+    func nextStepNow(auto: Bool = false) {
+        guard guided, !finishedPlan, let s = step else { return }
+        let secs = elapsed - stepStart.t
+        let m = meters - stepStart.m
+        splits.append(["secs": secs, "meters": m])
+        if s.alert, s.fast > 0, m > 50 {
+            let p = secs / (m / 1000)
+            effortResults.append(p < s.fast ? "fast" : p > s.slow ? "slow" : "ok")
+        }
+        stepStart = (elapsed, meters)
+        stepIndex += 1
+        paceWarning = 0
+        outside = 0
+        if finishedPlan {
+            WKInterfaceDevice.current().play(.success)
+        } else {
+            WKInterfaceDevice.current().play(step?.phase == "work" ? .start : .stop)
+        }
+    }
+
+    // MARK: pause, end
+
+    func pause() {
+        guard phase == .running else { return }
+        manualPause = true
+        session?.pause()
+    }
+
+    func resume() {
+        guard phase == .paused else { return }
+        manualPause = false
+        autoPaused = false
+        session?.resume()
+    }
+
+    func lock() { WKInterfaceDevice.current().enableWaterLock() }
+
+    /// Ends the run: saved to Apple Health (with the route) and sent to the iPhone, or dropped.
+    func end(save: Bool) {
+        guard let s = session, let b = builder else { phase = .idle; run = nil; return }
+        ticker?.invalidate()
+        ticker = nil
+        location.stopUpdatingLocation()
+        let end = Date()
+        elapsed = b.elapsedTime(at: end)
+        // The step in progress counts too (the verdict needs every step that was run).
+        if guided, !finishedPlan, elapsed - stepStart.t > 5 {
+            splits.append(["secs": elapsed - stepStart.t, "meters": meters - stepStart.m])
+        }
+        let r = run
+        let payload: [String: Any] = [
+            "type": "run", "key": r?.key ?? "", "start": startDate.timeIntervalSince1970 * 1000,
+            "secs": elapsed, "meters": meters, "hr": averageHeartRate, "kcal": calories,
+            "splits": guided ? splits : [],
+        ]
+        let worth = save && meters >= 200 && elapsed >= 60
+        if worth {
+            let slow = effortResults.filter { $0 == "slow" }.count
+            let fast = effortResults.filter { $0 == "fast" }.count
+            let ok = effortResults.count - slow - fast
+            let note = effortResults.isEmpty ? "" : "Allure tenue sur \(ok) / \(effortResults.count) efforts"
+                + (fast > 0 ? " · \(fast) trop vite" : "") + (slow > 0 ? " · \(slow) trop lent" + (slow > 1 ? "s" : "") : "")
+            summary = RunSummary(title: r?.title ?? "Course", seconds: elapsed, meters: meters, heartRate: averageHeartRate,
+                                 calories: calories, efforts: effortResults, note: note)
+        }
+        phase = .saving
+        s.end()
+        let routeBuilder = route
+        b.endCollection(withEnd: end) { [weak self] _, _ in
+            guard worth else {
+                b.discardWorkout()
+                DispatchQueue.main.async { self?.finishUp() }
+                return
+            }
+            var meta: [String: Any] = [HKMetadataKeyWorkoutBrandName: "Kadence", HKMetadataKeyIndoorWorkout: false]
+            if let r, !r.key.isEmpty { meta["KadenceSessionKey"] = r.key; meta["KadenceTitle"] = r.title }
+            b.addMetadata(meta) { _, _ in
+                b.finishWorkout { workout, _ in
+                    if let workout, let routeBuilder {
+                        routeBuilder.finishRoute(with: workout, metadata: nil) { _, _ in }
+                    }
+                    DispatchQueue.main.async {
+                        self?.onFinish?(payload)
+                        self?.finishUp()
+                    }
+                }
+            }
+        }
+    }
+
+    private func finishUp() {
+        session = nil
+        builder = nil
+        route = nil
+        run = nil
+        phase = .idle
+    }
+
+    // MARK: HKWorkoutSessionDelegate
+
+    func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState, from fromState: HKWorkoutSessionState, date: Date) {
+        DispatchQueue.main.async {
+            guard self.session === workoutSession else { return }
+            if toState == .paused { self.phase = .paused; WKInterfaceDevice.current().play(.stop) }
+            if toState == .running, fromState == .paused { self.phase = .running; self.samples = []; WKInterfaceDevice.current().play(.start) }
+        }
+    }
+
+    func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
+        DispatchQueue.main.async {
+            if self.session === workoutSession { self.end(save: true) }
+        }
+    }
+
+    // MARK: HKLiveWorkoutBuilderDelegate
+
+    func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {}
+
+    func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder, didCollectDataOf collectedTypes: Set<HKSampleType>) {
+        let bpm = HKUnit.count().unitDivided(by: .minute())
+        var hr: Double?, avg: Double?, kcal: Double?, dist: Double?
+        if collectedTypes.contains(hrType), let st = workoutBuilder.statistics(for: hrType) {
+            hr = st.mostRecentQuantity()?.doubleValue(for: bpm)
+            avg = st.averageQuantity()?.doubleValue(for: bpm)
+        }
+        if collectedTypes.contains(energyType), let st = workoutBuilder.statistics(for: energyType) {
+            kcal = st.sumQuantity()?.doubleValue(for: .kilocalorie())
+        }
+        if collectedTypes.contains(distanceType), let st = workoutBuilder.statistics(for: distanceType) {
+            dist = st.sumQuantity()?.doubleValue(for: .meter())
+        }
+        DispatchQueue.main.async {
+            if let hr { self.heartRate = hr }
+            if let avg { self.averageHeartRate = avg }
+            if let kcal { self.calories = kcal }
+            if let dist { self.meters = dist }
+        }
+    }
+
+    // MARK: CLLocationManagerDelegate
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        let good = locations.filter { $0.horizontalAccuracy >= 0 && $0.horizontalAccuracy <= 50 }
+        DispatchQueue.main.async {
+            if let last = locations.last { self.gpsReady = last.horizontalAccuracy >= 0 && last.horizontalAccuracy <= 30 }
+            guard self.session != nil else { return }
+            if !good.isEmpty, self.phase == .running { self.route?.insertRouteData(good) { _, _ in } }
+            // Automatic pause: stopped for 8 s; starts again after 3 s of running.
+            guard let speed = locations.last?.speed, speed >= 0 else { return }
+            if self.phase == .running {
+                self.still = speed < 0.4 ? self.still + 1 : 0
+                if self.still >= 8 {
+                    self.still = 0
+                    self.autoPaused = true
+                    self.session?.pause()
+                }
+            } else if self.phase == .paused, self.autoPaused, !self.manualPause {
+                self.moving = speed > 1.4 ? self.moving + 1 : 0
+                if self.moving >= 3 {
+                    self.moving = 0
+                    self.autoPaused = false
+                    self.session?.resume()
+                }
+            }
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        DispatchQueue.main.async { self.gpsReady = false }
     }
 }

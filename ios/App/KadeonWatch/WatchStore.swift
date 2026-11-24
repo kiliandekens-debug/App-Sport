@@ -16,8 +16,20 @@ final class WatchStore: NSObject, ObservableObject, WCSessionDelegate {
     @Published private(set) var waitingStart = false
     @Published private(set) var reachable = false
     @Published var summary: Summary?
+    /// Next sessions of the running plan, kept for runs without the iPhone.
+    @Published private(set) var runs: [WRun] = []
 
     let workout = WorkoutManager()
+    let runner = RunManager()
+
+    /// The first run of the plan from today on.
+    var upcomingRun: WRun? {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        let today = f.string(from: Date())
+        return runs.first { $0.ymd >= today }
+    }
 
     private let defaults = UserDefaults.standard
     private var lastSent: Double
@@ -31,7 +43,17 @@ final class WatchStore: NSObject, ObservableObject, WCSessionDelegate {
             session = s
         }
         suggestion = defaults.string(forKey: "suggestion")
+        if let data = defaults.data(forKey: "runs"), let r = try? JSONDecoder().decode([WRun].self, from: data) {
+            runs = r
+        }
         super.init()
+        // Running screen: live values forwarded, and the finished run sent to the iPhone.
+        runner.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &bag)
+        runner.onFinish = { [weak self] payload in
+            guard let self else { return }
+            self.send(payload, at: nowMs())
+            self.runs.removeAll { !$0.key.isEmpty && $0.key == (payload["key"] as? String) }
+        }
         // Heart rate and calories shown live: forward the workout's changes.
         workout.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &bag)
         // Tell the iPhone at once when the workout starts or stops (it then leaves the end-of-rest
@@ -80,7 +102,7 @@ final class WatchStore: NSObject, ObservableObject, WCSessionDelegate {
     // MARK: actions done on the watch
 
     func start() {
-        guard session == nil else { return }
+        guard session == nil, !runner.active else { return }
         waitingStart = true
         send(["type": "start"], at: nowMs())
         workout.start()
@@ -169,6 +191,10 @@ final class WatchStore: NSObject, ObservableObject, WCSessionDelegate {
 
     private func apply(_ st: PhoneState) {
         heardFromPhone = true
+        if let r = st.runs {
+            runs = r
+            if let data = try? JSONEncoder().encode(r) { defaults.set(data, forKey: "runs") }
+        }
         suggestion = st.suggestion
         defaults.set(st.suggestion, forKey: "suggestion")
         // The iPhone has not applied our latest actions yet: keep our own copy.
@@ -185,7 +211,7 @@ final class WatchStore: NSObject, ObservableObject, WCSessionDelegate {
             workout.end(save: worked, title: b.title, volume: b.volume)
         }
         if next != before { setSession(next) }
-        if next != nil, !workout.running {
+        if next != nil, !workout.running, !runner.active {
             workout.start()
         } else if next == nil, before == nil, workout.running {
             // Start asked from the watch, but the iPhone had nothing to start.

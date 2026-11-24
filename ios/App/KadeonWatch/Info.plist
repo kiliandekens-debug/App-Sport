@@ -15,8 +15,10 @@
 		<string>workout-processing</string>
 	</array>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Kadence affiche ta fréquence cardiaque et tes calories pendant la séance de musculation.</string>
+	<string>Kadence affiche ta fréquence cardiaque, tes calories et ta distance pendant la musculation et la course.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Kadence enregistre ta séance de musculation dans Apple Santé (durée, fréquence cardiaque, calories), pour tes anneaux d'activité.</string>
+	<string>Kadence enregistre tes séances de musculation et tes courses dans Apple Santé (durée, distance, fréquence cardiaque, calories, tracé GPS), pour tes anneaux d'activité.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Kadence utilise le GPS de la montre pendant tes courses pour mesurer la distance, l'allure et le tracé, enregistré dans Apple Santé.</string>
 </dict>
 </plist>
