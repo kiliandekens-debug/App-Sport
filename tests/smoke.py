@@ -37,15 +37,23 @@ while d < now - timedelta(days=1):
     d += timedelta(days=random.choice([2, 2, 3]))
 runs = [{'id': f'r{j}', 'done_at': (now - timedelta(days=60 - j * 5)).isoformat(), 'distance_km': 5 + j % 4, 'duration_s': int((5 + j % 4) * 370), 'avg_hr': 150, 'calories': 400, 'feel': 3, 'source': 'strava', 'notes': f'Course {j}', 'session_key': None} for j in range(10)]
 
-T = {'workouts': workouts, 'sets': sets, 'custom_exercises': [], 'coach_plans': [], 'routines': [], 'run_profile': [], 'run_logs': runs, 'scheduled_pushes': [], 'push_subscriptions': []}
-writes, errors = [], []
+T = {'grants': [], 'feedback': [], 'workouts': workouts, 'sets': sets, 'custom_exercises': [], 'coach_plans': [], 'routines': [], 'run_profile': [], 'run_logs': runs, 'scheduled_pushes': [], 'push_subscriptions': []}
+writes, errors, rpcs = [], [], []
 sess = {"access_token": "x.y.z", "token_type": "bearer", "expires_in": 3600, "expires_at": int(time.time()) + 3600, "refresh_token": "r",
         "user": {"id": "u1", "email": "test@example.com", "user_metadata": {}, "aud": "authenticated", "role": "authenticated"}}
 
 def handle(route, req):
     url = req.url
+    if '/rest/v1/rpc/redeem_invite' in url:
+        rpcs.append('redeem_invite')
+        code = (req.post_data_json or {}).get('p_code', '')
+        body = {'seat': 7, 'ends_at': (now + timedelta(days=365)).isoformat()} if code.upper() == 'KAD-TEST-0001' else {'error': 'Code inconnu, expiré ou déjà utilisé.'}
+        if 'seat' in body: T['grants'] = [{'kind': 'beta', 'seat': 7, 'starts_at': now.isoformat(), 'ends_at': body['ends_at'], 'revoked_at': None}]
+        return route.fulfill(status=200, body=json.dumps(body), headers={'content-type': 'application/json'})
     if '/rest/v1/rpc/' in url:
         return route.fulfill(status=200, body='false', headers={'content-type': 'application/json'})
+    if '/auth/v1/' in url:
+        return route.fulfill(status=200, body=json.dumps(sess['user'] if '/auth/v1/user' in url else {}), headers={'content-type': 'application/json'})
     m = re.search(r'/rest/v1/(\w+)', url)
     if not m:
         return route.fulfill(status=200, body='{}', headers={'content-type': 'application/json'})
@@ -172,6 +180,29 @@ with sync_playwright() as p:
     check(len(T['run_profile']) == 1, 'running plan saved')
     check(pg.locator('.hero').count() > 0, 'running plan shows next session')
     pg.screenshot(path=f'{SHOTS}/flow-course.png', full_page=True)
+
+    # 1.15.0: beta code, feedback, /admin gone from the app.
+    pg.goto(BASE + '/profil'); pg.wait_for_timeout(1200)
+    check(pg.get_by_role('button', name="J'ai un code bêta").count() == 1, 'profile offers the beta code')
+    pg.get_by_role('button', name="J'ai un code bêta").click(); pg.wait_for_timeout(300)
+    pg.locator('.sheet input').fill('kad-test-0001'); pg.locator('.sheet').get_by_role('button', name='Valider').click(); pg.wait_for_timeout(1500)
+    check('redeem_invite' in rpcs, 'beta code sent to the server')
+    check(pg.get_by_text('Bêta-testeur n° 7').count() == 1, 'beta badge shown after the code')
+    pg.get_by_role('button', name='Donner mon avis').click(); pg.wait_for_timeout(300)
+    pg.locator('.sheet textarea').fill('Test : tout marche.'); pg.locator('.sheet').get_by_role('button', name='Envoyer').click(); pg.wait_for_timeout(800)
+    check(any(t == 'feedback' and m == 'POST' for m, t in writes) and T['feedback'][-1]['message'] == 'Test : tout marche.', 'feedback saved')
+    pg.screenshot(path=f'{SHOTS}/flow-profil-beta.png', full_page=True)
+    pg.goto(BASE + '/admin'); pg.wait_for_timeout(800)
+    check(not pg.url.rstrip('/').endswith('/admin'), 'no /admin screen in the app any more')
+
+    # Sign-up form (logged out).
+    lo = b.new_page(viewport={'width': 390, 'height': 844})
+    lo.on('pageerror', lambda e: errors.append(f'login PAGEERR {e}'))
+    lo.route(re.compile(r'.*supabase\.co/.*'), handle)
+    lo.goto(BASE + '/'); lo.wait_for_timeout(1000)
+    lo.get_by_role('button', name='Pas encore de compte ? Créer un compte').click(); lo.wait_for_timeout(200)
+    check(lo.get_by_label('Code bêta (facultatif)').count() == 1 or lo.get_by_text('Code bêta (facultatif)').count() == 1, 'sign-up form with beta code')
+    lo.screenshot(path=f'{SHOTS}/flow-signup.png')
     b.close()
 
 for e in errors: print('ERR  ' + e)

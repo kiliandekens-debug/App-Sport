@@ -3,17 +3,18 @@ import { supabase, fetchAll } from './supabase.js';
 import { analyse } from './lib/stats.js';
 import { isNative, healthRuns, healthLinked, runIntervals } from './native.js';
 import { buildPlan, runVerdict, ymd } from './lib/running.js';
+import { loadAccess, redeemPendingCode, hasHealthConsent } from './beta.js';
 
 const DataCtx = createContext(null);
 
 export function DataProvider({ children }) {
-  const [raw, setRaw] = useState({ workouts: [], custom: [], plans: [], routines: [], runProfile: null, runLogs: [], superadmin: false });
+  const [raw, setRaw] = useState({ workouts: [], custom: [], plans: [], routines: [], runProfile: null, runLogs: [], superadmin: false, access: { beta: null, premium: false } });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const refresh = useCallback(async () => {
     try {
-      const [workouts, sets, custom, plans, routines, runLogs, runProfileRes, adminRes] = await Promise.all([
+      const [workouts, sets, custom, plans, routines, runLogs, runProfileRes, adminRes, access] = await Promise.all([
         fetchAll('workouts', 'id,title,started_at,ended_at', 'started_at'),
         fetchAll('sets', 'workout_id,exercise,position,set_index,set_type,weight_kg,reps,duration_seconds,distance_km,superset_id', 'id'),
         fetchAll('custom_exercises', '*', 'created_at'),
@@ -22,11 +23,12 @@ export function DataProvider({ children }) {
         fetchAll('run_logs', '*', 'done_at'),
         supabase.from('run_profile').select('*').maybeSingle(),
         supabase.rpc('is_superadmin'),
+        loadAccess().catch(() => ({ beta: null, premium: false })),
       ]);
       const byId = new Map(workouts.map((w) => [w.id, { ...w, sets: [] }]));
       for (const s of sets) byId.get(s.workout_id)?.sets.push({ ...s, weight_kg: s.weight_kg == null ? null : Number(s.weight_kg) });
       for (const w of byId.values()) w.sets.sort((a, b) => a.position - b.position || a.set_index - b.set_index);
-      setRaw({ workouts: [...byId.values()], custom, plans, routines, runLogs, runProfile: runProfileRes.data || null, superadmin: adminRes.data === true });
+      setRaw({ workouts: [...byId.values()], custom, plans, routines, runLogs, runProfile: runProfileRes.data || null, superadmin: adminRes.data === true, access });
       setError(null);
     } catch (e) {
       setError(e.message || String(e));
@@ -37,12 +39,22 @@ export function DataProvider({ children }) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  // Code d'invitation saisi à l'inscription : utilisé à la première ouverture du compte.
+  const [betaNotice, setBetaNotice] = useState(null);
+  useEffect(() => {
+    redeemPendingCode()
+      .then((res) => { if (res) { setBetaNotice(res); if (!res.error) refresh(); } })
+      .catch(() => { /* offline: next launch */ });
+  }, [refresh]);
+
   // iPhone app linked to Apple Health: new runs come in by themselves at each launch.
   const [healthDone, setHealthDone] = useState(false);
   useEffect(() => {
     if (loading || healthDone || !isNative() || !healthLinked()) return;
     setHealthDone(true);
-    healthRuns(30)
+    // Only with the explicit consent for health data (asked at the first import).
+    supabase.auth.getUser()
+      .then(({ data: u }) => { if (!hasHealthConsent(u?.user)) throw new Error('no consent'); return healthRuns(30); })
       .then((runs) => importRuns(runs, raw.runLogs))
       .then((res) => { if (res.added) refresh(); })
       .catch(() => { /* access withdrawn or offline: the manual import still works */ });
@@ -51,8 +63,8 @@ export function DataProvider({ children }) {
   const value = useMemo(() => {
     const data = analyse(raw.workouts);
     const plans = new Map(raw.plans.map((p) => [p.exercise, p]));
-    return { ...data, custom: raw.custom, routines: raw.routines, runProfile: raw.runProfile, runLogs: raw.runLogs, superadmin: raw.superadmin, plans, loading, error, refresh };
-  }, [raw, loading, error, refresh]);
+    return { ...data, custom: raw.custom, routines: raw.routines, runProfile: raw.runProfile, runLogs: raw.runLogs, superadmin: raw.superadmin, access: raw.access, betaNotice, closeBetaNotice: () => setBetaNotice(null), plans, loading, error, refresh };
+  }, [raw, loading, error, refresh, betaNotice]);
 
   // Runs imported from Apple Health or Strava are linked to the planned session of the same
   // day; on the iPhone, the intervals recorded by the watch are compared with the plan.
@@ -201,21 +213,9 @@ async function linkRuns(profile, logs, workouts) {
   return changed;
 }
 
-// App Store requirement: wipes every row of the signed-in user, then the login itself
-// (kept only when another project in the same database still uses it).
+// App Store requirement: wipes every row of the signed-in user, then the login itself.
 export async function deleteAccount() {
   const { data, error } = await supabase.rpc('delete_my_account');
   if (error) throw error;
   return data;
-}
-
-// Superadmin only (checked again in the database).
-export async function adminUsers() {
-  const { data, error } = await supabase.rpc('admin_users');
-  if (error) throw error;
-  return data || [];
-}
-export async function adminSetRole(target, role) {
-  const { error } = await supabase.rpc('admin_set_role', { target, new_role: role });
-  if (error) throw error;
 }

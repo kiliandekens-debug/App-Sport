@@ -17,6 +17,8 @@ import { parseHevyCsv } from '../lib/csv.js';
 import { Icon, GlassHeader } from '../components.jsx';
 import { fmtDay } from '../lib/stats.js';
 import { getTheme, setTheme } from '../theme.js';
+import { betaActive, redeemCode, ensureHealthConsent, hasHealthConsent, withdrawHealthConsent } from '../beta.js';
+import { FeedbackSheet } from '../feedback.jsx';
 
 export default function Profil({ user }) {
   const data = useData();
@@ -31,6 +33,8 @@ export default function Profil({ user }) {
   const [awake, setAwake] = useState(keepAwake);
   const [warm, setWarm] = useState(autoWarmup);
   const [lest, setLest] = useState(hasLest);
+  const [feedback, setFeedback] = useState(false);
+  const [healthOk, setHealthOk] = useState(() => hasHealthConsent(user));
   const togglePush = async () => {
     setPushMsg('');
     try {
@@ -83,6 +87,8 @@ export default function Profil({ user }) {
   const onStrava = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!(await ensureHealthConsent(ui))) { e.target.value = ''; return; }
+    setHealthOk(true);
     setBusy(true);
     setStravaStatus('Lecture de l\'export Strava…');
     try {
@@ -108,6 +114,8 @@ export default function Profil({ user }) {
     } catch (e) { ui.notify(e.message || String(e)); }
   };
   const onHealth = async () => {
+    if (!(await ensureHealthConsent(ui))) return;
+    setHealthOk(true);
     setBusy(true);
     setStravaStatus('Lecture d\'Apple Santé…');
     try {
@@ -121,6 +129,20 @@ export default function Profil({ user }) {
       setBusy(false);
     }
   };
+  const enterCode = async () => {
+    const code = await ui.prompt({ title: 'Code bêta', message: 'Le code reçu de Kilian, par exemple KAD-ABCD-EFGH.', ok: 'Valider' });
+    if (!code) return;
+    try {
+      const r = await redeemCode(code);
+      await data.refresh();
+      ui.notify(`Bienvenue dans la bêta : place n° ${r.seat}`);
+    } catch (e) { ui.notify(e.message || String(e)); }
+  };
+  const withdrawHealth = async () => {
+    if (!(await ui.confirm({ title: 'Retirer ton accord ?', message: 'Kadence n\'importera plus de courses depuis Apple Santé ni Strava. Les courses déjà enregistrées restent : tu peux les supprimer une par une dans Course, ou tout effacer en supprimant ton compte.', ok: 'Retirer mon accord', danger: true }))) return;
+    try { await withdrawHealthConsent(); setHealthOk(false); ui.notify('Accord retiré'); } catch (e) { ui.notify(e.message || String(e)); }
+  };
+  const beta = data.access?.beta;
   const planned = data.runProfile ? buildPlan(data.runProfile, data.runLogs, data.workouts).weeks.flat() : [];
 
   const Row = ({ icon, tint, children, onClick, to, right, danger, ...rest }) => {
@@ -212,9 +234,24 @@ export default function Profil({ user }) {
       </div>
 
       <div className="section">
+        <h2 className="label">Bêta</h2>
+        <div className="glist">
+          {beta ? (
+            <Row icon="spark" tint="#E8500E" right={<span className="xs muted">{betaActive(beta) ? `jusqu'au ${fmtDay(new Date(beta.ends_at))} ${new Date(beta.ends_at).getFullYear()}` : 'terminée'}</span>}>
+              Bêta-testeur n° {beta.seat}
+            </Row>
+          ) : (
+            <Row icon="spark" tint="#E8500E" onClick={enterCode}>J'ai un code bêta</Row>
+          )}
+          <Row icon="send" tint="#34C759" onClick={() => setFeedback(true)}>Donner mon avis</Row>
+        </div>
+        {beta && betaActive(beta) && <span className="gfoot">Tout Kadence est gratuit pour toi pendant la bêta. Merci pour tes retours.</span>}
+      </div>
+
+      <div className="section">
         <h2 className="label">Compte</h2>
         <div className="glist">
-          {data.superadmin && <Row icon="user" tint="#8E8E93" to="/admin">Administration</Row>}
+          {data.superadmin && <Row icon="user" tint="#8E8E93" onClick={() => window.open('https://admin.kadeon.be', '_blank')}>Back-office</Row>}
           <Row icon="edit" tint="#8E8E93" onClick={() => setPwd(!pwd)} aria-expanded={pwd}>Mot de passe</Row>
           <Row icon="spark" tint="#E8500E" onClick={() => setNews(true)} right={<span className="xs muted">{VERSION}</span>}>Nouveautés</Row>
           <Row onClick={signOut} danger>Se déconnecter</Row>
@@ -222,11 +259,13 @@ export default function Profil({ user }) {
         <div className="glist">
           <Row icon="trash" tint="#FF3B30" onClick={removeAccount} danger>Supprimer mon compte</Row>
           <Row icon="link" tint="#8E8E93" onClick={() => window.open('https://sport.kadeon.be/confidentialite.html', '_blank')}>Confidentialité</Row>
+          {healthOk && <Row onClick={withdrawHealth} danger>Retirer mon accord pour les données de santé</Row>}
         </div>
         {pwd && <div className="card"><PasswordForm onDone={() => setPwd(false)} /></div>}
         <span className="gfoot" style={{ textAlign: 'center' }}>{user?.email}<br />Kadence {VERSION} ({BUILD}), {new Date(BUILT_AT).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
       </div>
       <WhatsNew open={news} onClose={() => setNews(false)} />
+      {feedback && <FeedbackSheet onClose={() => setFeedback(false)} onSent={() => ui.notify('Merci, message envoyé')} />}
     </main>
   );
 }

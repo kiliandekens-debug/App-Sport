@@ -95,6 +95,15 @@ export default function Accueil({ user }) {
         </Link>
       )}
 
+      {data.betaNotice && (
+        <div className="card stack" style={{ margin: '24px 20px 0', gap: 8, borderColor: data.betaNotice.error ? 'var(--danger)' : 'var(--accent)' }}>
+          <span className="row" style={{ gap: 8 }}><Icon name="spark" size={18} /><span style={{ fontWeight: 650 }}>{data.betaNotice.error ? 'Code bêta non utilisé' : `Bienvenue dans la bêta, place n° ${data.betaNotice.seat}`}</span></span>
+          <span className="small muted" style={{ lineHeight: 1.45 }}>{data.betaNotice.error
+            ? `${data.betaNotice.error} Tu peux réessayer dans Profil › J'ai un code bêta.`
+            : `Tout Kadence est à toi gratuitement jusqu'au ${fmtDay(new Date(data.betaNotice.ends_at))} ${new Date(data.betaNotice.ends_at).getFullYear()}. Un bug, une idée ? Profil › Donner mon avis.`}</span>
+          <button className="text-btn" style={{ alignSelf: 'flex-start' }} onClick={data.closeBetaNotice}>OK</button>
+        </div>
+      )}
       {!session.active && deload.on && (
         <div className="card stack" style={{ margin: '24px 20px 0', gap: 8 }}>
           <span className="row" style={{ gap: 8 }}><Icon name="spark" size={18} /><span style={{ fontWeight: 650 }}>Semaine allégée en cours</span></span>
