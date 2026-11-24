@@ -6,6 +6,17 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.18.0', date: '2026-11-24', title: 'Tapis et marche inclinée',
+    items: [
+      'Nouvel écran Tapis (depuis Course) : séances guidées 12-3-30, montée progressive, paliers et endurance en côte.',
+      'Minuteur sur le téléphone : à chaque palier, bip, vibration et consigne (« Monte à 10 % »). Vitesse et pente réglables avec + et −.',
+      'Distance, dénivelé et calories calculés avec la vitesse et la pente (équations de l\'ACSM et ton poids, à indiquer dans Profil).',
+      'Progression : quand une séance était facile, la suivante monte d\'un cran (+1 % de pente ou +5 min).',
+      'Apple Watch : carte Tapis, séances guidées ou libres, vitesse et pente avec la Couronne, dénivelé, BPM ; enregistré dans Apple Santé en intérieur.',
+      'La marche ne fausse pas ton niveau de course ni ton plan ; elle apparaît dans l\'historique, le calendrier et Progrès.',
+    ],
+  },
+  {
     version: '1.17.1', date: '2026-11-24', title: 'Montre : course retravaillée',
     items: [
       'Nouvel écran d\'accueil sur la montre : une grande carte pour la muscu, une pour la course.',
