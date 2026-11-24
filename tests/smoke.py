@@ -207,6 +207,15 @@ with sync_playwright() as p:
     pg.goto(BASE + '/admin'); pg.wait_for_timeout(800)
     check(not pg.url.rstrip('/').endswith('/admin'), 'no /admin screen in the app any more')
 
+    # 1.16.2: Progrès in three blocks, details folded.
+    pg.goto(BASE + '/progres'); pg.wait_for_timeout(1200)
+    body = pg.locator('main').inner_text()
+    check('Ta semaine' in body and 'Un exercice' in body and 'Tes derniers records' in body, 'progress screen in three blocks')
+    check(not re.search(r'\d,\d (épaules|triceps|biceps)', body.lower()), 'muscle sets shown as whole numbers')
+    check(pg.locator('.list').last.locator(':scope > div').count() <= 3, 'three latest records by default')
+    pg.locator('.metric-pick').select_option('maxKg'); pg.wait_for_timeout(300)
+    check('Charge max' in pg.locator('.metric-pick').evaluate("e => e.options[e.selectedIndex].text"), 'metric menu switches the chart')
+
     # Sign-up form (logged out).
     lo = b.new_page(viewport={'width': 390, 'height': 844})
     lo.on('pageerror', lambda e: errors.append(f'login PAGEERR {e}'))
