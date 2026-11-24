@@ -155,7 +155,8 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
   const [date, setDate] = useState(initial?.target_date || '');
   const [reentry, setReentry] = useState(initial ? initial.reentry !== false : true);
   const [start, setStart] = useState(initial?.started_on ? String(initial.started_on).slice(0, 10) : today());
-  const steps = ['goal', 'runs', 'long', 'race', ...(initial || auto ? [] : ['level']), 'summary'];
+  const kindText = { easy: 'Footing', quality: 'Séance rythmée', long: 'Sortie longue' };
+  const steps = ['goal', 'week', 'race', ...(initial || auto ? [] : ['level']), 'summary'];
   const [step, setStep] = useState(initial ? 'summary' : 'goal');
   const [from, setFrom] = useState(null); // editing one answer from the summary: come back to it
   const [busy, setBusy] = useState(false);
@@ -173,8 +174,7 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
   const next = () => { if (from) { setFrom(null); setStep('summary'); } else setStep(steps[Math.min(idx + 1, steps.length - 1)]); window.scrollTo(0, 0); };
   const back = () => { if (from) { setFrom(null); setStep('summary'); } else setStep(steps[Math.max(idx - 1, 0)]); window.scrollTo(0, 0); };
   const edit = (k) => { setFrom(k); setStep(k); window.scrollTo(0, 0); };
-  const kindText = { easy: 'Footing', quality: 'Séance rythmée', long: 'Sortie longue' };
-
+  
   const save = async () => {
     setBusy(true);
     try {
@@ -184,8 +184,12 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
 
   const question = (title, help, body, canNext = true) => (
     <main className="screen">
-      <GlassHeader eyebrow={`Ton plan de course, étape ${idx + 1} sur ${steps.length - 1}`} title={title} />
+      <GlassHeader eyebrow={`Étape ${idx + 1} sur ${steps.length - 1}`} title="Plan de course" />
       <div className="pad stack" style={{ gap: 14, paddingTop: 10 }}>
+        <div className="row" style={{ gap: 4 }} aria-hidden="true">
+          {steps.slice(0, -1).map((k, i) => <span key={k} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= idx ? 'var(--accent)' : 'var(--chip)' }} />)}
+        </div>
+        <h2 className="display" style={{ margin: '6px 0 0', fontSize: 28, lineHeight: 1.1, letterSpacing: '-0.01em' }}>{title}</h2>
         {help && <span className="small muted" style={{ lineHeight: 1.45 }}>{help}</span>}
         {body}
         {canNext && <button className="btn primary big" onClick={next}>{from ? 'OK' : 'Suivant'}</button>}
@@ -196,19 +200,41 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
   );
 
   if (step === 'goal') {
-    return question('Ton objectif ?', fit?.runs > 0 ? `Je connais déjà ton niveau grâce à tes ${fit.runs} course${fit.runs > 1 ? 's' : ''} : il reste quatre questions.` : null, (
+    return question('Ton objectif ?', auto ? `Ton niveau, je le connais déjà grâce à tes ${fit.runs} course${fit.runs > 1 ? 's' : ''}. Trois questions et ton plan est prêt.` : 'Quelques questions et ton plan est prêt.', (
       <div className="list">{Object.keys(GOALS).map((k) => <Choice key={k} on={goal === k} title={GOAL_TEXT[k]} onClick={() => { setGoal(k); next(); }} />)}</div>
     ), false);
   }
-  if (step === 'runs') {
-    return question('Combien de sorties par semaine ?', 'Je place les footings et les séances rythmées tout seul, jamais deux jours durs d\'affilée.', (
-      <div className="list">{[2, 3, 4, 5, 6].map((n) => <Choice key={n} on={runs === n && !custom} title={`${n} sorties`} detail={RUNS_TEXT[n]} onClick={() => { setRuns(n); setCustom(null); next(); }} />)}</div>
-    ), false);
-  }
-  if (step === 'long') {
-    return question('Quel jour pour ta sortie longue ?', 'La plus longue course de la semaine, tranquille. Choisis un jour où tu as le temps (souvent le week-end).', (
-      <div className="list">{DAYS.map((d, i) => <Choice key={d} on={longDay === i && !custom} title={d} onClick={() => { setLongDay(i); setCustom(null); next(); }} />)}</div>
-    ), false);
+  if (step === 'week') {
+    const preview = autoSchedule(runs, longDay);
+    return question('Ta semaine', 'Choisis le nombre de sorties et le jour de ta sortie longue. Je place le reste tout seul, jamais deux jours durs d\'affilée.', (
+      <>
+        <div className="stack" style={{ gap: 8 }}>
+          <span className="label">Sorties par semaine</span>
+          <div className="seg" role="group" aria-label="Sorties par semaine" style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}>
+            {[2, 3, 4, 5, 6].map((n) => <button key={n} className={runs === n ? 'on' : ''} aria-pressed={runs === n} aria-label={`${n} sorties`} onClick={() => { setRuns(n); setCustom(null); }} style={{ height: 46, fontSize: 18 }}>{n}</button>)}
+          </div>
+          <span className="xs muted">{RUNS_TEXT[runs]}</span>
+        </div>
+        <div className="stack" style={{ gap: 8 }}>
+          <span className="label">Jour de la sortie longue</span>
+          <div className="seg" role="group" aria-label="Jour de la sortie longue" style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
+            {DAYS.map((d, i) => <button key={d} className={longDay === i ? 'on' : ''} aria-pressed={longDay === i} aria-label={d} onClick={() => { setLongDay(i); setCustom(null); }} style={{ height: 46, fontSize: 15 }}>{d.slice(0, 2)}</button>)}
+          </div>
+          <span className="xs muted">La plus longue course de la semaine, tranquille : choisis un jour où tu as le temps.</span>
+        </div>
+        <section className="card stack" style={{ gap: 8 }} aria-label="Aperçu de ta semaine">
+          {DAYS.map((d, i) => (
+            <div key={d} className="between" style={{ opacity: preview[i] ? 1 : 0.45 }}>
+              <span style={{ fontWeight: preview[i] ? 600 : 400 }}>{d}</span>
+              <span className="row small" style={{ gap: 8 }}>
+                {preview[i] && <span style={{ width: 8, height: 8, borderRadius: 4, background: preview[i] === 'quality' ? 'var(--z4)' : preview[i] === 'long' ? 'var(--z2)' : 'var(--z1)' }} />}
+                {preview[i] ? kindText[preview[i]] : 'Repos'}
+              </span>
+            </div>
+          ))}
+        </section>
+      </>
+    ));
   }
   if (step === 'race') {
     return question('Une course prévue ?', 'Avec une date, le plan se termine le jour J, après quelques jours plus légers pour arriver frais.', (
@@ -237,8 +263,7 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
       <div className="pad stack" style={{ gap: 14, paddingTop: 10 }}>
         <div className="list">
           <button style={PLAIN} onClick={() => edit('goal')}><span className="grow stack" style={{ gap: 1, textAlign: 'left' }}><span className="xs muted">Objectif</span><b>{GOAL_TEXT[goal]}</b></span><span className="xs" style={{ color: 'var(--accent)', fontWeight: 600 }}>Modifier</span></button>
-          <button style={PLAIN} onClick={() => edit('runs')}><span className="grow stack" style={{ gap: 1, textAlign: 'left' }}><span className="xs muted">Sorties par semaine</span><b>{count}</b></span><span className="xs" style={{ color: 'var(--accent)', fontWeight: 600 }}>Modifier</span></button>
-          <button style={PLAIN} onClick={() => edit('long')}><span className="grow stack" style={{ gap: 1, textAlign: 'left' }}><span className="xs muted">Sortie longue</span><b>Le {DAYS[longDayOf(schedule)].toLowerCase()}</b></span><span className="xs" style={{ color: 'var(--accent)', fontWeight: 600 }}>Modifier</span></button>
+          <button style={PLAIN} onClick={() => edit('week')}><span className="grow stack" style={{ gap: 1, textAlign: 'left' }}><span className="xs muted">Ta semaine</span><b>{count} sorties, la longue le {DAYS[longDayOf(schedule)].toLowerCase()}</b></span><span className="xs" style={{ color: 'var(--accent)', fontWeight: 600 }}>Modifier</span></button>
           <button style={PLAIN} onClick={() => edit('race')}><span className="grow stack" style={{ gap: 1, textAlign: 'left' }}><span className="xs muted">Course</span><b>{date ? fmtDate(date) : 'Pas de date'}</b></span><span className="xs" style={{ color: 'var(--accent)', fontWeight: 600 }}>Modifier</span></button>
         </div>
 
