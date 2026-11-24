@@ -18,6 +18,10 @@ final class WatchStore: NSObject, ObservableObject, WCSessionDelegate {
     @Published var summary: Summary?
     /// Next sessions of the running plan, kept for runs without the iPhone.
     @Published private(set) var runs: [WRun] = []
+    /// Guided tapis sessions, kept for sessions without the iPhone.
+    @Published private(set) var walks: [WRun] = []
+    /// The Tapis list is open.
+    @Published var tapisPicker = false
     /// Run chosen on the home screen, shown on the start screen until Démarrer.
     @Published var pendingRun: WRun?
 
@@ -45,6 +49,9 @@ final class WatchStore: NSObject, ObservableObject, WCSessionDelegate {
             session = s
         }
         suggestion = defaults.string(forKey: "suggestion")
+        if let data = defaults.data(forKey: "walks"), let w = try? JSONDecoder().decode([WRun].self, from: data) {
+            walks = w
+        }
         if let data = defaults.data(forKey: "runs"), let r = try? JSONDecoder().decode([WRun].self, from: data) {
             runs = r
         }
@@ -193,6 +200,10 @@ final class WatchStore: NSObject, ObservableObject, WCSessionDelegate {
 
     private func apply(_ st: PhoneState) {
         heardFromPhone = true
+        if let w = st.walks {
+            walks = w
+            if let data = try? JSONEncoder().encode(w) { defaults.set(data, forKey: "walks") }
+        }
         if let r = st.runs {
             runs = r
             if let data = try? JSONEncoder().encode(r) { defaults.set(data, forKey: "runs") }

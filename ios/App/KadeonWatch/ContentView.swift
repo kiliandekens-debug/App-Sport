@@ -29,7 +29,10 @@ struct ContentView: View {
         } else if let r = store.pendingRun {
             // Not a navigation push: the screen must survive the switch to the running screen.
             RunStartView(run: r)
-                .containerBackground(glow(r.steps.isEmpty ? go : brand), for: .navigation)
+                .containerBackground(glow(r.indoor ? restBlue : r.steps.isEmpty ? go : brand), for: .navigation)
+        } else if store.tapisPicker {
+            TapisPicker()
+                .containerBackground(glow(restBlue), for: .navigation)
         } else if let sum = store.summary {
             SummaryView(sum: sum)
                 .containerBackground(glow(go), for: .navigation)
@@ -472,6 +475,9 @@ struct IdleView: View {
             VStack(spacing: 8) {
                 gymCard
                 runCard
+                HomeCard(icon: "figure.walk.treadmill", eyebrow: "TAPIS", title: "Marche inclinée", detail: "12-3-30, paliers, séance libre", colors: [restBlue, Color(red: 0.1, green: 0.45, blue: 0.75)]) {
+                    store.tapisPicker = true
+                }
                 if store.upcomingRun != nil {
                     Button { store.pendingRun = .free } label: {
                         Label("Course libre", systemImage: "location.fill")
@@ -569,19 +575,23 @@ struct RunStartView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 6) {
-                Text(run.steps.isEmpty ? "COURSE LIBRE" : run.when.uppercased())
+                Text(run.indoor ? (run.walking ? "MARCHE INCLINÉE" : "COURSE SUR TAPIS") : run.steps.isEmpty ? "COURSE LIBRE" : run.when.uppercased())
                     .font(.system(size: 10, weight: .heavy, design: .rounded))
-                    .foregroundStyle(run.steps.isEmpty ? go : ember)
-                Text(run.steps.isEmpty ? "Cours à ton rythme" : run.title)
+                    .foregroundStyle(run.indoor ? restBlue : run.steps.isEmpty ? go : ember)
+                Text(run.indoor && run.steps.isEmpty ? "À ton rythme" : run.steps.isEmpty ? "Cours à ton rythme" : run.title)
                     .font(.system(.headline, design: .rounded))
                     .lineLimit(2)
                     .minimumScaleFactor(0.75)
-                if run.steps.isEmpty {
+                if run.indoor && run.steps.isEmpty {
+                    Text("Règle la vitesse et la pente avec la Couronne, comme sur le tapis. Distance et dénivelé calculés.")
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(.secondary)
+                } else if run.steps.isEmpty {
                     Text("Distance, allure et BPM en direct. Vibration à chaque kilomètre.")
                         .font(.system(.caption2, design: .rounded))
                         .foregroundStyle(.secondary)
                 } else {
-                    Text("\(run.mins) min · ≈ \(fmtKg(run.km)) km")
+                    Text(run.indoor ? "\(run.mins) min · vibre à chaque palier" : "\(run.mins) min · ≈ \(fmtKg(run.km)) km")
                         .font(.system(.caption2, design: .rounded).weight(.semibold))
                         .foregroundStyle(.secondary)
                     VStack(alignment: .leading, spacing: 3) {
@@ -596,12 +606,14 @@ struct RunStartView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(RoundedRectangle(cornerRadius: 12).fill(chip))
                 }
-                HStack(spacing: 4) {
-                    Image(systemName: store.runner.gpsReady ? "location.fill" : "location")
-                    Text(store.runner.gpsReady ? "GPS prêt" : "Recherche du GPS…")
+                if !run.indoor {
+                    HStack(spacing: 4) {
+                        Image(systemName: store.runner.gpsReady ? "location.fill" : "location")
+                        Text(store.runner.gpsReady ? "GPS prêt" : "Recherche du GPS…")
+                    }
+                    .font(.system(.caption2, design: .rounded).weight(.bold))
+                    .foregroundStyle(store.runner.gpsReady ? go : warn)
                 }
-                .font(.system(.caption2, design: .rounded).weight(.bold))
-                .foregroundStyle(store.runner.gpsReady ? go : warn)
                 Button {
                     store.pendingRun = nil
                     store.runner.start(run)
@@ -623,7 +635,7 @@ struct RunStartView: View {
                     .accessibilityLabel("Retour")
             }
         }
-        .onAppear { store.runner.prepare() }
+        .onAppear { store.runner.prepare(indoor: run.indoor) }
         .onDisappear { store.runner.unprepare() }
     }
 }
@@ -659,7 +671,7 @@ struct RunScreen: View {
         default:
             TabView(selection: $page) {
                 RunControls().tag(0)
-                RunMetrics().tag(1)
+                if r.indoor { TapisMetrics().tag(1) } else { RunMetrics().tag(1) }
             }
             .tabViewStyle(.page)
             .containerBackground(glow(tint), for: .navigation)
@@ -808,6 +820,153 @@ struct RunMetrics: View {
     }
 }
 
+/// Tapis: the guided sessions sent by the iPhone, and the free sessions.
+struct TapisPicker: View {
+    @EnvironmentObject var store: WatchStore
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(store.walks) { w in
+                    Button { store.tapisPicker = false; store.pendingRun = w } label: {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(w.title).font(.system(.headline, design: .rounded)).lineLimit(1).minimumScaleFactor(0.7)
+                            Text("\(w.mins) min · \(fmtKg(w.km)) km").font(.system(size: 12, weight: .semibold, design: .rounded)).foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(9)
+                        .background(RoundedRectangle(cornerRadius: 14).fill(chip))
+                    }
+                    .buttonStyle(.plain)
+                }
+                Button { store.tapisPicker = false; store.pendingRun = .freeIndoor("incline_walk") } label: {
+                    Label("Marche libre", systemImage: "figure.walk.treadmill")
+                }
+                .buttonStyle(ChipStyle())
+                Button { store.tapisPicker = false; store.pendingRun = .freeIndoor("treadmill") } label: {
+                    Label("Course sur tapis", systemImage: "figure.run.treadmill")
+                }
+                .buttonStyle(ChipStyle())
+                if store.walks.isEmpty {
+                    Text("Ouvre Kadence sur l'iPhone pour recevoir les séances guidées.")
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .navigationTitle("Tapis")
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { store.tapisPicker = false } label: { Image(systemName: "xmark") }
+                    .accessibilityLabel("Retour")
+            }
+        }
+    }
+}
+
+/// Tapis during the session: the palier, then speed and incline (Digital Crown), then the totals.
+struct TapisMetrics: View {
+    @EnvironmentObject var store: WatchStore
+    @State private var field = 0          // 0 speed, 1 incline
+    @State private var crown: Double = 0
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        let r = store.runner
+        let st = r.finishedPlan ? nil : r.step
+        let tint: Color = r.phase == .paused ? warn : st?.phase == "work" ? brand : st?.phase == "recovery" ? restBlue : go
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text(pill(r, st))
+                    .font(.system(size: 11, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(tint))
+                    .lineLimit(1)
+                Spacer(minLength: 2)
+                Text(st != nil ? mmss(Int(r.stepLeft.rounded(.up))) : hms(r.elapsed))
+                    .font(.system(size: 22, weight: .heavy, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(tint)
+                    .contentTransition(.numericText(countsDown: st != nil))
+            }
+            if !r.changeText.isEmpty, st != nil || r.elapsed < 20 {
+                Text(r.changeText)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+            }
+            if st != nil {
+                ProgressView(value: r.stepProgress).tint(tint)
+            }
+            HStack(spacing: 5) {
+                box(fmt1(r.speed), "km/h", selected: field == 0).onTapGesture { field = 0 }
+                    .accessibilityLabel("Vitesse \(fmt1(r.speed)) kilomètres heure")
+                    .accessibilityAddTraits(.isButton)
+                box(fmt1(r.incline), "%", selected: field == 1).onTapGesture { field = 1 }
+                    .accessibilityLabel("Pente \(fmt1(r.incline)) pour cent")
+                    .accessibilityAddTraits(.isButton)
+            }
+            .focusable(true)
+            .focused($focused)
+            .digitalCrownRotation($crown, from: field == 0 ? 0.5 : 0, through: field == 0 ? 25 : 30, by: field == 0 ? 0.1 : 0.5,
+                                  sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
+            Spacer(minLength: 0)
+            HStack(alignment: .firstTextBaseline) {
+                value(fmtKm(r.meters), "km")
+                Spacer(minLength: 2)
+                value("\(Int(r.elevation.rounded()))", "m D+")
+            }
+            HStack(alignment: .firstTextBaseline) {
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Image(systemName: "heart.fill").font(.system(size: 11, weight: .bold)).foregroundStyle(.red)
+                    Text(r.heartRate > 0 ? "\(Int(r.heartRate))" : "—").font(.system(size: 18, weight: .bold, design: .rounded)).monospacedDigit()
+                }
+                Spacer(minLength: 2)
+                value("\(Int(r.calories))", "kcal")
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onAppear { crown = r.speed; focused = true }
+        .onChange(of: field) { _, f in crown = f == 0 ? store.runner.speed : store.runner.incline }
+        .onChange(of: crown) { _, v in
+            if field == 0 { store.runner.setSpeed(v) } else { store.runner.setIncline(v) }
+        }
+        // A new palier changes the values: the crown follows.
+        .onChange(of: r.speed) { _, v in if field == 0, abs(crown - v) > 0.01 { crown = v } }
+        .onChange(of: r.incline) { _, v in if field == 1, abs(crown - v) > 0.01 { crown = v } }
+    }
+
+    private func pill(_ r: RunManager, _ st: WRunStep?) -> String {
+        if r.phase == .paused { return "EN PAUSE" }
+        guard let st else { return r.finishedPlan ? "TERMINÉ" : "TAPIS" }
+        return "\(st.title.uppercased()) \(r.stepIndex + 1)/\(r.steps.count)"
+    }
+
+    private func box(_ v: String, _ unit: String, selected: Bool) -> some View {
+        VStack(spacing: 0) {
+            Text(v)
+                .font(.system(size: 26, weight: .heavy, design: .rounded))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text(unit).font(.system(size: 10, weight: .bold, design: .rounded)).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 4)
+        .background(RoundedRectangle(cornerRadius: 12).fill(selected ? restBlue.opacity(0.3) : chip))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(selected ? restBlue : .clear, lineWidth: 2))
+    }
+
+    private func value(_ v: String, _ unit: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 3) {
+            Text(v).font(.system(size: 18, weight: .bold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.6)
+            Text(unit).font(.system(size: 10, weight: .semibold, design: .rounded)).foregroundStyle(.secondary)
+        }
+    }
+}
+
 struct RunControls: View {
     @EnvironmentObject var store: WatchStore
     @State private var confirm = false
@@ -825,9 +984,9 @@ struct RunControls: View {
             }
             control("Verrouiller", "drop.fill", restBlue.opacity(0.25), restBlue) { r.lock() }
         }
-        .confirmationDialog("Terminer la course ?", isPresented: $confirm, titleVisibility: .visible) {
+        .confirmationDialog(r.indoor ? "Terminer la séance ?" : "Terminer la course ?", isPresented: $confirm, titleVisibility: .visible) {
             Button("Terminer") { r.end(save: true) }
-            Button("Annuler la course", role: .destructive) { r.end(save: false) }
+            Button(r.indoor ? "Ne pas enregistrer" : "Annuler la course", role: .destructive) { r.end(save: false) }
             Button("Continuer", role: .cancel) {}
         }
     }
@@ -862,8 +1021,14 @@ struct RunSummaryView: View {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 6), GridItem(.flexible())], spacing: 6) {
                     tile("\(fmtKm(sum.meters)) km", "Distance")
                     tile(hms(sum.seconds), "Temps")
-                    tile(sum.meters > 50 ? "\(fmtPace(sum.seconds / (sum.meters / 1000)))" : "--", "Allure moy.")
+                    if sum.indoor {
+                        tile(sum.seconds > 0 ? "\(fmt1(sum.meters / sum.seconds * 3.6)) km/h" : "--", "Vitesse moy.")
+                        tile("\(Int(sum.elevation.rounded())) m", "Dénivelé +")
+                    } else {
+                        tile(sum.meters > 50 ? "\(fmtPace(sum.seconds / (sum.meters / 1000)))" : "--", "Allure moy.")
+                    }
                     if sum.heartRate > 0 { tile("\(Int(sum.heartRate))", "BPM moyen") }
+                    if sum.indoor && sum.calories > 0 { tile("\(Int(sum.calories))", "kcal") }
                 }
                 if !sum.note.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {

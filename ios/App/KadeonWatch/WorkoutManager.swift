@@ -152,6 +152,12 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
     @Published private(set) var kmToast: (km: Int, pace: Double)?
     @Published private(set) var gpsReady = false
     @Published var summary: RunSummary?
+    // Tapis: speed (km/h) and incline (%) set with the Digital Crown, D+ from them.
+    @Published private(set) var speed: Double = 5
+    @Published private(set) var incline: Double = 0
+    @Published private(set) var elevation: Double = 0
+    /// « Monte à 10 % », shown at each palier.
+    @Published private(set) var changeText = ""
 
     /// Called with the finished run (for the iPhone): start, secs, meters, hr, kcal, splits.
     var onFinish: (([String: Any]) -> Void)?
@@ -174,6 +180,9 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
     private var still = 0
     private var moving = 0
     private var manualPause = false
+    private var lastTick: Double = 0
+    private var segs: [[String: Double]] = []
+    private var segStart: Double = 0
 
     private let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate)!
     private let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
@@ -184,6 +193,9 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
     var step: WRunStep? { steps.indices.contains(stepIndex) ? steps[stepIndex] : nil }
     var guided: Bool { !steps.isEmpty }
     var finishedPlan: Bool { guided && stepIndex >= steps.count }
+    var indoor: Bool { run?.indoor ?? false }
+    /// Average speed so far (km/h).
+    var averageSpeed: Double { elapsed > 0 ? meters / elapsed * 3.6 : 0 }
 
     /// Seconds left in the current step.
     var stepLeft: Double {
@@ -208,7 +220,14 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
     // MARK: before the start
 
     /// Health and location access, then the GPS warms up while the runner gets ready.
-    func prepare() {
+    func prepare(indoor: Bool = false) {
+        if indoor {
+            guard HKHealthStore.isHealthDataAvailable() else { return }
+            let share: Set<HKSampleType> = [HKObjectType.workoutType(), energyType, distanceType]
+            let read: Set<HKObjectType> = [HKObjectType.workoutType(), hrType, energyType, distanceType]
+            store.requestAuthorization(toShare: share, read: read) { _, _ in }
+            return
+        }
         location.delegate = self
         location.activityType = .fitness
         location.desiredAccuracy = kCLLocationAccuracyBest
@@ -230,7 +249,13 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
         guard phase == .idle else { return }
         run = r
         summary = nil
-        prepare()
+        prepare(indoor: r.indoor)
+        if r.indoor {
+            let first = r.steps.first
+            speed = first?.speed ?? (r.walking ? 5 : 9)
+            incline = first?.incline ?? (r.walking ? 8 : 1)
+            changeText = "Règle le tapis : \(fmt1(speed)) km/h, \(fmt1(incline)) %"
+        }
         phase = .countdown(3)
         WKInterfaceDevice.current().play(.click)
         var n = 3
@@ -258,17 +283,20 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
 
     private func begin() {
         let config = HKWorkoutConfiguration()
-        config.activityType = .running
-        config.locationType = .outdoor
+        config.activityType = run?.walking == true ? .walking : .running
+        config.locationType = indoor ? .indoor : .outdoor
         do {
             let s = try HKWorkoutSession(healthStore: store, configuration: config)
             let b = s.associatedWorkoutBuilder()
-            b.dataSource = HKLiveWorkoutDataSource(healthStore: store, workoutConfiguration: config)
+            let source = HKLiveWorkoutDataSource(healthStore: store, workoutConfiguration: config)
+            // Tapis: the distance comes from the speed set, not from the wrist's own estimate.
+            if indoor { source.disableCollection(for: distanceType) }
+            b.dataSource = source
             s.delegate = self
             b.delegate = self
             session = s
             builder = b
-            route = HKWorkoutRouteBuilder(healthStore: store, device: nil)
+            route = indoor ? nil : HKWorkoutRouteBuilder(healthStore: store, device: nil)
             resetCounters()
             startDate = Date()
             s.startActivity(with: startDate)
@@ -287,6 +315,7 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
         stepIndex = 0; paceWarning = 0; autoPaused = false; kmToast = nil
         samples = []; stepStart = (0, 0); splits = []; effortResults = []
         lastKm = 0; lastKmAt = (0, 0); outside = 0; lastWarnAt = -100; still = 0; moving = 0; manualPause = false
+        elevation = 0; lastTick = 0; segs = []; segStart = 0
     }
 
     // MARK: every second
@@ -294,7 +323,15 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
     private func tick() {
         guard let b = builder else { return }
         elapsed = b.elapsedTime(at: Date())
-        guard phase == .running else { return }
+        guard phase == .running else { lastTick = elapsed; return }
+
+        // Tapis: distance and D+ from the speed and incline set.
+        if indoor {
+            let dt = max(0, min(5, elapsed - lastTick))
+            meters += speed / 3.6 * dt
+            elevation += speed / 3.6 * dt * max(0, incline) / 100
+        }
+        lastTick = elapsed
 
         // Pace over the last ~30 s of running.
         samples.append((elapsed, meters))
@@ -356,11 +393,48 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
         stepIndex += 1
         paceWarning = 0
         outside = 0
+        // Tapis: the next palier's speed and incline, and what to do.
+        if indoor, let n = step, let sp = n.speed {
+            let inc = n.incline ?? incline
+            var parts: [String] = []
+            if inc != incline { parts.append("\(inc > incline ? "Monte" : "Descends") à \(fmt1(inc)) %") }
+            if sp != speed { parts.append("\(sp > speed ? "Accélère" : "Ralentis") à \(fmt1(sp)) km/h") }
+            changeText = parts.isEmpty ? "Garde le même réglage" : parts.joined(separator: ", ")
+            closeSeg(force: true)
+            speed = sp
+            incline = inc
+        }
         if finishedPlan {
             WKInterfaceDevice.current().play(.success)
         } else {
             WKInterfaceDevice.current().play(step?.phase == "work" ? .start : .stop)
         }
+    }
+
+    // MARK: tapis settings
+
+    /// Closes the current palier. Turning the crown makes many small changes: a palier of
+    /// less than 3 s is merged into the next one.
+    private func closeSeg(force: Bool = false) {
+        let d = elapsed - segStart
+        if d >= 3 || (force && d >= 1) {
+            segs.append(["secs": d, "speed": speed, "incline": incline])
+            segStart = elapsed
+        }
+    }
+
+    func setSpeed(_ v: Double) {
+        let x = min(25, max(0.5, (v * 10).rounded() / 10))
+        guard indoor, x != speed else { return }
+        closeSeg()
+        speed = x
+    }
+
+    func setIncline(_ v: Double) {
+        let x = min(30, max(0, (v * 2).rounded() / 2))
+        guard indoor, x != incline else { return }
+        closeSeg()
+        incline = x
     }
 
     // MARK: pause, end
@@ -393,11 +467,18 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
             splits.append(["secs": elapsed - stepStart.t, "meters": meters - stepStart.m])
         }
         let r = run
-        let payload: [String: Any] = [
+        let isIndoor = indoor
+        if isIndoor { closeSeg(force: true) }
+        var payload: [String: Any] = [
             "type": "run", "key": r?.key ?? "", "start": startDate.timeIntervalSince1970 * 1000,
             "secs": elapsed, "meters": meters, "hr": averageHeartRate, "kcal": calories,
-            "splits": guided ? splits : [],
+            "splits": guided && !isIndoor ? splits : [],
         ]
+        if isIndoor {
+            payload["activity"] = r?.activity ?? "treadmill"
+            payload["elevation"] = elevation
+            payload["segments"] = segs
+        }
         let worth = save && meters >= 200 && elapsed >= 60
         if worth {
             let slow = effortResults.filter { $0 == "slow" }.count
@@ -406,18 +487,23 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
             let note = effortResults.isEmpty ? "" : "Allure tenue sur \(ok) / \(effortResults.count) efforts"
                 + (fast > 0 ? " · \(fast) trop vite" : "") + (slow > 0 ? " · \(slow) trop lent" + (slow > 1 ? "s" : "") : "")
             summary = RunSummary(title: r?.title ?? "Course", seconds: elapsed, meters: meters, heartRate: averageHeartRate,
-                                 calories: calories, efforts: effortResults, note: note)
+                                 calories: calories, efforts: isIndoor ? [] : effortResults, note: isIndoor ? "" : note,
+                                 elevation: elevation, indoor: isIndoor)
         }
         phase = .saving
         s.end()
         let routeBuilder = route
-        b.endCollection(withEnd: end) { [weak self] _, _ in
+        let start = startDate
+        let dist = meters
+        let climb = elevation
+        let finish: () -> Void = { b.endCollection(withEnd: end) { [weak self] _, _ in
             guard worth else {
                 b.discardWorkout()
                 DispatchQueue.main.async { self?.finishUp() }
                 return
             }
-            var meta: [String: Any] = [HKMetadataKeyWorkoutBrandName: "Kadence", HKMetadataKeyIndoorWorkout: false]
+            var meta: [String: Any] = [HKMetadataKeyWorkoutBrandName: "Kadence", HKMetadataKeyIndoorWorkout: isIndoor]
+            if isIndoor, climb > 0 { meta[HKMetadataKeyElevationAscended] = HKQuantity(unit: .meter(), doubleValue: climb) }
             if let r, !r.key.isEmpty { meta["KadenceSessionKey"] = r.key; meta["KadenceTitle"] = r.title }
             b.addMetadata(meta) { _, _ in
                 b.finishWorkout { workout, _ in
@@ -430,6 +516,13 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
                     }
                 }
             }
+        } }
+        // Tapis: the distance computed from the speed goes to Apple Health as one sample.
+        if isIndoor, worth, dist > 0, end > start {
+            let sample = HKQuantitySample(type: distanceType, quantity: HKQuantity(unit: .meter(), doubleValue: dist), start: start, end: end)
+            b.add([sample]) { _, _ in finish() }
+        } else {
+            finish()
         }
     }
 
@@ -478,7 +571,7 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
             if let hr { self.heartRate = hr }
             if let avg { self.averageHeartRate = avg }
             if let kcal { self.calories = kcal }
-            if let dist { self.meters = dist }
+            if let dist, !self.indoor { self.meters = dist }
         }
     }
 

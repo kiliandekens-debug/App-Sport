@@ -147,6 +147,8 @@ struct PhoneState: Codable {
     var session: WSession?
     /// Next sessions of the running plan (today first). Missing from older iPhone versions.
     var runs: [WRun]?
+    /// Guided tapis sessions (12-3-30…), at the level reached. Missing from older iPhone versions.
+    var walks: [WRun]?
 }
 
 // MARK: - Running (same shapes as guidedRun() in src/lib/running.js)
@@ -161,6 +163,9 @@ struct WRunStep: Codable, Equatable, Hashable {
     var fast: Double
     var slow: Double
     var alert: Bool
+    /// Tapis only: speed (km/h) and incline (%) to set for this step.
+    var speed: Double?
+    var incline: Double?
 }
 
 struct WRun: Codable, Equatable, Hashable, Identifiable {
@@ -171,11 +176,19 @@ struct WRun: Codable, Equatable, Hashable, Identifiable {
     var km: Double
     var kind: String?
     var steps: [WRunStep]
+    /// "run" (outside, GPS), "treadmill" or "incline_walk" (indoor: speed and incline set by hand).
+    var activity: String?
 
     var id: String { key }
+    var indoor: Bool { activity == "treadmill" || activity == "incline_walk" }
+    var walking: Bool { activity == "incline_walk" }
 
     /// A free run: no plan, no steps.
     static let free = WRun(key: "", ymd: "", title: "Course libre", mins: 0, km: 0, kind: nil, steps: [])
+    /// A free tapis session: speed and incline with the Digital Crown.
+    static func freeIndoor(_ activity: String) -> WRun {
+        WRun(key: "", ymd: "", title: activity == "incline_walk" ? "Marche inclinée" : "Course sur tapis", mins: 0, km: 0, kind: "tapis", steps: [], activity: activity)
+    }
 
     /// « Aujourd'hui », « Demain » or « mer. 3 ».
     var when: String {
@@ -222,6 +235,14 @@ struct RunSummary: Equatable {
     /// One per effort with a target pace: "ok", "fast" or "slow".
     var efforts: [String]
     var note: String
+    /// Tapis: positive elevation (m) from the speed and incline set.
+    var elevation: Double = 0
+    var indoor = false
+}
+
+/// 5.2 → "5,2" (one decimal, French comma).
+func fmt1(_ v: Double) -> String {
+    String(format: "%.1f", v).replacingOccurrences(of: ".", with: ",")
 }
 
 /// 341 → "5:41" (seconds per km).
