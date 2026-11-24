@@ -6,6 +6,16 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.17.0', date: '2026-11-24', title: 'Courir avec la montre, dans Kadence',
+    items: [
+      'Apple Watch : lance la course du plan (ou une course libre) directement dans Kadence, sans passer par Exercice, même sans l\'iPhone.',
+      'GPS, allure, distance et BPM en direct, avec chaque étape guidée : temps restant, consigne, et ce qui vient ensuite.',
+      'Vibration à chaque changement d\'étape (avec 3, 2, 1), à chaque kilomètre, et quand tu sors de l\'allure visée.',
+      'Pause automatique quand tu t\'arrêtes, verrouillage contre la pluie, passage à l\'étape suivante.',
+      'À la fin : récap sur la montre, course enregistrée dans Apple Santé avec le tracé, et dans Kadence avec le bilan par effort.',
+    ],
+  },
+  {
     version: '1.16.2', date: '2026-11-24', title: 'Progrès plus lisible',
     items: [
       'L\'écran Progrès en trois blocs : ta semaine, un exercice, tes records.',
