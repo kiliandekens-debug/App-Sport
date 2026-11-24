@@ -26,6 +26,10 @@ struct ContentView: View {
                 .containerBackground(glow(go), for: .navigation)
         } else if store.runner.active {
             RunScreen()
+        } else if let r = store.pendingRun {
+            // Not a navigation push: the screen must survive the switch to the running screen.
+            RunStartView(run: r)
+                .containerBackground(glow(r.steps.isEmpty ? go : brand), for: .navigation)
         } else if let sum = store.summary {
             SummaryView(sum: sum)
                 .containerBackground(glow(go), for: .navigation)
@@ -465,80 +469,93 @@ struct IdleView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 5) {
-                    Image(systemName: "flame.fill").foregroundStyle(brand)
-                    Text("Kadence")
-                }
-                .font(.system(.footnote, design: .rounded).weight(.bold))
-                if store.waitingStart {
-                    HStack(spacing: 6) {
-                        ProgressView().frame(width: 20)
-                        Text("Démarrage sur l'iPhone…").font(.system(.footnote, design: .rounded))
+            VStack(spacing: 8) {
+                gymCard
+                runCard
+                if store.upcomingRun != nil {
+                    Button { store.pendingRun = .free } label: {
+                        Label("Course libre", systemImage: "location.fill")
                     }
-                    Text("Ouvre Kadence sur l'iPhone si rien ne se passe.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Button("Annuler") { store.cancelStart() }
-                        .buttonStyle(ChipStyle())
-                } else if let next = store.suggestion {
-                    Text("SÉANCE SUGGÉRÉE")
-                        .font(.system(size: 10, weight: .heavy, design: .rounded))
-                        .foregroundStyle(ember)
-                    Text(next)
-                        .font(.system(.title3, design: .rounded).weight(.bold))
-                        .lineLimit(3)
-                        .minimumScaleFactor(0.7)
-                    Button {
-                        store.start()
-                    } label: {
-                        Label("Démarrer", systemImage: "play.fill")
-                    }
-                    .buttonStyle(MainStyle())
-                } else if store.upcomingRun == nil {
-                    Text(store.heardFromPhone ? "Aucune séance suggérée. Lance une séance sur l'iPhone." : "Ouvre Kadence sur l'iPhone pour relier la montre.")
-                        .font(.system(.footnote, design: .rounded))
-                        .foregroundStyle(.secondary)
+                    .buttonStyle(ChipStyle())
                 }
-                RunCard()
+                if store.suggestion == nil && store.upcomingRun == nil && !store.waitingStart {
+                    Text(store.heardFromPhone ? "Lance une séance sur l'iPhone, ou crée ton plan de course." : "Ouvre Kadence sur l'iPhone pour relier la montre.")
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .navigationTitle("Kadence")
+    }
+
+    @ViewBuilder private var gymCard: some View {
+        if store.waitingStart {
+            HomeCard(icon: "dumbbell.fill", eyebrow: "MUSCULATION", title: "Démarrage…", detail: "Ouvre Kadence sur l'iPhone si rien ne se passe.", colors: [ember, brand], busy: true) {
+                store.cancelStart()
+            }
+        } else if let next = store.suggestion {
+            HomeCard(icon: "dumbbell.fill", eyebrow: "MUSCULATION", title: next, detail: "Séance suggérée", colors: [ember, brand]) {
+                store.start()
+            }
+        }
+    }
+
+    @ViewBuilder private var runCard: some View {
+        if let r = store.upcomingRun {
+            HomeCard(icon: "figure.run", eyebrow: "COURSE · \(r.when.uppercased())", title: r.title, detail: "\(r.mins) min · ≈ \(fmtKg(r.km)) km", colors: [Color(red: 0.25, green: 0.85, blue: 0.55), Color(red: 0.08, green: 0.6, blue: 0.35)]) {
+                store.pendingRun = r
+            }
+        } else {
+            HomeCard(icon: "figure.run", eyebrow: "COURSE", title: "Course libre", detail: "GPS, allure et BPM", colors: [Color(red: 0.25, green: 0.85, blue: 0.55), Color(red: 0.08, green: 0.6, blue: 0.35)]) {
+                store.pendingRun = .free
+            }
         }
     }
 }
 
-/// The next run of the plan, and a free run.
-struct RunCard: View {
-    @EnvironmentObject var store: WatchStore
+/// A big tappable card on the home screen: one per kind of session.
+struct HomeCard: View {
+    let icon: String
+    let eyebrow: String
+    let title: String
+    let detail: String
+    let colors: [Color]
+    var busy = false
+    let action: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if let r = store.upcomingRun {
-                Text("COURSE · \(r.when.uppercased())")
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack {
+                    Image(systemName: icon)
+                        .font(.system(size: 15, weight: .bold))
+                        .frame(width: 30, height: 30)
+                        .background(Circle().fill(Color.black.opacity(0.22)))
+                    Spacer()
+                    if busy { ProgressView().frame(width: 22) } else { Image(systemName: "play.fill").font(.system(size: 13, weight: .bold)) }
+                }
+                Text(eyebrow)
                     .font(.system(size: 10, weight: .heavy, design: .rounded))
-                    .foregroundStyle(go)
-                Text(r.title)
+                    .opacity(0.8)
+                    .padding(.top, 2)
+                Text(title)
                     .font(.system(.headline, design: .rounded))
                     .lineLimit(2)
-                    .minimumScaleFactor(0.75)
-                Text("\(r.mins) min · ≈ \(fmtKg(r.km)) km")
-                    .font(.system(.caption2, design: .rounded))
-                    .foregroundStyle(.secondary)
-                NavigationLink(value: r) {
-                    Label("Courir", systemImage: "figure.run")
-                }
-                .buttonStyle(ChipStyle(fill: go, fg: .black))
+                    .minimumScaleFactor(0.7)
+                    .multilineTextAlignment(.leading)
+                Text(detail)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .opacity(0.85)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
             }
-            NavigationLink(value: WRun.free) {
-                Label("Course libre", systemImage: "location.fill")
-            }
-            .buttonStyle(ChipStyle())
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: 18).fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)))
         }
-        .padding(.top, 4)
-        .navigationDestination(for: WRun.self) { r in
-            RunStartView(run: r)
-                .containerBackground(glow(r.steps.isEmpty ? go : brand), for: .navigation)
-        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -552,27 +569,25 @@ struct RunStartView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 6) {
-                if !run.steps.isEmpty {
-                    Text(run.when.uppercased())
-                        .font(.system(size: 10, weight: .heavy, design: .rounded))
-                        .foregroundStyle(ember)
-                }
-                Text(run.title)
+                Text(run.steps.isEmpty ? "COURSE LIBRE" : run.when.uppercased())
+                    .font(.system(size: 10, weight: .heavy, design: .rounded))
+                    .foregroundStyle(run.steps.isEmpty ? go : ember)
+                Text(run.steps.isEmpty ? "Cours à ton rythme" : run.title)
                     .font(.system(.headline, design: .rounded))
                     .lineLimit(2)
                     .minimumScaleFactor(0.75)
                 if run.steps.isEmpty {
-                    Text("Distance, allure et BPM, sans plan.")
-                        .font(.caption2)
+                    Text("Distance, allure et BPM en direct. Vibration à chaque kilomètre.")
+                        .font(.system(.caption2, design: .rounded))
                         .foregroundStyle(.secondary)
                 } else {
                     Text("\(run.mins) min · ≈ \(fmtKg(run.km)) km")
-                        .font(.system(.caption2, design: .rounded))
+                        .font(.system(.caption2, design: .rounded).weight(.semibold))
                         .foregroundStyle(.secondary)
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 3) {
                         ForEach(run.outline, id: \.self) { line in
                             Text(line)
-                                .font(.system(.caption2, design: .rounded).weight(.semibold))
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.7)
                         }
@@ -588,6 +603,7 @@ struct RunStartView: View {
                 .font(.system(.caption2, design: .rounded).weight(.bold))
                 .foregroundStyle(store.runner.gpsReady ? go : warn)
                 Button {
+                    store.pendingRun = nil
                     store.runner.start(run)
                 } label: {
                     Label("Démarrer", systemImage: "play.fill")
@@ -599,6 +615,12 @@ struct RunStartView: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { store.pendingRun = nil } label: { Image(systemName: "xmark") }
+                    .accessibilityLabel("Retour")
             }
         }
         .onAppear { store.runner.prepare() }
@@ -662,95 +684,121 @@ struct RunMetrics: View {
         let r = store.runner
         let st = r.finishedPlan ? nil : r.step
         let tint: Color = r.phase == .paused ? warn : st?.phase == "work" ? brand : st?.phase == "recovery" ? restBlue : go
-        VStack(alignment: .leading, spacing: 3) {
-            HStack {
-                Text(label(r, st))
-                    .font(.system(size: 10, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.black)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(tint))
-                Spacer(minLength: 2)
-                Text(hms(r.elapsed))
-                    .font(.system(.caption2, design: .rounded).weight(.semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-            }
+        VStack(alignment: .leading, spacing: 1) {
+            Text(label(r, st))
+                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                .foregroundStyle(.black)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(tint))
+                .padding(.bottom, 2)
             if let st {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(mmss(Int(r.stepLeft.rounded(.up))))
-                        .font(.system(size: 38, weight: .heavy, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(st.phase == "recovery" ? restBlue : .white)
-                        .contentTransition(.numericText(countsDown: true))
-                    Text(st.title)
-                        .font(.system(.caption2, design: .rounded).weight(.semibold))
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.7)
-                }
+                // Guided step: time left first, then what to do, then pace and the rest.
+                Text(mmss(Int(r.stepLeft.rounded(.up))))
+                    .font(.system(size: 44, weight: .heavy, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(tint)
+                    .contentTransition(.numericText(countsDown: true))
+                    .lineLimit(1)
+                Text(st.phase == "recovery" ? (r.nextStep.map { "Ensuite : \($0.title)" } ?? st.title) : st.title)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                 ProgressView(value: r.stepProgress)
                     .tint(tint)
-                Text(st.phase == "recovery" ? (r.nextStep.map { "Ensuite : \($0.title)" } ?? st.hint) : st.hint)
-                    .font(.system(size: 11, design: .rounded))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .padding(.vertical, 2)
+                Spacer(minLength: 0)
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    metric(paceText(r.pace), "/km", size: 26, color: paceColor(r, st))
+                    Spacer(minLength: 2)
+                    if r.paceWarning != 0 {
+                        Text(r.paceWarning > 0 ? "Ralentis" : "Accélère")
+                            .font(.system(size: 12, weight: .heavy, design: .rounded))
+                            .foregroundStyle(warn)
+                    } else if st.fast > 0 {
+                        Text("\(fmtPace(st.fast))-\(fmtPace(st.slow))")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                HStack(alignment: .firstTextBaseline) {
+                    metric(fmtKm(r.meters), "km", size: 20)
+                    Spacer(minLength: 2)
+                    heart(r.heartRate, size: 20)
+                }
             } else {
-                Text(hms(r.elapsed))
-                    .font(.system(size: 38, weight: .heavy, design: .rounded))
-                    .monospacedDigit()
+                // Free run, or the plan is done: four lines, as on a running watch.
+                metric(hms(r.elapsed), "", size: 38, color: ember)
+                metric(fmtKm(r.meters), "km", size: 30)
+                metric(paceText(r.pace), "/km", size: 30)
+                heart(r.heartRate, size: 30)
                 if r.finishedPlan {
                     Text("Séance faite : termine quand tu veux")
-                        .font(.system(size: 11, design: .rounded))
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundStyle(go)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                }
-            }
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(fmtPace(r.pace))
-                    .font(.system(size: 24, weight: .heavy, design: .rounded))
-                    .monospacedDigit()
-                Text("/km").font(.system(size: 11, design: .rounded)).foregroundStyle(.secondary)
-                Spacer(minLength: 2)
-                if r.paceWarning != 0 {
-                    Text(r.paceWarning > 0 ? "Ralentis" : "Accélère")
-                        .font(.system(size: 11, weight: .heavy, design: .rounded))
-                        .foregroundStyle(warn)
-                } else if let st, st.fast > 0, r.pace > 0 {
-                    Text("\(fmtPace(st.fast))–\(fmtPace(st.slow))")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(r.pace >= st.fast && r.pace <= st.slow ? go : .secondary)
-                        .monospacedDigit()
-                }
-            }
-            HStack(spacing: 6) {
-                HeartPill(size: 15, live: r.heartRate)
-                Spacer(minLength: 2)
-                HStack(alignment: .firstTextBaseline, spacing: 2) {
-                    Text(fmtKm(r.meters)).font(.system(size: 15, weight: .bold, design: .rounded)).monospacedDigit()
-                    Text("km").font(.system(size: 10, design: .rounded)).foregroundStyle(.secondary)
+                        .minimumScaleFactor(0.6)
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .overlay {
             if let t = r.kmToast {
                 VStack(spacing: 2) {
                     Text("Kilomètre \(t.km)").font(.system(.footnote, design: .rounded).weight(.bold)).foregroundStyle(go)
-                    Text(fmtPace(t.pace)).font(.system(size: 40, weight: .heavy, design: .rounded)).monospacedDigit()
+                    Text(fmtPace(t.pace)).font(.system(size: 44, weight: .heavy, design: .rounded)).monospacedDigit()
                     Text("ce kilomètre").font(.caption2).foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(RoundedRectangle(cornerRadius: 16).fill(Color.black.opacity(0.92)))
+                .background(RoundedRectangle(cornerRadius: 16).fill(Color.black.opacity(0.94)))
                 .transition(.opacity)
             }
         }
-        .accessibilityElement(children: .combine)
+    }
+
+    private func metric(_ value: String, _ unit: String, size: CGFloat, color: Color = .white) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 3) {
+            Text(value)
+                .font(.system(size: size, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            if !unit.isEmpty {
+                Text(unit)
+                    .font(.system(size: max(11, size * 0.42), weight: .semibold, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func heart(_ bpm: Double, size: CGFloat) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 3) {
+            Image(systemName: "heart.fill")
+                .font(.system(size: size * 0.6, weight: .bold))
+                .foregroundStyle(.red)
+            Text(bpm > 0 ? "\(Int(bpm))" : "—")
+                .font(.system(size: size, weight: .bold, design: .rounded))
+                .monospacedDigit()
+            Text("BPM")
+                .font(.system(size: max(10, size * 0.38), weight: .semibold, design: .rounded))
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(bpm > 0 ? "Fréquence cardiaque \(Int(bpm))" : "Fréquence cardiaque indisponible")
+    }
+
+    private func paceText(_ p: Double) -> String { p > 0 ? fmtPace(p) : "—" }
+
+    private func paceColor(_ r: RunManager, _ st: WRunStep) -> Color {
+        guard st.fast > 0, r.pace > 0 else { return .white }
+        return r.pace >= st.fast && r.pace <= st.slow ? go : warn
     }
 
     private func label(_ r: RunManager, _ st: WRunStep?) -> String {
         if r.phase == .paused { return r.autoPaused ? "PAUSE AUTO" : "EN PAUSE" }
-        guard let st else { return "COURSE" }
+        guard let st else { return r.finishedPlan ? "TERMINÉ" : "COURSE LIBRE" }
         let (i, n) = r.stepRank
         switch st.phase {
         case "work": return "EFFORT \(i)/\(n)"

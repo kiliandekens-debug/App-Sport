@@ -18,6 +18,8 @@ final class WatchStore: NSObject, ObservableObject, WCSessionDelegate {
     @Published var summary: Summary?
     /// Next sessions of the running plan, kept for runs without the iPhone.
     @Published private(set) var runs: [WRun] = []
+    /// Run chosen on the home screen, shown on the start screen until Démarrer.
+    @Published var pendingRun: WRun?
 
     let workout = WorkoutManager()
     let runner = RunManager()
@@ -204,6 +206,7 @@ final class WatchStore: NSObject, ObservableObject, WCSessionDelegate {
         waitingStart = false
         if before == nil, next != nil {
             summary = nil
+            pendingRun = nil
         } else if let b = before, next == nil {
             // Finished or cancelled on the iPhone.
             let worked = b.done > 0

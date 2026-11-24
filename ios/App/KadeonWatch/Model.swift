@@ -226,7 +226,7 @@ struct RunSummary: Equatable {
 
 /// 341 → "5:41" (seconds per km).
 func fmtPace(_ secPerKm: Double) -> String {
-    guard secPerKm.isFinite, secPerKm > 0, secPerKm < 3600 else { return "--:--" }
+    guard secPerKm.isFinite, secPerKm > 0, secPerKm < 3600 else { return "—" }
     return mmss(Int(secPerKm.rounded()))
 }
 
