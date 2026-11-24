@@ -6,6 +6,13 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.16.1', date: '2026-11-24', title: 'Plan de course en trois questions',
+    items: [
+      'Nombre de sorties et jour de la sortie longue sur le même écran, avec ta semaine qui se met à jour en direct.',
+      'Les questions s\'affichent en entier (plus de titre coupé), avec une barre de progression.',
+    ],
+  },
+  {
     version: '1.16.0', date: '2026-11-24', title: 'Coach course plus simple',
     items: [
       'Créer un plan en quatre questions : ton objectif, combien de sorties, le jour de ta sortie longue et une éventuelle course. Le coach place le reste de la semaine tout seul.',
