@@ -73,6 +73,10 @@ const P = {
   sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
   send: <><path d="M22 2 11 13" /><path d="M22 2 15 22l-4-9-9-4 20-7z" /></>,
   download: <><path d="M12 3v12M7 10l5 5 5-5" /><path d="M5 21h14" /></>,
+  chat: <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" />,
+  flag: <path d="M5 21V4M5 4h11l-2 4 2 4H5" />,
+  userplus: <><circle cx="9" cy="8" r="4" /><path d="M2 21c0-4 3-6 7-6s7 2 7 6M19 8v6M16 11h6" /></>,
+  users: <><circle cx="9" cy="8" r="3.5" /><circle cx="17" cy="9" r="2.5" /><path d="M2 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5M16 14.5c3 0 6 1.5 6 4.5" /></>,
   flame: <path d="M12 3c1 3 4 5 4 9a4 4 0 0 1-8 0c0-1.5.5-2.5 1.5-3.5C10 10 12 8 12 3zM12 21a7 7 0 0 0 7-7" />,
 };
 
@@ -86,8 +90,8 @@ export function Icon({ name, size = 20, width = 2, fill }) {
 
 const TABS = [
   ['/', 'home', 'Accueil'],
-  ['/exercices', 'dumbbell', 'Exercices'],
   ['/course', 'run', 'Course'],
+  ['/amis', 'users', 'Amis'],
   ['/progres', 'chart', 'Progrès'],
   ['/profil', 'user', 'Profil'],
 ];

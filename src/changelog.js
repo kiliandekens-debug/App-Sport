@@ -6,6 +6,16 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.19.0', date: '2026-11-25', title: 'Le fil des amis',
+    items: [
+      'Nouvel onglet Amis (à la place d\'Exercices, maintenant sur l\'accueil) : les séances que tes amis partagent, avec bravos et commentaires.',
+      'Invite un pote avec ton lien ou ton code ; tu acceptes sa demande et vous voyez vos séances partagées. Rien n\'est public.',
+      'À la fin d\'une séance (salle, course, tapis) : « Partager avec mes amis », avec un mot et le choix de ce qui est visible. Fréquence cardiaque cachée par défaut.',
+      'Classement de la semaine entre amis : séances, km, dénivelé, tonnes, et semaines d\'affilée.',
+      'Une séance d\'ami te plaît ? « Ajouter à mes routines ». Signaler, bloquer ou retirer une publication en deux gestes.',
+    ],
+  },
+  {
     version: '1.18.1', date: '2026-11-25', title: 'Correctif tapis',
     items: [
       'Tapis : si la date de la séance est effacée, le bouton Enregistrer reste grisé au lieu de ne rien faire.',

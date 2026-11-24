@@ -17,6 +17,12 @@ import Routine from './screens/Routine.jsx';
 import Course from './screens/Course.jsx';
 import Historique from './screens/Historique.jsx';
 import Tapis from './screens/Tapis.jsx';
+import Amis from './screens/Amis.jsx';
+import { keepInviteFromUrl, takePendingInvite, ensureProfile, requestFriend } from './social.js';
+import { useUi } from './ui.jsx';
+
+// Lien d'invitation /ami/<code> : gardé avant même la connexion.
+keepInviteFromUrl();
 import { PasswordForm } from './password.jsx';
 import { UpdateBanner, WhatsNew, useFreshVersion } from './update.jsx';
 import { WatchSync } from './watch.js';
@@ -60,6 +66,15 @@ function Shell({ user }) {
   const { pathname } = useLocation();
   const hideNav = pathname.startsWith('/seance') || pathname.startsWith('/montre') || pathname.startsWith('/variante') || pathname.startsWith('/routines');
 
+  // Invitation reçue par lien : la demande d'ami part dès la connexion.
+  const ui = useUi();
+  useEffect(() => {
+    const code = takePendingInvite();
+    if (!code) return;
+    ensureProfile().then(() => requestFriend(code))
+      .then((r) => ui.notify(r.error || (r.status === 'accepted' ? `Toi et ${r.name} êtes amis` : `Demande envoyée à ${r.name}`)))
+      .catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [fresh, closeFresh] = useFreshVersion();
   if (data.loading) return <Loading />;
   return (
@@ -75,6 +90,8 @@ function Shell({ user }) {
         <Route path="/course" element={<Course />} />
         <Route path="/historique" element={<Historique />} />
         <Route path="/tapis" element={<Tapis user={user} />} />
+        <Route path="/amis" element={<Amis />} />
+        <Route path="/amis/gerer" element={<Amis />} />
         <Route path="/profil" element={<Profil user={user} />} />
         <Route path="/montre" element={<Montre />} />
         <Route path="/routines/:id" element={<Routine key={pathname} />} />

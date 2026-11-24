@@ -140,8 +140,9 @@ export async function saveRunProfile(profile) {
 }
 
 export async function saveRunLog(log) {
-  const { error } = await supabase.from('run_logs').insert(log);
+  const { data, error } = await supabase.from('run_logs').insert(log).select('*').single();
   if (error) throw error;
+  return data;
 }
 
 export async function deleteRunLog(id) {

@@ -8,6 +8,7 @@ import { fmtKg, fmtInt, fmtDay, sameDay, titleKey, isWork, isPlausible } from '.
 import { incrementOf } from '../lib/exercises.js';
 import { Icon, ExerciseImage, GlassHeader } from '../components.jsx';
 import { SessionAnalysis } from '../analysis.jsx';
+import { ShareSheet } from '../social.jsx';
 
 const KIND = {
   up: ['Charge en hausse', 'var(--done)', 'var(--ok)'],
@@ -44,6 +45,7 @@ export default function Coach() {
   const data = useData();
   const ui = useUi();
   const { state } = useLocation();
+  const [share, setShare] = useState(false);
   const review = useMemo(() => reviewLastSession(data, { lest: hasLest() }), [data]);
   const [answers, setAnswers] = useState({});
   const [tweak, setTweak] = useState({});
@@ -116,6 +118,15 @@ export default function Coach() {
             </span>
           )}
         </div>
+
+        {state?.summary && (
+          <button className="card" onClick={() => setShare(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, textAlign: 'left', color: 'inherit', font: 'inherit', border: 'none', cursor: 'pointer', width: '100%' }}>
+            <span className="tile-icon" style={{ background: 'color-mix(in srgb, var(--accent) 18%, var(--chip))', color: 'var(--accent)' }}><Icon name="users" size={20} /></span>
+            <span className="grow stack" style={{ gap: 1 }}><span style={{ fontWeight: 650 }}>Partager avec mes amis</span><span className="xs muted">Bravos et commentaires dans le fil</span></span>
+            <Icon name="chevron" size={16} />
+          </button>
+        )}
+        {share && <ShareSheet source={{ kind: 'gym', w }} data={data} onClose={() => setShare(false)} />}
 
         <SessionAnalysis workout={w} />
 

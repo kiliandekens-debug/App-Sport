@@ -7,6 +7,8 @@ import { Icon, Bars, GlassHeader } from '../components.jsx';
 import { fmtDay } from '../lib/stats.js';
 import { isNative } from '../native.js';
 import { sendRunToWatch } from '../watch.js';
+import { ShareSheet } from '../social.jsx';
+import { hasFriends } from '../social.js';
 import { GOALS, DAYS, DAY_SHORT, SLOT, PHASES, buildPlan, appleSteps, sessionSteps, autoSchedule, segments, intensityOf, mmss, hms, parseDuration, TYPE_LABEL, paceRange, pacesOf, goalPrediction, betterLevel, runStats, scheduleOf, scheduleIssues, raceTime, vdotOfProfile, fitnessFromHistory, monthlyKm } from '../lib/running.js';
 
 const FILL = { warm: 'var(--z0)', cool: 'var(--z0)', rest: 'var(--z0)', recovery: 'var(--z0)', easy: 'var(--z1)', steady: 'var(--z1)', race: 'var(--z2)', tempo: 'var(--z3)', fast: 'var(--z4)', rep: 'var(--z4)', hill: 'var(--z4)', stride: 'var(--z4)' };
@@ -130,7 +132,7 @@ const longDayOf = (sched) => { const i = sched.indexOf('long'); return i >= 0 ? 
 const fmtDate = (ymdStr) => new Date(`${ymdStr}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
 const TAPIS_LINK = (
-  <Link to="/tapis" className="card row" style={{ gap: 12, color: 'inherit', textDecoration: 'none' }}>
+  <Link to="/tapis" className="card" style={{ flexDirection: 'row', alignItems: 'center', gap: 12, color: 'inherit', textDecoration: 'none' }}>
     <span className="tile-icon" style={{ width: 40, height: 40, background: 'color-mix(in srgb, var(--ok) 20%, var(--chip))' }}><Icon name="up" size={20} /></span>
     <span className="grow stack" style={{ gap: 1 }}>
       <span style={{ fontWeight: 650 }}>Tapis et marche inclinée</span>
@@ -419,6 +421,7 @@ export default function Course() {
   const [tab, setTab] = useState('seance');
   const [sending, setSending] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
+  const [shareLog, setShareLog] = useState(null);
   const pick = (key) => { setPicked(key); setTab('seance'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const profile = data.runProfile;
 
@@ -501,7 +504,7 @@ export default function Course() {
 
   const saveResult = async (f) => {
     try {
-      await saveRunLog({
+      const row = await saveRunLog({
         done_at: new Date(f.when).toISOString(), session_key: next?.key || null, kind: next?.kind || null,
         distance_km: f.km, duration_s: f.secs, avg_hr: f.hr ? Number(f.hr) : null, calories: f.cal ? Number(f.cal) : null,
         feel: f.feel, source: draftNote && !draftNote.includes('pas réussi') ? 'screenshot' : 'manual',
@@ -510,6 +513,7 @@ export default function Course() {
       setDraft(null);
       setPicked(null);
       ui.notify('Course enregistrée, plan mis à jour');
+      if (row && (await hasFriends())) setShareLog(row);
     } catch (e) { ui.notify(e.message || String(e)); }
   };
 
@@ -745,6 +749,7 @@ export default function Course() {
           </>
         )}
       </div>
+      {shareLog && <ShareSheet source={{ kind: 'run', l: shareLog }} data={data} onClose={() => setShareLog(null)} />}
     </main>
   );
 }

@@ -4,6 +4,8 @@ import { useData, saveRunLog } from '../data.jsx';
 import { useUi } from '../ui.jsx';
 import { Icon, GlassHeader } from '../components.jsx';
 import { RunSheet } from '../day.jsx';
+import { ShareSheet } from '../social.jsx';
+import { hasFriends } from '../social.js';
 import { fmtDay } from '../lib/stats.js';
 import { hms, parseDuration } from '../lib/running.js';
 import { isNative, nativeKeepAwake } from '../native.js';
@@ -281,6 +283,7 @@ export default function Tapis({ user }) {
   const [draft, setDraft] = useState(null); // result form
   const [freeKind, setFreeKind] = useState('incline_walk');
   const [sheet, setSheet] = useState(null);
+  const [shareLog, setShareLog] = useState(null);
   const walks = data.walkLogs;
   const sessions = useMemo(() => TEMPLATES.map((t) => templateSession(t, walks)), [walks]);
   const week = thisWeek(walks);
@@ -305,7 +308,12 @@ export default function Tapis({ user }) {
   };
   const manual = () => { setDraft({ segs: null, activity: 'incline_walk', title: '', key: null, duration: '', distance: '', speed: '5', incline: '10', hr: '', feel: null, when: toLocalInput() }); window.scrollTo(0, 0); };
   const save = async (log) => {
-    try { await saveRunLog(log); await data.refresh(); setDraft(null); setOpen(null); ui.notify(log.elevation_m ? `Séance enregistrée : ${log.elevation_m} m de dénivelé` : 'Séance enregistrée'); } catch (e) { ui.notify(e.message || String(e)); }
+    try {
+      const row = await saveRunLog(log);
+      await data.refresh(); setDraft(null); setOpen(null);
+      ui.notify(log.elevation_m ? `Séance enregistrée : ${log.elevation_m} m de dénivelé` : 'Séance enregistrée');
+      if (row && (await hasFriends())) setShareLog(row);
+    } catch (e) { ui.notify(e.message || String(e)); }
   };
 
   const detail = open ? sessions.find((x) => x.key === `tpl:${open}`) : null;
@@ -392,6 +400,7 @@ export default function Tapis({ user }) {
       </div>
       {run && <Player run={run} weight={weight} onEnd={ended} onCancel={() => setRun(null)} />}
       <RunSheet id={sheet} onClose={() => setSheet(null)} />
+      {shareLog && <ShareSheet source={{ kind: 'run', l: shareLog }} data={data} onClose={() => setShareLog(null)} />}
     </main>
   );
 }

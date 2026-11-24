@@ -7,6 +7,7 @@ import { SessionAnalysis } from './analysis.jsx';
 import { fmtKg, fmtInt, sameDay, isWork, isPlausible } from './lib/stats.js';
 import { mmss, hms, vdotOf, raceTime } from './lib/running.js';
 import { isWalk, logTitle, fmtSpeed, fmtIncline } from './lib/treadmill.js';
+import { ShareSheet } from './social.jsx';
 
 const ACTIVITY_LOW = { incline_walk: 'marche inclinée', walk: 'marche dehors', treadmill: 'course sur tapis' };
 
@@ -80,6 +81,7 @@ export function WorkoutSheet({ id, onClose }) {
   const data = useData();
   const ui = useUi();
   const [busy, setBusy] = useState(false);
+  const [share, setShare] = useState(false);
   const w = id ? data.workouts.find((x) => x.id === id) : null;
   const ref = useModal(!!w, onClose);
   if (!w) return null;
@@ -149,12 +151,14 @@ export function WorkoutSheet({ id, onClose }) {
 
             <SessionAnalysis workout={w} />
 
+            <button className="btn" onClick={() => setShare(true)}><Icon name="users" size={16} />Partager avec mes amis</button>
             <div className="row" style={{ gap: 8, paddingTop: 4 }}>
               <button className="btn grow" onClick={rename}><Icon name="edit" size={16} />Renommer</button>
               <button className="btn grow" style={{ color: 'var(--danger)', background: 'var(--danger-bg)' }} disabled={busy} onClick={remove}><Icon name="trash" size={16} />Supprimer</button>
             </div>
           </div>
         </div>
+      {share && w && <ShareSheet source={{ kind: 'gym', w }} data={data} onClose={() => setShare(false)} />}
     </>
   );
 }
@@ -230,6 +234,7 @@ export function RunSheet({ id, onClose }) {
   const ui = useUi();
   const l = id ? data.allLogs.find((x) => x.id === id) : null;
   const ref = useModal(!!l, onClose);
+  const [share, setShare] = useState(false);
   if (!l) return null;
   const km = Number(l.distance_km);
   const date = new Date(l.done_at);
@@ -263,8 +268,10 @@ export function RunSheet({ id, onClose }) {
         </div>
         {v && <span className="small muted" style={{ lineHeight: 1.45 }}>À ce niveau, temps équivalents : 5 km en {hms(raceTime(v, 5))}, 10 km en {hms(raceTime(v, 10))}, semi en {hms(raceTime(v, 21.0975))}. Valable si la course était faite à fond ; pour un footing, ton vrai niveau est plus haut.</span>}
         <span className="xs muted">{l.source === 'strava' ? 'Importée de Strava' : l.source === 'screenshot' ? 'Lue sur une capture' : l.source === 'watch' ? 'Enregistrée avec l\'Apple Watch' : l.source === 'timer' ? 'Enregistrée avec le minuteur' : l.source === 'apple-health' ? 'Importée d\'Apple Santé' : 'Saisie à la main'}{walk && l.activity ? `, ${ACTIVITY_LOW[l.activity]}` : ''}{l.feel ? `, ressenti ${l.feel}/5` : ''}</span>
+        <button className="btn" onClick={() => setShare(true)}><Icon name="users" size={16} />Partager avec mes amis</button>
         <button className="btn" style={{ color: 'var(--danger)', background: 'var(--danger-bg)' }} onClick={remove}><Icon name="trash" size={16} />Supprimer</button>
       </div>
+      {share && <ShareSheet source={{ kind: 'run', l }} data={data} onClose={() => setShare(false)} />}
     </div>
   );
 }

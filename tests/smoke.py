@@ -39,7 +39,16 @@ runs = [{'id': f'r{j}', 'done_at': (now - timedelta(days=60 - j * 5)).isoformat(
 # 1.18.0: one incline walk (12-3-30, felt easy): must not count as a run, and raises the template's level.
 runs.append({'id': 'w1', 'done_at': (now - timedelta(days=3)).isoformat(), 'distance_km': 2.4, 'duration_s': 1800, 'avg_hr': 130, 'calories': 250, 'feel': 2, 'source': 'timer', 'notes': '12-3-30', 'session_key': 'tpl:12-3-30', 'activity': 'incline_walk', 'speed_kmh': 4.8, 'incline_pct': 12, 'elevation_m': 288, 'segments': None})
 
-T = {'grants': [], 'feedback': [], 'workouts': workouts, 'sets': sets, 'custom_exercises': [], 'coach_plans': [], 'routines': [], 'run_profile': [], 'run_logs': runs, 'scheduled_pushes': [], 'push_subscriptions': []}
+# 1.19.0: friends' feed (Léa is a friend, Inès asks).
+social = {
+  'social_profiles': [{'user_id': 'u1', 'name': 'Kilian', 'invite_code': 'KIL12345', 'share_mode': 'ask'}, {'user_id': 'f1', 'name': 'Léa', 'invite_code': 'LEA12345', 'share_mode': 'ask'}, {'user_id': 'f2', 'name': 'Inès', 'invite_code': 'INE12345', 'share_mode': 'ask'}],
+  'friendships': [{'id': 'fr1', 'requester': 'u1', 'addressee': 'f1', 'status': 'accepted', 'created_at': now.isoformat()}, {'id': 'fr2', 'requester': 'f2', 'addressee': 'u1', 'status': 'pending', 'created_at': now.isoformat()}],
+  'posts': [{'id': 'p1', 'user_id': 'f1', 'kind': 'run', 'ref_id': 'x', 'title': 'Fractionné 4 × 6 min', 'note': 'Prête pour le 10 km', 'done_at': (now - timedelta(hours=2)).isoformat(), 'stats': {'km': 8.2, 'secs': 2790, 'held': 4, 'of': 4, 'bars': [[10, 0.3, 'easy'], [6, 1, 'tempo'], [2, 0.2, 'recovery'], [6, 1, 'tempo'], [10, 0.3, 'easy']]}}],
+  'reactions': [{'post_id': 'p1', 'user_id': 'f2'}],
+  'comments': [{'id': 'c1', 'post_id': 'p1', 'user_id': 'f1', 'body': 'Dernier effort à fond', 'created_at': now.isoformat()}],
+  'blocks': [], 'reports': [],
+}
+T = {**social, 'grants': [], 'feedback': [], 'workouts': workouts, 'sets': sets, 'custom_exercises': [], 'coach_plans': [], 'routines': [], 'run_profile': [], 'run_logs': runs, 'scheduled_pushes': [], 'push_subscriptions': []}
 writes, errors, rpcs = [], [], []
 sess = {"access_token": "x.y.z", "token_type": "bearer", "expires_in": 3600, "expires_at": int(time.time()) + 3600, "refresh_token": "r",
         "user": {"id": "u1", "email": "test@example.com", "user_metadata": {}, "aud": "authenticated", "role": "authenticated"}}
@@ -52,6 +61,13 @@ def handle(route, req):
         body = {'seat': 7, 'ends_at': (now + timedelta(days=365)).isoformat()} if code.upper() == 'KAD-TEST-0001' else {'error': 'Code inconnu, expiré ou déjà utilisé.'}
         if 'seat' in body: T['grants'] = [{'kind': 'beta', 'seat': 7, 'starts_at': now.isoformat(), 'ends_at': body['ends_at'], 'revoked_at': None}]
         return route.fulfill(status=200, body=json.dumps(body), headers={'content-type': 'application/json'})
+    if '/rest/v1/rpc/request_friend' in url:
+        rpcs.append('request_friend')
+        return route.fulfill(status=200, body=json.dumps({'name': 'Tom', 'status': 'pending'}), headers={'content-type': 'application/json'})
+    if '/rest/v1/rpc/respond_friend' in url:
+        rpcs.append('respond_friend')
+        T['friendships'][1]['status'] = 'accepted'
+        return route.fulfill(status=200, body='null', headers={'content-type': 'application/json'})
     if '/rest/v1/rpc/' in url:
         return route.fulfill(status=200, body='false', headers={'content-type': 'application/json'})
     if '/auth/v1/' in url:
@@ -62,6 +78,13 @@ def handle(route, req):
     t, meth = m.group(1), req.method
     if meth == 'GET':
         rows = T.get(t, [])
+        if t == 'social_profiles' and 'user_id=eq.' in url:
+            rows = [r for r in rows if 'user_id=eq.' + r['user_id'] in url]
+        if 'vnd.pgrst.object' in (req.headers.get('accept') or ''):
+            if not rows: return route.fulfill(status=406, body=json.dumps({'code': 'PGRST116', 'message': 'no rows'}), headers={'content-type': 'application/json'})
+            return route.fulfill(status=200, body=json.dumps(rows[0]), headers={'content-type': 'application/json'})
+        if 'head' in req.method.lower() or (req.headers.get('prefer') or '').find('count=exact') >= 0:
+            return route.fulfill(status=200, body=json.dumps(rows), headers={'content-type': 'application/json', 'content-range': f'0-{max(0, len(rows) - 1)}/{len(rows)}'})
         off = int((re.search(r'offset=(\d+)', url) or [0, 0])[1]); lim = int((re.search(r'limit=(\d+)', url) or [0, 100000])[1])
         rng = req.headers.get('range')
         if rng: a, b = map(int, rng.split('-')); off, lim = a, b - a + 1
@@ -93,7 +116,7 @@ with sync_playwright() as p:
         pg.route(re.compile(r'.*/version\.json.*'), lambda r, q: r.fulfill(status=404, body=''))
         pg.add_init_script(f"localStorage.setItem('sb-{REF}-auth-token', JSON.stringify({json.dumps(sess)}))")
         pg.emulate_media(color_scheme=mode)
-        for path in ['/', '/exercices', '/progres', '/course', '/coach', '/profil', '/historique', '/variante', '/tapis']:
+        for path in ['/', '/exercices', '/progres', '/course', '/coach', '/profil', '/historique', '/variante', '/tapis', '/amis', '/amis/gerer']:
             pg.goto(BASE + path); pg.wait_for_timeout(1200)
             sw = pg.evaluate('document.documentElement.scrollWidth')
             check(sw <= 390, f'{mode} {path} no horizontal overflow ({sw})')
@@ -247,6 +270,32 @@ with sync_playwright() as p:
     check(w.get('activity') == 'incline_walk' and w.get('session_key') == 'tpl:12-3-30' and (w.get('elevation_m') or 0) > 0 and w.get('calories', 0) > 0, f"tapis: walk saved with D+ ({w.get('elevation_m')} m, {w.get('distance_km')} km, {w.get('calories')} kcal)")
     pg.goto(BASE + '/course'); pg.wait_for_timeout(1000)
     check(pg.get_by_role('link', name=re.compile('Tapis et marche inclinée')).count() == 1, 'course links to the tapis screen')
+
+    # 1.19.0: friends' feed: bravo, comment, accept a request, share a session.
+    pg.goto(BASE + '/amis'); pg.wait_for_timeout(1500)
+    body = pg.locator('main').inner_text()
+    check('Fractionné 4 × 6 min' in body and 'ALLURE TENUE' in body, "feed shows a friend's run")
+    check(pg.locator('nav a[href="/amis"]').count() == 1 and pg.locator('nav a[href="/exercices"]').count() == 0, 'Amis tab replaces Exercices in the tab bar')
+    pg.get_by_role('button', name=re.compile('^Bravo')).first.click(); pg.wait_for_timeout(500)
+    check(('POST', 'reactions') in writes, 'bravo saved')
+    pg.screenshot(path=f'{SHOTS}/flow-amis-fil.png', full_page=True)
+    pg.get_by_role('button', name=re.compile('^Commentaires')).first.click(); pg.wait_for_timeout(800)
+    check('Dernier effort à fond' in pg.get_by_role('dialog').inner_text(), 'comments shown')
+    pg.get_by_label('Ton commentaire').fill('Bravo !'); pg.get_by_role('button', name='Envoyer').click(); pg.wait_for_timeout(600)
+    check(('POST', 'comments') in writes, 'comment saved')
+    pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
+    pg.goto(BASE + '/amis/gerer'); pg.wait_for_timeout(1500)
+    check('KIL12345' in pg.locator('main').inner_text(), 'invite code shown')
+    pg.get_by_role('button', name='Accepter').click(); pg.wait_for_timeout(800)
+    check('respond_friend' in rpcs, 'friend request accepted')
+    pg.screenshot(path=f'{SHOTS}/flow-amis-gerer.png', full_page=True)
+    pg.goto(BASE + '/historique'); pg.wait_for_timeout(1200)
+    pg.get_by_role('button', name=re.compile('Pecs du lundi')).first.click(); pg.wait_for_timeout(500)
+    pg.get_by_role('button', name='Partager avec mes amis').click(); pg.wait_for_timeout(800)
+    pg.screenshot(path=f'{SHOTS}/flow-amis-partage.png')
+    pg.get_by_role('button', name='Publier pour mes amis').click(); pg.wait_for_timeout(800)
+    post = T['posts'][-1]
+    check(post.get('kind') == 'gym' and post['stats'].get('sets', 0) > 0 and post['stats'].get('exercises'), 'gym session published with its numbers')
 
     # Sign-up form (logged out).
     lo = b.new_page(viewport={'width': 390, 'height': 844})

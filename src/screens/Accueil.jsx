@@ -164,6 +164,14 @@ export default function Accueil({ user }) {
           )}
           <Icon name="chevron" size={18} />
         </Link>
+        <Link to="/exercices" className="home-link">
+          <span className="tile-icon"><Icon name="dumbbell" size={20} /></span>
+          <span className="grow stack" style={{ gap: 1, minWidth: 0 }}>
+            <span className="xs muted">Exercices</span>
+            <span className="ellipsis" style={{ fontWeight: 600 }}>Bibliothèque, variantes et records</span>
+          </span>
+          <Icon name="chevron" size={18} />
+        </Link>
         {last && (
           <Link to="/coach" className="home-link">
             <span className="tile-icon"><Icon name="spark" size={20} /></span>
