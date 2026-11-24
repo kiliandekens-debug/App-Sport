@@ -1,0 +1,28 @@
+/* Back-office : reprend la feuille de Kadence, en plus large sur ordinateur. */
+body { background: var(--bg); color: var(--text); font-family: var(--body); margin: 0; }
+.adm { max-width: 980px; margin: 0 auto; padding: 16px 16px 48px; display: flex; flex-direction: column; gap: 14px; }
+.adm-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: env(safe-area-inset-top); }
+.adm-head h1 { font-family: var(--display); font-size: 28px; margin: 0; letter-spacing: -0.01em; white-space: nowrap; }
+.adm-head .btn { height: 40px; padding: 0 12px; font-size: 15px; }
+.adm-head > .stack { min-width: 0; }
+.adm-head .xs { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.adm-tile { background: var(--card); border-radius: 16px; padding: 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.adm-tile b { font-family: var(--display); font-size: 26px; font-variant-numeric: tabular-nums; }
+.adm-tile.bad b { color: var(--danger); }
+.adm-tile.ok b { color: var(--ok); }
+.adm-list { display: flex; flex-direction: column; gap: 10px; }
+.adm-row { background: var(--card); border-radius: 16px; padding: 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.adm-row .top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.adm-row .email { font-weight: 650; overflow-wrap: anywhere; }
+.adm-tag { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 11px; font-size: 12px; font-weight: 650; background: var(--chip); color: var(--soft); white-space: nowrap; }
+.adm-tag.on { background: var(--done); color: var(--ok); }
+.adm-tag.off { background: var(--danger-bg); color: var(--danger); }
+.adm-tag.brand { background: var(--warn-bg); color: var(--warm); }
+.adm-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.adm-actions .btn { height: 36px; font-size: 14px; padding: 0 12px; }
+.adm-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 15px; letter-spacing: 0.04em; }
+.adm-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; align-items: end; }
+.adm-form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
+.adm-msg { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
+.adm-err { color: var(--danger); }

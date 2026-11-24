@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFA13A"/><stop offset="0.55" stop-color="#FF6A1F"/><stop offset="1" stop-color="#E8430E"/></linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- stem -->
+    <path d="M300 250 V774" stroke="#FFFFFF" stroke-width="112"/>
+    <!-- two chevrons: the K and its echo, like a rhythm -->
+    <path d="M560 250 L400 512 L560 774" stroke="#FFFFFF" stroke-width="112"/>
+    <path d="M770 300 L640 512 L770 724" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="88"/>
+  </g>
+</svg>
