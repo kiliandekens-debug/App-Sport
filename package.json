@@ -1,7 +1,7 @@
 {
   "name": "app-sport",
   "private": true,
-  "version": "1.15.0",
+  "version": "1.16.0",
   "type": "module",
   "scripts": {
     "ocr": "node scripts/copy-ocr.mjs",

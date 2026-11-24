@@ -6,6 +6,16 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.16.0', date: '2026-11-24', title: 'Coach course plus simple',
+    items: [
+      'Créer un plan en quatre questions : ton objectif, combien de sorties, le jour de ta sortie longue et une éventuelle course. Le coach place le reste de la semaine tout seul.',
+      'Chaque séance est décrite étape par étape : durée, allure par kilomètre et sensation à viser, avec les récupérations.',
+      'Moins de jargon : footing, séance rythmée, accélérations, soutenu (seuil).',
+      'Un seul bouton « J\'ai couru », et les messages du coach regroupés.',
+      'Les réglages fins (temps de référence, kilomètres, choisir ses jours) restent disponibles dans « Réglages avancés ».',
+    ],
+  },
+  {
     version: '1.15.0', date: '2026-11-24', title: 'La bêta de Kadence',
     items: [
       'Créer un compte directement depuis l\'écran de connexion.',
