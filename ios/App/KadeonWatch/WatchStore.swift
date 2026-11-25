@@ -101,6 +101,9 @@ final class WatchStore: NSObject, ObservableObject, WCSessionDelegate {
     }
 
     func activate() {
+        #if DEBUG
+        if let scene = Self.demoScene { loadDemo(scene); return }
+        #endif
         workout.requestAuthorization()
         scheduleRestAlert()
         guard WCSession.isSupported() else { return }
@@ -321,3 +324,86 @@ final class WatchStore: NSObject, ObservableObject, WCSessionDelegate {
         receive(message)
     }
 }
+
+#if DEBUG
+/// Screenshot scenes for the CI (launch argument « -demo <scene> »): fake data only,
+/// nothing sent to the iPhone, no Health or location prompt.
+extension WatchStore {
+    static var demoScene: String? { UserDefaults.standard.string(forKey: "demo") }
+
+    func loadDemo(_ scene: String) {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        let today = f.string(from: Date())
+        func step(_ secs: Double, _ phase: String, _ title: String, _ hint: String = "", fast: Double = 0, slow: Double = 0) -> WRunStep {
+            WRunStep(secs: secs, phase: phase, title: title, hint: hint, fast: fast, slow: slow, alert: phase == "work" && fast > 0)
+        }
+        var guided: [WRunStep] = [step(600, "easy", "Échauffement", "Footing tranquille", fast: 400, slow: 415)]
+        for _ in 0..<6 {
+            guided.append(step(60, "work", "1 min vite", "Rapide et relâché", fast: 360, slow: 380))
+            guided.append(step(90, "recovery", "Récupération", "Trottine tout doucement"))
+        }
+        guided.append(step(300, "easy", "Retour au calme", "Très tranquille"))
+        let run = WRun(key: "demo-run", ymd: today, title: "Fractionné court", mins: 34, km: 5.6, kind: nil, steps: guided, activity: "run")
+        let walk = WRun(key: "tpl:12-3-30", ymd: "", title: "12-3-30", mins: 30, km: 2.4, kind: "tapis",
+                        steps: [WRunStep(secs: 1800, phase: "work", title: "Marche en montée", hint: "4,8 km/h · 13 %", fast: 0, slow: 0, alert: false, speed: 4.8, incline: 13)],
+                        activity: "incline_walk")
+        heardFromPhone = true
+        suggestion = "Pecs du lundi"
+        runs = [run]
+        walks = [walk]
+
+        func set(_ kg: Double, _ reps: Int, warm: Bool = false, done: Bool = false, prev: String = "") -> WSet {
+            WSet(kg: kg, reps: reps, warm: warm, done: done, prev: prev, type: warm ? "warmup" : "normal")
+        }
+        let now = nowMs()
+        let bench = WExercise(name: "Développé couché haltères", rest: 120, superset: "", step: 2, coach: "", sets: [
+            set(16, 5, warm: true), set(24, 3, warm: true),
+            set(32, 10, prev: "30 × 10"), set(32, 10, prev: "30 × 10"), set(32, 10, prev: "30 × 9"),
+        ], alts: nil)
+        let fly = WExercise(name: "Écarté à la poulie", rest: 90, superset: "", step: 2.5, coach: "", sets: [set(15, 12), set(15, 12), set(15, 12)], alts: nil)
+        let dips = WExercise(name: "Dips", rest: 90, superset: "", step: 2.5, coach: "", sets: [set(0, 10), set(0, 10)], alts: nil)
+        var gym = WSession(title: "Pecs du lundi", startedAt: now - 14 * 60000, current: 0, restUntil: 0, restTotal: 0, exercises: [bench, fly, dips])
+        workout.heartRate = 128
+
+        switch scene {
+        case "run-start": pendingRun = run
+        case "free-start": pendingRun = .free
+        case "countdown": runner.demo(run, state: .countdown(2), step: 0, inStep: 0)
+        case "warmup-run": runner.demo(run, step: 0, inStep: 250, pace: 408, hr: 128)
+        case "run-in": runner.demo(run, step: 5, inStep: 18, pace: 368, hr: 152)
+        case "run-slow": runner.demo(run, step: 5, inStep: 32, pace: 392, hr: 149)
+        case "run-fast": runner.demo(run, step: 5, inStep: 46, pace: 352, hr: 158)
+        case "recovery": runner.demo(run, step: 6, inStep: 28, pace: 455, hr: 141)
+        case "block": runner.demo(run, step: 13, inStep: 5, pace: 430, hr: 146, efforts: ["ok", "ok", "fast", "ok", "ok", "slow"],
+                                  block: BlockToast(efforts: 6, workSecs: 360, inBandSecs: 288, banded: true))
+        case "done": runner.demo(run, step: guided.count, inStep: 0, total: 2050, pace: 420, meters: 5620, hr: 139, efforts: ["ok", "ok", "fast", "ok", "ok", "slow"])
+        case "free": runner.demo(.free, step: 0, inStep: 0, total: 1080, pace: 360, meters: 3000, hr: 130)
+        case "paused": runner.demo(.free, state: .paused, step: 0, inStep: 0, total: 1080, pace: 0, meters: 3000, hr: 112)
+        case "tapis": runner.demo(walk, step: 0, inStep: 301, meters: 400, hr: 118)
+        case "run-summary":
+            runner.demoSummary(RunSummary(title: "Fractionné court", seconds: 2050, meters: 5620, heartRate: 139, calories: 402,
+                                          efforts: ["ok", "ok", "fast", "ok", "ok", "slow"], note: "Allure tenue sur 4 / 6 efforts · 1 trop vite · 1 trop lent"))
+        case "warmup":
+            setSession(gym)
+        case "set", "rest", "next":
+            gym.exercises[0].sets[0].done = true
+            gym.exercises[0].sets[1].done = true
+            if scene == "rest" {
+                gym.exercises[0].sets[2].done = true
+                gym.restUntil = now + 119_000
+                gym.restTotal = 120
+            }
+            if scene == "next" {
+                for i in gym.exercises[0].sets.indices { gym.exercises[0].sets[i].done = true }
+                gym.current = 0
+            }
+            setSession(gym)
+        case "summary":
+            summary = Summary(title: "Pecs du lundi", minutes: 52, sets: 14, volume: 8420, heartRate: 121, calories: 318)
+        default: break
+        }
+    }
+}
+#endif

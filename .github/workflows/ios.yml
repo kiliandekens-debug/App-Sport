@@ -24,7 +24,10 @@ env:
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 40
+    timeout-minutes: 50
+    # contents: write only to publish the watch screenshots on the watch-shots branch.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -60,6 +63,69 @@ jobs:
             || { echo "KadeonWatch.app is not embedded in App.app"; exit 1; }
           echo "iPhone app with the watch app inside OK"
 
+      # Screenshots of every watch screen with fake data (launch argument -demo, Debug builds
+      # only), pushed to the watch-shots branch. Never blocks the build.
+      - name: Watch screenshots (simulator)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          APP=$(find ios/App/build "$HOME/Library/Developer/Xcode/DerivedData" -type d -path '*Debug-watchsimulator/KadeonWatch.app' 2>/dev/null | head -1)
+          echo "App: $APP"
+          [ -n "$APP" ]
+          # Two watches: the biggest and the smallest available (does it fit on both?).
+          read BIG SMALL <<< "$(xcrun simctl list devices available -j | python3 -c '
+          import json, re, sys
+          d = json.load(sys.stdin)["devices"]
+          c = [x for k, v in d.items() if "watchOS" in k for x in v if "Apple Watch" in x["name"] and "Ultra" not in x["name"]]
+          mm = lambda x: int((re.search(r"(\d\d)mm", x["name"]) or [0, 44])[1])
+          c.sort(key=mm)
+          print(c[-1]["udid"], c[0]["udid"]) if c else print("", "")
+          ')"
+          echo "Montres : $BIG / $SMALL"
+          [ -n "$BIG" ]
+          OUT="$RUNNER_TEMP/shots"
+          mkdir -p "$OUT"
+          shoot() {
+            local UDID=$1 SUFFIX=$2; shift 2
+            xcrun simctl boot "$UDID" || true
+            xcrun simctl bootstatus "$UDID" -b > /dev/null
+            xcrun simctl install "$UDID" "$APP"
+            local FIRST=1
+            for s in "$@"; do
+              xcrun simctl terminate "$UDID" be.kadeon.sport.watchkitapp 2>/dev/null || true
+              xcrun simctl launch "$UDID" be.kadeon.sport.watchkitapp -demo "$s" > /dev/null
+              if [ "$FIRST" = 1 ]; then sleep 12; FIRST=0; else sleep 5; fi
+              xcrun simctl io "$UDID" screenshot "$OUT/$s$SUFFIX.png" > /dev/null 2>&1
+              echo "shot $s$SUFFIX"
+            done
+            xcrun simctl shutdown "$UDID" || true
+          }
+          shoot "$BIG" "" home run-start free-start countdown warmup-run run-in run-slow run-fast recovery block done free paused run-summary tapis warmup set rest next summary
+          if [ -n "$SMALL" ] && [ "$SMALL" != "$BIG" ]; then
+            shoot "$SMALL" "-petite" home run-start run-in recovery block done free tapis set rest
+          fi
+          # Branch on top of this commit (an orphan branch is refused), Vercel off for it.
+          git fetch -q --depth 1 origin "$GITHUB_SHA" || true
+          git checkout -q -B watch-shots
+          rm -rf watch-shots && mkdir watch-shots && cp "$OUT"/*.png watch-shots/
+          node -e "const f='vercel.json',j=require('./'+f);j.git={deploymentEnabled:false};require('fs').writeFileSync(f,JSON.stringify(j,null,2))"
+          git add -f watch-shots vercel.json
+          git -c user.name="Kadeon CI" -c user.email="ci@kadeon.be" commit -qm "Captures montre ${GITHUB_SHA::7} ($GITHUB_REF_NAME)"
+          git push -fq origin HEAD:refs/heads/watch-shots
+          echo "Captures sur la branche watch-shots"
+
+      - name: Keep the screenshots
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: watch-shots
+          path: ${{ runner.temp }}/shots/*.png
+          retention-days: 14
+          if-no-files-found: ignore
+
       - name: Check App Store Connect secrets
         id: asc
         env:
@@ -71,7 +137,7 @@ jobs:
       # the API key (scripts/asc_signing.py), signs manually, then deletes them.
       # Apps: iPhone, Apple Watch, and the widget extension (Live Activity).
       - name: Signing certificate and profiles (temporary)
-        if: steps.asc.outputs.ready == 'yes'
+        if: steps.asc.outputs.ready == 'yes' && github.ref == 'refs/heads/main'
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
@@ -97,7 +163,7 @@ jobs:
           security find-identity -v -p codesigning "$KC"
 
       - name: Archive and upload to TestFlight
-        if: steps.asc.outputs.ready == 'yes'
+        if: steps.asc.outputs.ready == 'yes' && github.ref == 'refs/heads/main'
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
@@ -155,7 +221,7 @@ jobs:
           echo "Envoyé sur TestFlight : version $VERSION (build ${{ github.run_number }})"
 
       - name: Remove the temporary certificate and profiles
-        if: always() && steps.asc.outputs.ready == 'yes'
+        if: always() && steps.asc.outputs.ready == 'yes' && github.ref == 'refs/heads/main'
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}

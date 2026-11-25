@@ -151,6 +151,8 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
     @Published private(set) var paceWarning = 0               // -1 too slow, 1 too fast
     @Published private(set) var autoPaused = false
     @Published private(set) var kmToast: (km: Int, pace: Double)?
+    /// End of the block of efforts: shown a few seconds, like the kilometre.
+    @Published private(set) var blockToast: BlockToast?
     @Published private(set) var gpsReady = false
     @Published var summary: RunSummary?
     // Tapis: speed (km/h) and incline (%) set with the Digital Crown, D+ from them.
@@ -187,6 +189,9 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
     private var lastTick: Double = 0
     private var segs: [[String: Double]] = []
     private var segStart: Double = 0
+    /// Time spent in efforts, and inside the target pace band, for « Bloc terminé ».
+    private var workSecs: Double = 0
+    private var inBandSecs: Double = 0
 
     private let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate)!
     private let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
@@ -218,6 +223,17 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
     }
     var nextStep: WRunStep? { steps.indices.contains(stepIndex + 1) ? steps[stepIndex + 1] : nil }
     var averagePace: Double { meters > 50 ? elapsed / (meters / 1000) : 0 }
+    /// Efforts with a target pace held on average, out of those done.
+    var effortsOK: Int { effortResults.filter { $0 == "ok" }.count }
+    var effortsTotal: Int { effortResults.count }
+    /// « 3 / 6 » among the efforts, for the next one (shown during the recovery).
+    var nextWorkRank: (Int, Int)? {
+        let work = steps.indices.filter { steps[$0].phase == "work" }
+        guard let i = work.firstIndex(where: { $0 > stepIndex }) else { return nil }
+        return (i + 1, work.count)
+    }
+
+    func dismissBlockToast() { blockToast = nil }
 
     private func stepEnd(_ i: Int) -> Double { steps.prefix(i + 1).reduce(0) { $0 + $1.secs } }
 
@@ -225,6 +241,9 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
 
     /// Health and location access, then the GPS warms up while the runner gets ready.
     func prepare(indoor: Bool = false) {
+        #if DEBUG
+        if WatchStore.demoScene != nil { gpsReady = true; return }
+        #endif
         if indoor {
             guard HKHealthStore.isHealthDataAvailable() else { return }
             let share: Set<HKSampleType> = [HKObjectType.workoutType(), energyType, distanceType]
@@ -319,7 +338,7 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
         stepIndex = 0; paceWarning = 0; autoPaused = false; kmToast = nil
         samples = []; stepStart = (0, 0); splits = []; effortResults = []
         lastKm = 0; lastKmAt = (0, 0); outside = 0; lastWarnAt = -100; lastSpokenAt = -100; spokenInStep = 0; still = 0; moving = 0; manualPause = false
-        elevation = 0; lastTick = 0; segs = []; segStart = 0
+        elevation = 0; lastTick = 0; segs = []; segStart = 0; workSecs = 0; inBandSecs = 0; blockToast = nil
     }
 
     // MARK: every second
@@ -328,10 +347,10 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
         guard let b = builder else { return }
         elapsed = b.elapsedTime(at: Date())
         guard phase == .running else { lastTick = elapsed; return }
+        let dt = max(0, min(5, elapsed - lastTick))
 
         // Tapis: distance and D+ from the speed and incline set.
         if indoor {
-            let dt = max(0, min(5, elapsed - lastTick))
             meters += speed / 3.6 * dt
             elevation += speed / 3.6 * dt * max(0, incline) / 100
         }
@@ -344,6 +363,12 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
             pace = (elapsed - first.t) / ((meters - first.m) / 1000)
         } else if elapsed > 20 {
             pace = 0
+        }
+
+        // Time in effort, and inside the target band.
+        if guided, !finishedPlan, let s = step, s.phase == "work" {
+            workSecs += dt
+            if s.fast > 0, pace > 0, pace >= s.fast, pace <= s.slow { inBandSecs += dt }
         }
 
         // Steps: vibration and 3-2-1 before each change.
@@ -405,6 +430,15 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
         paceWarning = 0
         outside = 0
         spokenInStep = 0
+        // Last effort of the block done: « Bloc terminé » for a few seconds.
+        let work = steps.filter { $0.phase == "work" }
+        if s.phase == "work", work.count > 1, !steps[stepIndex...].contains(where: { $0.phase == "work" }) {
+            let t = BlockToast(efforts: work.count, workSecs: workSecs, inBandSecs: inBandSecs, banded: work.contains { $0.fast > 0 })
+            blockToast = t
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+                if self?.blockToast == t { self?.blockToast = nil }
+            }
+        }
         // Tapis: the next palier's speed and incline, and what to do.
         if indoor, let n = step, let sp = n.speed {
             let inc = n.incline ?? incline
@@ -646,3 +680,42 @@ final class Voice: NSObject, AVSpeechSynthesizerDelegate {
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }
+
+/// « Bloc terminé · 6 efforts · 6:00 en effort · 4:48 dans la cible ».
+struct BlockToast: Equatable {
+    var efforts: Int
+    var workSecs: Double
+    var inBandSecs: Double
+    var banded: Bool
+}
+
+#if DEBUG
+/// Screenshot scenes (see WatchStore.loadDemo): the running screens with fake values.
+extension RunManager {
+    func demo(_ r: WRun, state: Phase = .running, step: Int = 0, inStep: Double = 20, total: Double = 0, pace p: Double = 0,
+              meters m: Double = 0, hr: Double = 0, efforts: [String] = [], block: BlockToast? = nil) {
+        run = r
+        phase = state
+        stepIndex = step
+        pace = p
+        heartRate = hr
+        averageHeartRate = hr
+        effortResults = efforts
+        blockToast = block
+        let start = r.steps.prefix(step).reduce(0) { $0 + $1.secs }
+        elapsed = total > 0 ? total : start + inStep
+        stepStart = (start, 0)
+        meters = m
+        if r.indoor {
+            let s = r.steps.indices.contains(step) ? r.steps[step] : r.steps.first
+            speed = s?.speed ?? 5
+            incline = s?.incline ?? 8
+            elevation = 54
+            calories = 61
+            changeText = "Garde le même réglage"
+        }
+    }
+
+    func demoSummary(_ s: RunSummary) { summary = s }
+}
+#endif
