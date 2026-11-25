@@ -6,6 +6,12 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.18.1', date: '2026-11-25', title: 'Correctif tapis',
+    items: [
+      'Tapis : si la date de la séance est effacée, le bouton Enregistrer reste grisé au lieu de ne rien faire.',
+    ],
+  },
+  {
     version: '1.18.0', date: '2026-11-24', title: 'Tapis et marche inclinée',
     items: [
       'Nouvel écran Tapis (depuis Course) : séances guidées 12-3-30, montée progressive, paliers et endurance en côte.',
