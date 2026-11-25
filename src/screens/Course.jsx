@@ -9,7 +9,7 @@ import { isNative } from '../native.js';
 import { sendRunToWatch } from '../watch.js';
 import { ShareSheet } from '../social.jsx';
 import { hasFriends } from '../social.js';
-import { GOALS, DAYS, DAY_SHORT, SLOT, PHASES, buildPlan, appleSteps, sessionSteps, autoSchedule, segments, intensityOf, mmss, hms, parseDuration, TYPE_LABEL, paceRange, pacesOf, goalPrediction, betterLevel, runStats, scheduleOf, scheduleIssues, raceTime, vdotOfProfile, fitnessFromHistory, monthlyKm } from '../lib/running.js';
+import { GOALS, DAYS, DAY_SHORT, SLOT, PHASES, buildPlan, appleSteps, sessionSteps, autoSchedule, segments, intensityOf, mmss, hms, parseDuration, TYPE_LABEL, paceRange, pacesOf, goalPrediction, betterLevel, runStats, scheduleOf, scheduleIssues, raceTime, vdotOfProfile, fitnessFromHistory, monthlyKm, COACH_GOALS, coachRuns, PAUSES, runAfter } from '../lib/running.js';
 
 const FILL = { warm: 'var(--z0)', cool: 'var(--z0)', rest: 'var(--z0)', recovery: 'var(--z0)', easy: 'var(--z1)', steady: 'var(--z1)', race: 'var(--z2)', tempo: 'var(--z3)', fast: 'var(--z4)', rep: 'var(--z4)', hill: 'var(--z4)', stride: 'var(--z4)' };
 const localYmd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -50,17 +50,17 @@ function RunChart({ session }) {
 }
 
 function SessionRow({ s, active, onPick }) {
-  const status = s.done ? 'Faite' : s.missed ? 'Non faite' : active ? 'Affichée' : 'Voir';
+  const status = s.off ? s.offLabel : s.done ? 'Faite' : s.missed ? 'Non faite' : active ? 'Affichée' : 'Voir';
   return (
-    <button className="card row" disabled={s.done} onClick={onPick} aria-label={`${whenLabel(s)}, ${s.title}, ${s.mins} minutes, ${status}`}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, textAlign: 'left', width: '100%', color: 'inherit', background: s.done ? 'var(--done)' : undefined, borderColor: s.done ? 'var(--done-line)' : active ? 'var(--accent)' : undefined, borderWidth: active && !s.done ? 2 : undefined, opacity: s.missed ? 0.6 : 1 }}>
+    <button className="card row" disabled={s.done || s.off} onClick={onPick} aria-label={`${whenLabel(s)}, ${s.title}, ${s.mins} minutes, ${status}`}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, textAlign: 'left', width: '100%', color: 'inherit', background: s.done ? 'var(--done)' : undefined, borderColor: s.done ? 'var(--done-line)' : active ? 'var(--accent)' : undefined, borderWidth: active && !s.done ? 2 : undefined, opacity: s.missed || s.off ? 0.6 : 1 }}>
       <span className="stack" style={{ width: 44, flexShrink: 0, alignItems: 'center', gap: 0 }}>
         <span className="xs muted">{DAY_SHORT[(s.date.getDay() + 6) % 7]}</span>
         <span className="display" style={{ fontSize: 20, lineHeight: 1.1 }}>{s.date.getDate()}</span>
       </span>
       <span style={{ width: 4, alignSelf: 'stretch', borderRadius: 2, background: s.kind === 'quality' || s.kind === 'race' ? 'var(--z4)' : s.kind === 'long' ? 'var(--z2)' : 'var(--z1)' }} />
       <span className="grow stack" style={{ gap: 1, minWidth: 0 }}>
-        <span style={{ fontWeight: 600 }}>{s.title}</span>
+        <span style={{ fontWeight: 600, textDecoration: s.off ? 'line-through' : undefined }}>{s.title}{s.moved ? ' (déplacée)' : ''}</span>
         <span className="xs muted">{s.mins} min, ≈ {String(s.km).replace('.', ',')} km{s.blocks.length === 1 ? `, ${paceRange(s.blocks[0].pace)} /km` : ''}</span>
         {s.done && s.log?.splits?.text && (
           <span className="xs" style={{ fontWeight: 600, color: s.log.splits.slow || s.log.splits.fast ? 'var(--accent)' : 'var(--ok)' }}>{s.log.splits.text}</span>
@@ -168,6 +168,9 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
   const [date, setDate] = useState(initial?.target_date || '');
   const [reentry, setReentry] = useState(initial ? initial.reentry !== false : true);
   const [start, setStart] = useState(initial?.started_on ? String(initial.started_on).slice(0, 10) : today());
+  // Fixed coach plan (written from the research) or the plan the coach builds week by week.
+  const [kind, setKind] = useState(initial ? (initial.plan_kind || null) : 'coach');
+  const coachOk = COACH_GOALS.includes(goal);
   const kindText = { easy: 'Footing', quality: 'Séance rythmée', long: 'Sortie longue' };
   const steps = ['goal', 'week', 'race', ...(initial || auto ? [] : ['level']), 'summary'];
   const [step, setStep] = useState(initial ? 'summary' : 'goal');
@@ -191,7 +194,10 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
   const save = async () => {
     setBusy(true);
     try {
-      await onSave({ goal, schedule, days_per_week: count, weekly_km: weekly === '' ? null : Number(String(weekly).replace(',', '.')) || 0, ref_distance_km: Number(refKm), ref_time_s: secs, target_date: date || null, started_on: start, reentry });
+      const plan_kind = coachOk && kind === 'coach' ? 'coach' : null;
+      // A new plan: the moved sessions of the old one no longer mean anything.
+      const changed = !initial || initial.goal !== goal || (initial.plan_kind || null) !== plan_kind || initial.target_date !== (date || null) || String(initial.started_on).slice(0, 10) !== start || scheduleOf(initial).join() !== schedule.join();
+      await onSave({ goal, schedule, days_per_week: count, weekly_km: weekly === '' ? null : Number(String(weekly).replace(',', '.')) || 0, ref_distance_km: Number(refKm), ref_time_s: secs, target_date: date || null, started_on: start, reentry, plan_kind, ...(changed ? { moves: {} } : {}) });
     } finally { setBusy(false); }
   };
 
@@ -284,6 +290,18 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
           <button style={PLAIN} onClick={() => edit('race')}><span className="grow stack" style={{ gap: 1, textAlign: 'left' }}><span className="xs muted">Course</span><b>{date ? fmtDate(date) : 'Pas de date'}</b></span><span className="xs" style={{ color: 'var(--accent)', fontWeight: 600 }}>Modifier</span></button>
         </div>
 
+        {coachOk && (
+          <section className="stack" style={{ gap: 8 }} aria-label="Type de plan">
+            <h2 className="label">Type de plan</h2>
+            <div className="list">
+              <Choice on={kind === 'coach'} title="Plan de coach (fixe)" detail={`Écrit d'après 50 programmes d'élites et de coachs (Daniels, Pfitzinger, Hansons…). ${coachRuns(goal)} sorties par semaine, les mêmes séances quoi qu'il arrive : seules tes allures s'ajustent.`} onClick={() => setKind('coach')} />
+              <Choice on={kind !== 'coach'} title="Plan sur mesure" detail="Le coach construit chaque semaine selon tes sorties, ton volume et ta forme." onClick={() => setKind(null)} />
+            </div>
+            {kind === 'coach' && count < coachRuns(goal) && <span className="small" style={{ color: 'var(--accent)', lineHeight: 1.4 }}>Ce plan compte {coachRuns(goal)} sorties par semaine : choisis au moins {coachRuns(goal)} jours dans « Ta semaine », sinon les footings en trop sont retirés.</span>}
+            {kind === 'coach' && count > coachRuns(goal) && <span className="xs muted" style={{ lineHeight: 1.4 }}>Ce plan compte {coachRuns(goal)} sorties : tes autres jours restent libres (repos ou salle).</span>}
+          </section>
+        )}
+
         <section className="card stack" style={{ gap: 10 }} aria-label="Ta semaine type">
           <h2 className="label">Ta semaine type</h2>
           {order.map((d) => (
@@ -295,7 +313,7 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
               </span>
             </div>
           ))}
-          <span className="xs muted" style={{ lineHeight: 1.45 }}>Les autres jours : repos (ou salle). Les séances changent chaque semaine et s'adaptent à tes courses.</span>
+          <span className="xs muted" style={{ lineHeight: 1.45 }}>Les autres jours : repos (ou salle). {coachOk && kind === 'coach' ? 'Les séances suivent le plan de coach, semaine après semaine.' : 'Les séances changent chaque semaine et s\'adaptent à tes courses.'}</span>
           {!!issues.length && <div className="warn">{issues.map((t) => <span key={t} className="small" style={{ lineHeight: 1.4 }}>{t}</span>)}</div>}
         </section>
 
@@ -424,12 +442,35 @@ export default function Course() {
   const [shareLog, setShareLog] = useState(null);
   const pick = (key) => { setPicked(key); setTab('seance'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const profile = data.runProfile;
+  const [pauseOpen, setPauseOpen] = useState(false);
+  const [vac, setVac] = useState(null); // { from, to } while choosing the holiday dates
+  const [moveOpen, setMoveOpen] = useState(false);
 
   const plan = useMemo(() => (profile ? buildPlan(profile, data.runLogs, data.workouts) : null), [profile, data.runLogs, data.workouts]);
   const fit = useMemo(() => fitnessFromHistory(data.runLogs, data.workouts), [data.runLogs, data.workouts]);
 
   const saveProfile = async (p) => {
     try { await saveRunProfile(p); await data.refresh(); setEditing(false); ui.notify('Plan enregistré'); } catch (e) { ui.notify(e.message || String(e)); }
+  };
+
+  // Not 100 %, holidays: the sessions of those days change (see overridden() in running.js).
+  const savePauses = async (pauses, msg) => {
+    try { await saveRunProfile({ ...profile, pauses }); await data.refresh(); ui.notify(msg); } catch (e) { ui.notify(e.message || String(e)); }
+  };
+  const addPause = (kind, from = today(), to = null) => {
+    const end = to || localYmd(new Date(new Date(`${from}T12:00:00`).getTime() + (PAUSES[kind].days - 1) * 86400000));
+    const kept = (profile.pauses || []).filter((q) => q.to >= today());
+    setPauseOpen(false);
+    setVac(null);
+    savePauses([...kept, { kind, from, to: end }], kind === 'vacances' ? 'Vacances notées : le plan reprend à ton retour' : 'Plan ajusté');
+  };
+  const endPause = () => savePauses((profile.pauses || []).filter((q) => q.to >= today() && !(q.from <= today() && today() <= q.to)), 'Plan repris');
+  // A session moved to another day of its week (or back to its day).
+  const moveTo = async (sess, ymdTo) => {
+    const moves = { ...(profile.moves || {}) };
+    if (ymdTo === (sess.origYmd || sess.ymd)) delete moves[sess.key]; else moves[sess.key] = ymdTo;
+    setMoveOpen(false);
+    try { await saveRunProfile({ ...profile, moves }); await data.refresh(); ui.notify('Séance déplacée'); } catch (e) { ui.notify(e.message || String(e)); }
   };
 
   const stopPlan = async () => {
@@ -546,6 +587,27 @@ export default function Course() {
           </div>
         )}
 
+        {!draft && tab === 'seance' && (() => {
+          // The last run of the plan, today or yesterday: a verdict and the instruction for next time.
+          const lastDone = [...all].filter((x) => x.done && x.log && Date.now() - new Date(x.log.done_at).getTime() < 36 * 3600000).pop();
+          const v = lastDone ? runAfter(lastDone, lastDone.log, plan.next) : null;
+          return v ? (
+            <div className="card stack" style={{ gap: 4 }} aria-label="Bilan de ta dernière sortie">
+              <span className="xs muted" style={{ fontWeight: 600 }}>{lastDone.title}, faite</span>
+              <span style={{ fontWeight: 650 }}>{v.text}</span>
+              <span className="small" style={{ lineHeight: 1.4 }}>{v.next}</span>
+            </div>
+          ) : null;
+        })()}
+
+        {!draft && tab === 'seance' && plan.pause && (
+          <div className="card stack" style={{ gap: 6, borderColor: 'var(--accent)' }}>
+            <span style={{ fontWeight: 650 }}>{PAUSES[plan.pause.kind]?.label} · jusqu'au {fmtDay(new Date(`${plan.pause.to}T12:00:00`))}</span>
+            <span className="small muted" style={{ lineHeight: 1.45 }}>{PAUSES[plan.pause.kind]?.text}</span>
+            <button className="text-btn" style={{ alignSelf: 'flex-start' }} onClick={endPause}>Je vais mieux, reprendre le plan</button>
+          </div>
+        )}
+
         {!draft && tab === 'seance' && next && (
           <>
             <div className="card hero" style={{ gap: 8 }}>
@@ -555,8 +617,53 @@ export default function Course() {
                 <span><b>{next.mins}</b>min</span>
                 <span><b>≈ {String(next.km).replace('.', ',')}</b>km</span>
               </div>
-              {(next.recover || next.taper) && <span className="small" style={{ fontWeight: 600 }}>{next.taper ? 'Semaine d\'affûtage : on garde les jambes fraîches.' : 'Semaine plus légère : volume réduit de 20 % pour assimiler.'}</span>}
+              {(next.recover || next.taper) && <span className="small" style={{ fontWeight: 600 }}>{next.taper ? 'Semaine d\'affûtage : on garde les jambes fraîches.' : next.coach ? 'Semaine plus légère, pour assimiler.' : 'Semaine plus légère : volume réduit de 20 % pour assimiler.'}</span>}
             </div>
+
+            <div className="grid2">
+              <button className="btn" aria-expanded={moveOpen} onClick={() => { setMoveOpen(!moveOpen); setPauseOpen(false); }}><Icon name="swap" size={16} />Déplacer</button>
+              <button className="btn" aria-expanded={pauseOpen} onClick={() => { setPauseOpen(!pauseOpen); setMoveOpen(false); }}><Icon name="moon" size={16} />Pas à 100 % ?</button>
+            </div>
+            {moveOpen && (() => {
+              const orig = new Date(`${next.origYmd || next.ymd}T12:00:00`);
+              const monday = new Date(orig);
+              monday.setDate(orig.getDate() - ((orig.getDay() + 6) % 7));
+              const busy = new Set(all.filter((x) => x.key !== next.key && !x.off).map((x) => x.ymd));
+              const choices = [0, 1, 2, 3, 4, 5, 6].map((i) => { const d = new Date(monday); d.setDate(monday.getDate() + i); return d; })
+                .filter((d) => localYmd(d) >= today() && !busy.has(localYmd(d)));
+              return (
+                <div className="card stack" style={{ gap: 8 }}>
+                  <span style={{ fontWeight: 650 }}>Déplacer « {next.title} »</span>
+                  <span className="xs muted" style={{ lineHeight: 1.4 }}>Dans la même semaine, sur un jour libre. Évite de coller deux séances dures.</span>
+                  <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                    {choices.map((d) => (
+                      <button key={localYmd(d)} className={`btn${localYmd(d) === next.ymd ? ' primary' : ''}`} style={{ height: 40, padding: '0 12px' }} onClick={() => moveTo(next, localYmd(d))}>
+                        {DAY_SHORT[(d.getDay() + 6) % 7]} {d.getDate()}{localYmd(d) === (next.origYmd || next.ymd) && next.moved ? ' (prévu)' : ''}
+                      </button>
+                    ))}
+                  </div>
+                  {!choices.length && <span className="small muted">Pas de jour libre cette semaine.</span>}
+                </div>
+              );
+            })()}
+            {pauseOpen && (
+              <div className="card stack" style={{ gap: 8 }} aria-label="Pas à 100 %">
+                <span style={{ fontWeight: 650 }}>Qu'est-ce qui se passe ?</span>
+                <div className="list">
+                  {['fatigue', 'douleur', 'malade', 'temps'].map((k) => <Choice key={k} title={PAUSES[k].label} detail={PAUSES[k].text} onClick={() => addPause(k)} />)}
+                  <Choice title="Vacances" detail={PAUSES.vacances.text} on={!!vac} onClick={() => setVac(vac ? null : { from: today(), to: localYmd(new Date(Date.now() + 6 * 86400000)) })} />
+                </div>
+                {vac && (
+                  <div className="stack" style={{ gap: 8 }}>
+                    <div className="grid2">
+                      <label className="stack" style={{ gap: 4 }}><span className="xs muted">Du</span><input className="input" type="date" min={today()} value={vac.from} onChange={(e) => setVac({ ...vac, from: e.target.value })} /></label>
+                      <label className="stack" style={{ gap: 4 }}><span className="xs muted">Au</span><input className="input" type="date" min={vac.from} value={vac.to} onChange={(e) => setVac({ ...vac, to: e.target.value })} /></label>
+                    </div>
+                    <button className="btn primary" disabled={!vac.from || !vac.to || vac.to < vac.from} onClick={() => addPause('vacances', vac.from, vac.to)}>Enregistrer mes vacances</button>
+                  </div>
+                )}
+              </div>
+            )}
 
             <section className="card stack" style={{ gap: 14 }} aria-label="Ce que tu fais">
               <h2 className="label">Ce que tu fais</h2>

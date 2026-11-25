@@ -6,6 +6,17 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.27.0', date: '2026-11-25', title: 'Plans de course de coach, façon Runna',
+    items: [
+      'Nouveau : des plans de course fixes 5 km, 10 km, semi et marathon, écrits d\'après 50 programmes d\'élites et de coachs (Daniels, Pfitzinger, Hansons, Canova, méthode norvégienne…). Les séances ne changent jamais, seules tes allures suivent ton niveau.',
+      'Le plan sur mesure reste disponible : choisis dans « Type de plan ».',
+      '« Pas à 100 % ? » : fatigué, une douleur, malade, pas le temps, ou vacances. Le plan s\'ajuste ces jours-là puis reprend tout seul.',
+      'Déplacer une séance sur un autre jour libre de la semaine.',
+      'Après chaque sortie : un bilan en une ligne et la consigne pour la prochaine. Pareil en muscu dans le Bilan.',
+      'Allures plus prudentes : elles ne changent qu\'après plusieurs séances dans le même sens, jamais sur une seule.',
+    ],
+  },
+  {
     version: '1.26.0', date: '2026-11-25', title: 'Programmes de coach',
     items: [
       'Nouveau : des programmes de muscu fixes, écrits d\'après 48 programmes de pros et de coachs (Helms, Lyle McDonald, Nippard, Viada…). Full body 3 jours, haut/bas 4 jours, 4 jours « la course d\'abord », 5 et 6 jours.',

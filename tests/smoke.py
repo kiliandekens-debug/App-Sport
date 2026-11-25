@@ -94,6 +94,9 @@ def handle(route, req):
         return route.fulfill(status=200, body=json.dumps(rows[off:off + lim]), headers={'content-type': 'application/json'})
     body = req.post_data_json if req.post_data else None
     writes.append((meth, t))
+    if meth == 'POST' and t == 'run_profile' and 'merge-duplicates' in (req.headers.get('prefer') or ''):
+        T[t] = [{**(T[t][0] if T[t] else {}), **body}]
+        return route.fulfill(status=201, body=json.dumps([T[t][0]]), headers={'content-type': 'application/json'})
     if meth == 'POST':
         rows = body if isinstance(body, list) else [body]
         out = []
@@ -239,13 +242,29 @@ with sync_playwright() as p:
     check(pg.get_by_label('Temps de référence').input_value() != '', 'running level prefilled from history')
     week = pg.locator('section[aria-label="Ta semaine type"]').inner_text()
     check('Samedi' in week and 'Sortie longue' in week and 'Séance rythmée' in week, 'coach places the week around the long-run day')
+    check(pg.get_by_text('Plan de coach (fixe)').count() == 1, 'coach plan offered for a 10 km')
     pg.screenshot(path=f'{SHOTS}/flow-course-summary.png', full_page=True)
     pg.get_by_role('button', name='Créer mon plan').click(); pg.wait_for_timeout(1200)
+    check(T['run_profile'][-1].get('plan_kind') == 'coach', 'fixed coach plan chosen by default')
     check(len(T['run_profile']) == 1, 'running plan saved')
     check(pg.locator('.hero').count() > 0, 'running plan shows next session')
     check(pg.locator('section[aria-label="Ce que tu fais"] li').count() >= 1, 'session explained step by step')
     check(T['run_profile'][-1]['schedule'][5] == 'long', 'long run saved on the chosen day')
     pg.screenshot(path=f'{SHOTS}/flow-course.png', full_page=True)
+    # 1.27.0: not 100 % and moving a session.
+    pg.get_by_role('button', name='Déplacer').click(); pg.wait_for_timeout(300)
+    chips = pg.locator('.card', has_text='Dans la même semaine').locator('button')
+    if chips.count() > 1:
+        chips.nth(1).click(); pg.wait_for_timeout(1200)
+        check(len(T['run_profile'][-1].get('moves') or {}) == 1, 'session moved to another day')
+    pg.get_by_role('button', name='Pas à 100 % ?').click(); pg.wait_for_timeout(300)
+    pg.get_by_role('button', name=re.compile('^Fatigué')).click(); pg.wait_for_timeout(1200)
+    ps = T['run_profile'][-1].get('pauses') or []
+    check(len(ps) == 1 and ps[0]['kind'] == 'fatigue', 'tired: pause saved')
+    check("Fatigué · jusqu'au" in pg.locator('main').inner_text(), 'tired: banner shown, plan adjusted')
+    pg.screenshot(path=f'{SHOTS}/flow-course-pause.png', full_page=True)
+    pg.get_by_role('button', name='Je vais mieux, reprendre le plan').click(); pg.wait_for_timeout(1200)
+    check(not (T['run_profile'][-1].get('pauses') or []), 'pause ended')
 
     # 1.15.0: beta code, feedback, /admin gone from the app.
     pg.goto(BASE + '/profil'); pg.wait_for_timeout(1200)

@@ -26,7 +26,10 @@ export function reviewLastSession(data, { lest = false } = {}) {
     const ex = data.exercises.get(name);
     const before = ex ? ex.history.filter((h) => h.workoutId !== w.id) : [];
     const prev = before[before.length - 1];
-    const repTop = (prev ? prev.maxReps : maxReps) >= 10 ? 12 : 8;
+    // A programme's rep range sets the top (double progression); otherwise 8 or 12.
+    const target = (data.routines || []).flatMap((r) => r.exercises || []).find((e) => e.name === name && e.target?.reps)?.target;
+    const rangeTop = target ? Number(String(target.reps).split('-').pop()) : NaN;
+    const repTop = rangeTop > 0 ? rangeTop : (prev ? prev.maxReps : maxReps) >= 10 ? 12 : 8;
     const inc = incrementOf(name);
 
     if (prev && maxKg < prev.maxKg * 0.8) {
@@ -82,7 +85,21 @@ export function reviewLastSession(data, { lest = false } = {}) {
     };
   });
 
-  return { workout: w, totalSets: work.length, volume, items };
+  return { workout: w, totalSets: work.length, volume, items, verdict: verdictOf(items) };
+}
+
+// One line on the session, one instruction for next time.
+function verdictOf(items) {
+  const ups = items.filter((x) => x.kind === 'up' && x.plan?.target_kg > 0);
+  const ask = items.filter((x) => x.kind === 'question');
+  const n = (k, w) => `${k} ${w}${k > 1 ? 's' : ''}`;
+  if (ask.length) return { text: 'Une charge a beaucoup baissé.', next: 'Dis-moi pourquoi plus bas : je règle la prochaine séance.' };
+  if (ups.length) {
+    const u = ups[0];
+    return { text: `Séance solide : ${n(ups.length, 'exercice')} au haut de la fourchette.`, next: `Prochaine fois : ${u.name.toLowerCase()} à ${kg(u.plan.target_kg)}${ups.length > 1 ? `, et ${n(ups.length - 1, 'autre')} plus bas` : ''}.` };
+  }
+  if (!items.length) return null;
+  return { text: 'Séance faite, charges tenues.', next: 'Prochaine fois : même charge, une rep de plus sur chaque exercice.' };
 }
 
 export function weeklyFacts(data) {

@@ -112,6 +112,12 @@ export default function Coach() {
             <span><b>{fmtInt(review.volume)}</b>kg</span>
             {minutes != null && <span><b>{minutes}</b>min</span>}
           </div>
+          {review.verdict && (
+            <span className="stack" style={{ gap: 2 }}>
+              <span style={{ fontWeight: 650 }}>{review.verdict.text}</span>
+              <span className="small" style={{ lineHeight: 1.4 }}>{review.verdict.next}</span>
+            </span>
+          )}
           {deltaPct != null && (
             <span className="small" style={{ fontWeight: 600 }}>
               {deltaPct === 0 ? 'Même volume' : `${deltaPct > 0 ? '+' : '−'}${Math.abs(deltaPct)} % de volume`} par rapport au {fmtDay(prev.start)}

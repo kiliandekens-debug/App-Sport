@@ -1,4 +1,5 @@
 import { muscleOf } from './exercises.js';
+import COACH from './coachPlans.js';
 
 /* Running coach.
    - Paces from the athlete's VDOT (Jack Daniels' Running Formula): E, M, T, I, R.
@@ -235,6 +236,7 @@ export function scheduleIssues(schedule) {
 }
 
 export function totalWeeks(profile) {
+  if (isCoachPlan(profile)) { const c = coachLayout(profile); return c.offset + c.weeks.length; }
   const goal = GOALS[profile.goal] || GOALS['10k'];
   if (profile.target_date) {
     const w = Math.floor((mondayOf(new Date(profile.target_date)) - mondayOf(new Date(profile.started_on))) / (7 * 86400000)) + 1;
@@ -274,6 +276,7 @@ function weekVolume(profile, w, total, phase) {
 }
 
 function buildWeek(profile, w, total, adj, qualityCount, opts = {}) {
+  if (isCoachPlan(profile)) return coachWeek(profile, w, total, adj, opts);
   const goal = profile.goal in GOALS ? profile.goal : '10k';
   const g = GOALS[goal];
   const p = pacesOf(profile, adj.paceScale * (opts.paceMul ?? 1));
@@ -369,8 +372,182 @@ function buildWeek(profile, w, total, adj, qualityCount, opts = {}) {
   });
 }
 
+/* ---------- Coach plans: fixed weeks written from the research ---------- */
+// docs/recherche/recherche-course.md: 5 km (8 weeks), 10 km (10), semi (12), marathon (16),
+// 3 or 4 runs a week, Daniels zones. The structure never changes; only the paces follow the
+// level (and the coach's careful pace adjustment).
+export const COACH_GOALS = Object.keys(COACH);
+export const isCoachPlan = (profile) => profile?.plan_kind === 'coach' && !!COACH[profile.goal];
+export const coachRuns = (goal) => (COACH[goal] ? Math.max(...COACH[goal].weeks.map((w) => w.runs.length)) : 0);
+
+// The template's weeks laid on the calendar. With a race date: the race week is the last one;
+// more time than the template → up to 8 base weeks before it (like week 1), less → the first
+// weeks are skipped. offset = empty weeks before the plan starts.
+function coachLayout(profile) {
+  const tpl = COACH[profile.goal].weeks;
+  if (!profile.target_date) return { weeks: tpl, offset: 0 };
+  const avail = Math.round((mondayOf(new Date(profile.target_date)) - mondayOf(new Date(profile.started_on))) / (7 * 86400000)) + 1;
+  if (avail <= tpl.length) return { weeks: tpl.slice(Math.max(0, tpl.length - Math.max(1, avail))), offset: 0 };
+  const base = Math.min(8, avail - tpl.length);
+  const baseWeek = { ...tpl[0], label: 'Semaine de base', down: false, base: true };
+  return { weeks: [...Array(base).fill(baseWeek), ...tpl], offset: avail - tpl.length - base };
+}
+
+const COACH_WHY = {
+  tempo: 'Repousse ton seuil : tu tiendras une allure plus rapide plus longtemps. Confortablement dur, jamais à fond.',
+  fast: 'Développe ta VO2max, la taille de ton moteur. Dur mais régulier : toutes les fractions à la même allure.',
+  rep: 'Vitesse et économie de course : rapide et relâché, récupération complète.',
+  marathon: 'Habitue le corps à l\'allure marathon sur des jambes fatiguées. La première partie reste facile.',
+  long: 'Construit l\'endurance et la résistance des tendons. Facile du début à la fin.',
+  strides: 'L\'essentiel du progrès vient du facile. Les lignes droites entretiennent la foulée sans fatigue.',
+  easy: 'Le facile fait la plus grande partie du progrès : tu dois pouvoir parler.',
+};
+
+function coachWeek(profile, w, total, adj, opts = {}) {
+  const goal = profile.goal;
+  const g = GOALS[goal];
+  const { weeks, offset } = coachLayout(profile);
+  const k = w - offset;
+  if (k < 0 || k >= weeks.length) return [];
+  const tw = weeks[k];
+  const p = pacesOf(profile, adj.paceScale * (opts.paceMul ?? 1));
+  const phase = tw.base ? 'base' : /course/i.test(tw.label) || /affûtage/i.test(tw.label) ? 'taper' : phaseOf(goal, w, total);
+  const schedule = scheduleOf(profile);
+  const monday = addDays(mondayOf(new Date(profile.started_on)), w * 7);
+  const hardBlock = (b) => b.type !== 'E' && !(b.type === 'R' && (b.km || 1) <= 0.3);
+  const runs = tw.runs.map((r) => ({
+    ...r,
+    role: r.race ? 'race' : /longue/i.test(r.title) ? 'long' : r.key ? 'key' : r.blocks.some(hardBlock) ? 'second' : 'easy',
+  }));
+
+  // Days: the race on its date, the long run on the long-run day, the key session on the
+  // first quality day, a second session on the other quality day (or an easy day), then the
+  // easy runs. Extra runs with no day left are dropped; days left over stay free.
+  const days = [0, 1, 2, 3, 4, 5, 6];
+  const longDay = days.find((d) => schedule[d] === 'long') ?? 6;
+  const quality = days.filter((d) => schedule[d] === 'quality');
+  const easy = days.filter((d) => schedule[d] === 'easy');
+  const raceRun = runs.find((r) => r.role === 'race');
+  const raceDay = raceRun ? (profile.target_date ? (new Date(profile.target_date).getDay() + 6) % 7 : longDay) : -1;
+  const placed = [];
+  const taken = new Set();
+  const put = (r, d) => { if (d == null || taken.has(d) || (raceDay >= 0 && d > raceDay)) return false; taken.add(d); placed.push({ r, d }); return true; };
+  if (raceRun) put(raceRun, raceDay);
+  for (const r of runs.filter((x) => x.role === 'long')) put(r, longDay) || put(r, easy.find((d) => !taken.has(d)));
+  for (const r of runs.filter((x) => x.role === 'key')) put(r, quality.find((d) => !taken.has(d))) || put(r, easy.find((d) => !taken.has(d)));
+  // A second session: not the day before or after another hard day if possible.
+  const hardDays = () => placed.filter((x) => x.r.role !== 'easy').map((x) => x.d);
+  const calm = (d) => !hardDays().some((h) => Math.abs(h - d) === 1);
+  for (const r of runs.filter((x) => x.role === 'second')) {
+    const free = [...quality, ...easy].filter((d) => !taken.has(d));
+    put(r, free.find(calm) ?? free[0]);
+  }
+  for (const r of runs.filter((x) => x.role === 'easy')) put(r, [...easy, ...quality].find((d) => !taken.has(d)));
+
+  const paceOf = (t) => ({ easy: p.easy, warm: p.easy, cool: p.easy, steady: goal === 'marathon' ? p.marathon : p.marathon, race: p.marathon, tempo: p.threshold, fast: p.interval, rep: p.rep, stride: p.rep, rest: p.recovery }[t]);
+  const out = placed.map(({ r, d }) => {
+    if (r.role === 'race') {
+      const t = raceTime(vdotOfProfile(profile), g.km) * adj.paceScale;
+      return { d, kind: 'race', family: 'race', title: `Jour J : ${g.label}`, why: `Objectif estimé : ${hms(t)}. Pars légèrement plus lent que l'allure visée sur le premier kilomètre, puis cale-toi dessus. Accélère seulement dans le dernier quart.`,
+        blocks: [B('warm', goal === 'marathon' || goal === 'semi' ? 10 : 15, p.easy), B('race', Math.round(t / 60), p.race)] };
+    }
+    const hardIdx = r.blocks.map((b, i) => (hardBlock(b) ? i : -1)).filter((i) => i >= 0);
+    let blocks = r.blocks.map((b, i) => {
+      let type;
+      if (b.type === 'E') type = r.role === 'long' && r.blocks.length === 1 ? 'steady' : hardIdx.length && i < hardIdx[0] ? 'warm' : hardIdx.length && i > hardIdx[hardIdx.length - 1] ? 'cool' : 'easy';
+      else if (b.type === 'M') type = goal === 'marathon' ? 'race' : 'steady';
+      else if (b.type === 'T') type = 'tempo';
+      else if (b.type === 'I') type = 'fast';
+      else type = (b.km || 1) <= 0.3 && r.role !== 'key' ? 'stride' : 'rep';
+      const pace = type === 'steady' && b.type === 'E' ? p.easy * 1.03 : paceOf(type);
+      const mins = b.mins ?? Math.round((b.km * pace) / 60 * 100) / 100;
+      return b.reps ? R(b.reps, B(type, mins, pace), B('rest', b.rest_mins ?? 1, p.recovery)) : B(type, mins, pace);
+    });
+    // Back from a break: shorter, and the key session becomes strides (see buildWeek).
+    if (opts.noQuality && (r.role === 'key' || r.role === 'second')) {
+      blocks = [B('easy', 25, p.easy), R(6, B('stride', 1 / 3, p.rep), B('rest', 1, p.recovery)), B('cool', 5, p.easy)];
+      return { d, kind: 'quality', family: 'reentry', title: 'Reprise : footing + accélérations', blocks, why: `Ta séance clé, en version allégée : tu reprends après une pause. Les vraies séances reviennent ${opts.backOn}.` };
+    }
+    if (opts.volMul && opts.volMul < 1) blocks = blocks.map((b) => (b.type === 'rep' || b.type === 'tempo' || b.type === 'fast' ? b : { ...b, mins: Math.max(10, r5(b.mins * opts.volMul)) }));
+    const main = blocks.flatMap((b) => (b.type === 'rep' ? [b.work.type] : [b.type]));
+    const kind = r.role === 'long' ? 'long' : r.role === 'key' || r.role === 'second' ? 'quality' : 'easy';
+    const why = r.role === 'long' ? (main.includes('race') || main.includes('steady') && r.blocks.some((b) => b.type === 'M') ? COACH_WHY.marathon : COACH_WHY.long)
+      : main.includes('tempo') ? COACH_WHY.tempo : main.includes('fast') ? COACH_WHY.fast : main.includes('rep') ? COACH_WHY.rep
+      : main.includes('race') || r.blocks.some((b) => b.type === 'M') ? COACH_WHY.marathon : main.includes('stride') ? COACH_WHY.strides : COACH_WHY.easy;
+    const family = kind === 'long' ? 'long' : main.includes('tempo') ? 'threshold' : main.includes('fast') ? 'vo2' : main.includes('rep') ? 'reps' : kind === 'quality' ? 'race' : 'easy';
+    return { d, kind, family, title: r.title, why, blocks, key: r.key };
+  });
+
+  const startYmd = String(profile.started_on).slice(0, 10);
+  const light = !!tw.down && phase !== 'taper';
+  return out.sort((a, b) => a.d - b.d).filter((x) => ymd(addDays(monday, x.d)) >= startYmd).map((x) => {
+    const date = addDays(monday, x.d);
+    return {
+      ...x, keySession: !!x.key, key: `${w}-${x.d}`, week: w, date, ymd: ymd(date), phase, light,
+      mins: Math.round(totalMins(x.blocks)), km: Math.round(kmOf(x.blocks) * 10) / 10,
+      recover: light, taper: phase === 'taper', coach: true, label: tw.label,
+    };
+  });
+}
+
+/* ---------- After a run: one line, one instruction ---------- */
+export function runAfter(session, log, next) {
+  if (!session || !log?.distance_km || !log.duration_s) return null;
+  const pace = log.duration_s / Number(log.distance_km);
+  const plannedPace = session.km ? (session.mins * 60) / session.km : null;
+  const nextLine = next ? `Prochaine : ${next.title.toLowerCase()}, ${next.ymd === session.ymd ? 'aujourd\'hui' : DAY_SHORT[(next.date.getDay() + 6) % 7]}.` : 'Plan terminé : bravo.';
+  if (log.splits?.matched && log.splits.total > 1) {
+    const ok = log.splits.ok === log.splits.total;
+    return { text: ok ? `Allure tenue sur toutes les fractions.` : log.splits.text, next: ok ? nextLine : `${log.splits.slow > log.splits.fast ? 'Pars un peu moins vite sur la première fraction.' : 'Reste dans la plage : plus vite ne fait pas progresser plus.'} ${nextLine}` };
+  }
+  if (session.kind === 'easy' || session.kind === 'long' || session.kind === 'recovery') {
+    if (plannedPace && pace < plannedPace * 0.95) return { text: `Allure ${mmss(Math.round(pace))} /km : trop vite pour du facile.`, next: `La prochaine fois, ralentis de 15 à 20 s/km. ${nextLine}` };
+    return { text: `Allure ${mmss(Math.round(pace))} /km : bien dans le facile.`, next: nextLine };
+  }
+  if (log.feel >= 5) return { text: 'Séance très dure.', next: `Pars 5 s/km plus lentement la prochaine fois. Le coach ajuste si ça se répète. ${nextLine}` };
+  if (log.feel && log.feel <= 2) return { text: 'Séance facile.', next: `Garde les mêmes allures : le coach accélère seulement si ça se confirme. ${nextLine}` };
+  return { text: `Séance faite, allure moyenne ${mmss(Math.round(pace))} /km.`, next: nextLine };
+}
+
+/* ---------- Not 100 %, holidays, moved sessions ---------- */
+export const PAUSES = {
+  fatigue: { label: 'Fatigué', days: 3, text: 'Les séances dures des 3 prochains jours deviennent des footings faciles.' },
+  douleur: { label: 'Une douleur', days: 3, text: '3 jours sans course. Vélo ou marche si ça ne réveille rien.' },
+  malade: { label: 'Malade', days: 5, text: 'Repos complet. Le plan reprend en douceur après.' },
+  temps: { label: 'Pas le temps', days: 1, text: 'La séance d\'aujourd\'hui en version courte (environ 60 %).' },
+  vacances: { label: 'Vacances', days: 7, text: 'Rien d\'obligatoire pendant ton absence. Le plan reprend à ton retour.' },
+};
+const OFF_LABEL = { malade: 'Malade : repos', douleur: 'Douleur : repos ou vélo', vacances: 'Vacances' };
+
+// A session changed by a pause or moved to another day. Pure: returns a new session.
+function overridden(s, profile, p) {
+  const moved = profile.moves?.[s.key];
+  let x = s;
+  if (moved && moved !== s.ymd) {
+    const date = new Date(`${moved}T12:00:00`);
+    date.setHours(0, 0, 0, 0);
+    x = { ...x, date, ymd: moved, d: (date.getDay() + 6) % 7, moved: true, origYmd: s.ymd };
+  }
+  const pause = (profile.pauses || []).find((q) => q.from <= x.ymd && x.ymd <= q.to);
+  if (!pause) return x;
+  if (OFF_LABEL[pause.kind]) return { ...x, off: true, offLabel: OFF_LABEL[pause.kind], pause: pause.kind };
+  if (pause.kind === 'fatigue' && (x.kind === 'quality' || x.kind === 'long')) {
+    const mins = Math.max(25, Math.min(40, Math.round(x.mins * 0.6 / 5) * 5));
+    return { ...x, kind: 'easy', family: 'easy', title: 'Footing facile (fatigue)', why: 'Tu es fatigué : la séance dure attendra. Un footing facile garde le rythme sans creuser la fatigue.',
+      blocks: [B('easy', mins, p.easy)], mins, km: Math.round(((mins * 60) / p.easy) * 10) / 10, pause: 'fatigue' };
+  }
+  if (pause.kind === 'temps') {
+    const blocks = x.blocks.map((b) => (b.type === 'rep' ? { ...b, reps: Math.max(2, Math.ceil(b.reps * 0.6)) } : { ...b, mins: Math.max(5, Math.round(b.mins * 0.6)) }));
+    return { ...x, title: `${x.title} (version courte)`, blocks, mins: Math.round(totalMins(blocks)), km: Math.round(kmOf(blocks) * 10) / 10, pause: 'temps' };
+  }
+  return x;
+}
+
 // Compares what was run with what was planned, and nudges the next sessions.
-export function adaptation(logs, planFor, missedRecent) {
+// Careful (the criticism made to Runna in 2026): paces change only on a trend, never on one
+// session. Pace measured: 3 sessions at least; feeling: 2 at least; watch splits: 6 parts over
+// 2 sessions. A fixed coach plan never changes its volume (fixed = true).
+export function adaptation(logs, planFor, missedRecent, fixed = false) {
   const recent = logs.filter((l) => l.session_key).slice(-4);
   const ratios = [];
   for (const l of recent) {
@@ -382,11 +559,13 @@ export function adaptation(logs, planFor, missedRecent) {
   const r = ratios.length ? ratios.reduce((a, b) => a + b, 0) / ratios.length : 1;
   const feel = feels.length ? feels.reduce((a, b) => a + b, 0) / feels.length : 3;
   const res = { paceScale: 1, volScale: 1, level: recent.length ? 'ok' : 'none', message: recent.length ? 'Tu suis le plan comme prévu. On continue.' : null };
-  if (r > 1.04 || feel >= 4.3) {
+  const paceTrend = ratios.length >= 3;
+  const feelTrend = feels.length >= 2;
+  if ((paceTrend && r > 1.04) || (feelTrend && feel >= 4.3)) {
     Object.assign(res, { paceScale: 1.03, volScale: 0.9, level: 'easier', message: feel >= 4.3 ? 'Tes dernières sorties étaient dures. Je ralentis les allures de 3 % et je réduis le volume de 10 % : mieux vaut un cran en dessous que la blessure.' : 'Tu cours plus lentement que prévu. Je ralentis un peu les allures et je réduis le volume de 10 %.' });
-  } else if (r < 0.97 && feel <= 2.5 && recent.length >= 3) {
+  } else if (paceTrend && r < 0.97 && feel <= 2.5) {
     Object.assign(res, { paceScale: 0.98, volScale: 1.05, level: 'harder', message: 'Tes sorties passent facilement. J\'accélère les allures de 2 % et j\'ajoute 5 % de volume.' });
-  } else if (r < 0.95 && recent.length >= 2) {
+  } else if (paceTrend && r < 0.95) {
     res.message = 'Tu cours plus vite que prévu sur tes footings. Ralentis : le facile doit rester facile pour que les séances dures portent.';
   }
   // Intervals measured by the watch: most parts slower than the target pace means the
@@ -394,16 +573,19 @@ export function adaptation(logs, planFor, missedRecent) {
   const measured = recent.filter((l) => l.splits?.matched && l.splits.total);
   const slowParts = measured.reduce((a, l) => a + l.splits.slow, 0);
   const allParts = measured.reduce((a, l) => a + l.splits.total, 0);
-  if (allParts >= 3 && slowParts / allParts > 0.5) {
+  if (allParts >= 6 && measured.length >= 2 && slowParts / allParts > 0.5) {
     Object.assign(res, { paceScale: Math.max(res.paceScale, 1.03), volScale: Math.min(res.volScale, 1), level: 'easier', message: `Sur tes dernières séances, ${slowParts} parties sur ${allParts} étaient plus lentes que l'allure visée (mesuré par la montre). Je ralentis les allures de 3 % pour que tu puisses les tenir.` });
   } else if (allParts >= 3 && measured.every((l) => l.splits.slow === 0 && !l.splits.fast) && measured.some((l) => l.splits.total > 1) && res.level === 'ok') {
     res.message = 'La montre confirme : tu tiens les allures prévues sur tes dernières séances. On continue comme ça.';
   }
   if (missedRecent >= 2) {
-    res.volScale = Math.min(res.volScale, 0.9);
-    res.message = `Tu as manqué ${missedRecent} séances ces deux dernières semaines. Je réduis le volume de 10 % pour reprendre en douceur. Ne cherche pas à les rattraper.`;
+    if (!fixed) res.volScale = Math.min(res.volScale, 0.9);
+    res.message = fixed
+      ? `Tu as manqué ${missedRecent} séances ces deux dernières semaines. Ne cherche pas à les rattraper : reprends le plan là où il en est.`
+      : `Tu as manqué ${missedRecent} séances ces deux dernières semaines. Je réduis le volume de 10 % pour reprendre en douceur. Ne cherche pas à les rattraper.`;
     res.level = 'easier';
   }
+  if (fixed) res.volScale = 1;
   return res;
 }
 
@@ -433,18 +615,25 @@ export function buildPlan(profile, logs, workouts = [], now = new Date()) {
     }
     return weeks;
   };
-  const base = flat({ paceScale: 1, volScale: 1 });
-  const missedRecent = base.flat().filter((s) => !done.has(s.key) && s.ymd < todayStr && (now - s.date) < 14 * 86400000).length;
-  const adj = adaptation(logs, (k) => base.flat().find((s) => s.key === k), missedRecent);
-  const weeks = flat(adj).map((wk) => wk.map((s) => ({
+  const fixed = isCoachPlan(profile);
+  // Pauses (not 100 %, holidays) and sessions moved to another day.
+  const over = (wks, adj0) => {
+    const p0 = pacesOf(profile, adj0.paceScale);
+    return wks.map((wk) => wk.map((s) => overridden(s, profile, p0)).sort((a, b) => a.date - b.date));
+  };
+  const base = over(flat({ paceScale: 1, volScale: 1 }), { paceScale: 1 });
+  const missedRecent = base.flat().filter((s) => !s.off && !done.has(s.key) && s.ymd < todayStr && (now - s.date) < 14 * 86400000).length;
+  const adj = adaptation(logs, (k) => base.flat().find((s) => s.key === k), missedRecent, fixed);
+  const weeks = over(flat(adj), adj).map((wk) => wk.map((s) => ({
     ...s,
     done: done.has(s.key),
     log: done.get(s.key) || null,
-    missed: !done.has(s.key) && s.ymd < todayStr,
+    missed: !s.off && !done.has(s.key) && s.ymd < todayStr,
     today: s.ymd === todayStr,
   })));
   const all = weeks.flat();
-  const next = all.find((s) => !s.done && s.ymd >= todayStr) || null;
+  const next = all.find((s) => !s.done && !s.off && s.ymd >= todayStr) || null;
+  const pause = (profile.pauses || []).find((q) => q.from <= todayStr && todayStr <= q.to) || null;
   let current = next ? next.week : total - 1;
   if (all.length && now < all[0].date) current = 0;
 
@@ -463,7 +652,7 @@ export function buildPlan(profile, logs, workouts = [], now = new Date()) {
   // 80/20 measured on time actually spent at each intensity (warm-ups and recoveries count as easy).
   let easyMin = 0, totalMin = 0;
   for (const s of all) for (const g of segments(s)) { totalMin += g.mins; if (relaxed(g.type)) easyMin += g.mins; }
-  return { total, weeks, current, next, adj, note, reentry: reentry && { ...reentry, gap: fit.breakDays, backOn: backOnLabel }, fit, finished: !next, phases, easyShare: totalMin ? easyMin / totalMin : 0, phase: weeks[current]?.[0]?.phase || 'base' };
+  return { total, weeks, current, next, adj, note, pause, fixed, reentry: reentry && { ...reentry, gap: fit.breakDays, backOn: backOnLabel }, fit, finished: !next, phases, easyShare: totalMin ? easyMin / totalMin : 0, phase: weeks[current]?.[0]?.phase || 'base' };
 }
 
 // "5:10 – 5:30"

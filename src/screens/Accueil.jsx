@@ -30,7 +30,7 @@ export default function Accueil({ user }) {
   // With a programme: today's session; else the least recently done routine.
   const { routines, next, program } = nextSession(data);
   // Today: the run of the plan, the strength session of the programme, and one coach's word.
-  const todayRun = run ? run.weeks.flat().find((s) => s.today && !s.done) || null : null;
+  const todayRun = run ? run.weeks.flat().find((s) => s.today && !s.done && !s.off) || null : null;
   const todayGym = program ? program.days.find((x) => x?.today) || null : null;
   const nextIsToday = !!(program && next && todayGym && !todayGym.done && todayGym.routine.id === next.id);
   const nextDay = program && next ? program.days.find((x) => x && x.routine.id === next.id && !x.done) : null;
@@ -40,7 +40,7 @@ export default function Accueil({ user }) {
   const advice0 = adviceOfDay({ date: today, run: todayRun, gym: todayGym && !todayGym.done ? todayGym.dayId : null, tomorrowHard: tomorrowRun && (tomorrowRun.kind === 'quality' || tomorrowRun.kind === 'long'), legsYesterday, pause: run?.pause || null });
   const last = data.workouts[0] || null;
   // What happened, or is planned, on each day of the week: gym, run, or rest.
-  const planned = run ? run.weeks.flat() : [];
+  const planned = run ? run.weeks.flat().filter((s) => !s.off) : [];
   const weekDays = data.weekDays.map((d) => ({ ...d, ...dayInfo(data, d.date, planned) }));
   const [selDay, setSelDay] = useState(() => Math.max(0, data.weekDays.findIndex((d) => d.today)));
   const [picked, setPicked] = useState(false);

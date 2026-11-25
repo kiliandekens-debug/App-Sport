@@ -42,7 +42,7 @@ export function watchRuns(data) {
   if (!data?.runProfile) return [];
   const today = ymd(new Date());
   return buildPlan(data.runProfile, data.runLogs, data.workouts).weeks.flat()
-    .filter((x) => !x.done && x.ymd >= today).slice(0, 7).map(guidedRun);
+    .filter((x) => !x.done && !x.off && x.ymd >= today).slice(0, 7).map(guidedRun);
 }
 
 // Guided tapis sessions (12-3-30…), at the level reached, for the watch's Tapis card.
