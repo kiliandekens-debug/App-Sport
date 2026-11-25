@@ -6,6 +6,13 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.21.0', date: '2026-11-25', title: 'La montre te parle',
+    items: [
+      'Apple Watch : pendant un effort avec une allure cible, une voix te dit « Trop rapide, ralentis » ou « Trop lent, accélère » (dans les AirPods ou par le haut-parleur, la musique baisse un instant).',
+      'Sans abuser : seulement après 15 s hors de l\'allure, au plus une fois par minute et deux fois par effort. Pas pendant l\'échauffement, les footings ni sur le tapis.',
+    ],
+  },
+  {
     version: '1.20.0', date: '2026-11-25', title: 'Poids exact sur la montre',
     items: [
       'Apple Watch : touche le poids pendant une série pour le choisir sur deux roues, au dixième près (par exemple 12,3 kg).',
