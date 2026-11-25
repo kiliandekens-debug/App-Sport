@@ -219,7 +219,8 @@ function EndForm({ draft, weight, onSave, onCancel }) {
   const scale = auto?.distance_km ? km / auto.distance_km : 1;
   const elevation = auto ? Math.round(auto.elevation_m * scale) : 0;
   const calories = segs.length ? caloriesOf(segs.map((x) => ({ ...x, speed: x.speed * scale })), weight) : 0;
-  const ok = secs > 0 && km > 0 && f.feel;
+  // Date field emptied (iOS « Effacer ») → no save, instead of an error on tap.
+  const ok = secs > 0 && km > 0 && f.feel && !Number.isNaN(new Date(f.when).getTime());
   const save = () => onSave({
     done_at: new Date(f.when).toISOString(), activity: f.activity, duration_s: secs, distance_km: Math.round(km * 100) / 100,
     speed_kmh: Math.round(((km / secs) * 3600) * 10) / 10, incline_pct: auto?.incline_pct ?? (incline || 0), elevation_m: elevation,
