@@ -424,14 +424,14 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
     }
 
     func setSpeed(_ v: Double) {
-        let x = min(25, max(0.5, (v * 10).rounded() / 10))
+        let x = min(30, max(1, (v * 10).rounded() / 10))
         guard indoor, x != speed else { return }
         closeSeg()
         speed = x
     }
 
     func setIncline(_ v: Double) {
-        let x = min(30, max(0, (v * 2).rounded() / 2))
+        let x = min(15, max(0, (v * 2).rounded() / 2))
         guard indoor, x != incline else { return }
         closeSeg()
         incline = x

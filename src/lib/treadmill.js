@@ -13,6 +13,10 @@ export const ACTIVITIES = {
 export const WALKS = new Set(['incline_walk', 'walk']);
 export const isWalk = (l) => WALKS.has(l?.activity);
 export const INDOOR = new Set(['treadmill', 'incline_walk']);
+// Range of a usual tapis. Outdoor walk: no incline, no D+.
+export const SPEED_MIN = 1;
+export const SPEED_MAX = 30;
+export const INCLINE_MAX = 15;
 // Name of a log in lists: its note, else its kind of activity.
 export const logTitle = (l) => l?.notes || ACTIVITIES[l?.activity] || 'Course';
 

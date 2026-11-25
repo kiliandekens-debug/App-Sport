@@ -9,7 +9,7 @@ import { hasFriends } from '../social.js';
 import { fmtDay } from '../lib/stats.js';
 import { hms, parseDuration } from '../lib/running.js';
 import { isNative, nativeKeepAwake } from '../native.js';
-import { ACTIVITIES, TEMPLATES, templateSession, summaryOf, caloriesOf, weekElevation, thisWeek, fmtSpeed, fmtIncline, logTitle } from '../lib/treadmill.js';
+import { ACTIVITIES, TEMPLATES, templateSession, summaryOf, caloriesOf, weekElevation, thisWeek, fmtSpeed, fmtIncline, logTitle, SPEED_MIN, SPEED_MAX, INCLINE_MAX } from '../lib/treadmill.js';
 
 const num = (v) => Number(String(v ?? '').replace(',', '.'));
 const n1 = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
@@ -137,7 +137,7 @@ function Player({ run: initial, weight, onEnd, onCancel }) {
   const adjust = (key, delta) => {
     setR((x) => {
       const at = elapsedOf(x, Date.now());
-      const v = key === 'speed' ? clamp(Math.round((x.cur.speed + delta) * 10) / 10, 0.5, 25) : clamp(Math.round((x.cur.incline + delta) * 2) / 2, 0, 30);
+      const v = key === 'speed' ? clamp(Math.round((x.cur.speed + delta) * 10) / 10, SPEED_MIN, SPEED_MAX) : clamp(Math.round((x.cur.incline + delta) * 2) / 2, 0, INCLINE_MAX);
       if (v === x.cur[key]) return x;
       return { ...x, segs: closeSegs(x, at), cur: { ...x.cur, at, [key]: v } };
     });
@@ -212,20 +212,23 @@ function EndForm({ draft, weight, onSave, onCancel }) {
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
   const secs = parseDuration(f.duration);
   const speed = num(f.speed);
-  const incline = num(f.incline);
+  // Outdoor walk: flat, no D+. Tapis: incline between 0 and 15 %.
+  const flat = f.activity === 'walk';
+  const incline = flat ? 0 : clamp(num(f.incline) || 0, 0, INCLINE_MAX);
+  const speedOk = !!draft.segs || (speed >= SPEED_MIN && speed <= SPEED_MAX);
   // Typed by hand: one palier from the average speed and incline.
-  const segs = draft.segs && draft.segs.length ? draft.segs : secs && speed ? [{ secs, speed, incline: incline || 0 }] : [];
+  const segs = draft.segs && draft.segs.length ? draft.segs : secs && speedOk ? [{ secs, speed, incline }] : [];
   const auto = segs.length ? summaryOf(segs, weight) : null;
   const km = f.distance !== '' ? num(f.distance) : auto?.distance_km || 0;
   // Distance corrected: speed and D+ follow it, the calories too.
   const scale = auto?.distance_km ? km / auto.distance_km : 1;
-  const elevation = auto ? Math.round(auto.elevation_m * scale) : 0;
+  const elevation = auto && !flat ? Math.round(auto.elevation_m * scale) : 0;
   const calories = segs.length ? caloriesOf(segs.map((x) => ({ ...x, speed: x.speed * scale })), weight) : 0;
   // Date field emptied (iOS « Effacer ») → no save, instead of an error on tap.
-  const ok = secs > 0 && km > 0 && f.feel && !Number.isNaN(new Date(f.when).getTime());
+  const ok = secs > 0 && km > 0 && speedOk && f.feel && !Number.isNaN(new Date(f.when).getTime());
   const save = () => onSave({
     done_at: new Date(f.when).toISOString(), activity: f.activity, duration_s: secs, distance_km: Math.round(km * 100) / 100,
-    speed_kmh: Math.round(((km / secs) * 3600) * 10) / 10, incline_pct: auto?.incline_pct ?? (incline || 0), elevation_m: elevation,
+    speed_kmh: Math.round(((km / secs) * 3600) * 10) / 10, incline_pct: flat ? null : auto?.incline_pct ?? incline, elevation_m: flat ? null : elevation,
     calories, feel: f.feel, notes: f.title || null, session_key: f.key || null, source: draft.segs ? 'timer' : 'manual',
     segments: segs.length > 1 ? segs.map((x) => ({ ...x, speed: Math.round(x.speed * scale * 10) / 10 })) : null,
     avg_hr: f.hr ? Number(f.hr) : null,
@@ -243,18 +246,19 @@ function EndForm({ draft, weight, onSave, onCancel }) {
         <label className="stack" style={{ gap: 4 }}><span className="xs muted">Distance (km)</span><input className="input" inputMode="decimal" placeholder={auto ? n2(auto.distance_km) : ''} value={f.distance} onChange={(e) => set('distance', e.target.value)} /></label>
         {!draft.segs && (
           <>
-            <label className="stack" style={{ gap: 4 }}><span className="xs muted">Vitesse moyenne (km/h)</span><input className="input" inputMode="decimal" value={f.speed} onChange={(e) => set('speed', e.target.value)} /></label>
-            <label className="stack" style={{ gap: 4 }}><span className="xs muted">Pente moyenne (%)</span><input className="input" inputMode="decimal" value={f.incline} onChange={(e) => set('incline', e.target.value)} /></label>
+            <label className="stack" style={{ gap: 4 }}><span className="xs muted">Vitesse moyenne (km/h)</span><input className="input" inputMode="decimal" value={f.speed} onChange={(e) => set('speed', e.target.value)} aria-invalid={!speedOk} /></label>
+            {!flat && <label className="stack" style={{ gap: 4 }}><span className="xs muted">Pente moyenne (0 à {INCLINE_MAX} %)</span><input className="input" inputMode="decimal" value={f.incline} onChange={(e) => set('incline', e.target.value)} /></label>}
           </>
         )}
         <label className="stack" style={{ gap: 4 }}><span className="xs muted">Fréquence cardiaque moy.</span><input className="input" inputMode="numeric" value={f.hr} onChange={(e) => set('hr', e.target.value)} /></label>
         <label className="stack" style={{ gap: 4 }}><span className="xs muted">Date et heure</span><input className="input" type="datetime-local" value={f.when} onChange={(e) => set('when', e.target.value)} /></label>
       </div>
+      {!speedOk && f.speed !== '' && <span className="xs" style={{ color: 'var(--danger)' }}>Vitesse entre {SPEED_MIN} et {SPEED_MAX} km/h.</span>}
       {draft.segs && <span className="xs muted">Distance calculée avec la vitesse réglée. Si le compteur du tapis dit autre chose, corrige-la.</span>}
       {km > 0 && secs > 0 && (
         <div className="kpis">
           <span><b>{n1((km / secs) * 3600)}</b>km/h moy.</span>
-          <span><b>{elevation}</b>m D+</span>
+          {!flat && <span><b>{elevation}</b>m D+</span>}
           <span><b>{calories}</b>kcal</span>
         </div>
       )}

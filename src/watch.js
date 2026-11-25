@@ -67,8 +67,9 @@ async function saveWatchRun(a, data) {
     await saveRunLog({
       done_at: done.toISOString(), activity: a.activity, session_key: tpl ? a.key : null, notes: tpl?.title || null,
       distance_km: Math.round(a.meters / 10) / 100, duration_s: Math.round(a.secs),
-      speed_kmh: Math.round(((a.meters / a.secs) * 3.6) * 10) / 10, incline_pct: sum?.incline_pct ?? null,
-      elevation_m: a.elevation > 0 ? Math.round(a.elevation) : sum?.elevation_m ?? null,
+      speed_kmh: Math.round(((a.meters / a.secs) * 3.6) * 10) / 10, incline_pct: a.activity === 'walk' ? null : sum?.incline_pct ?? null,
+      // Outdoor walk: no D+.
+      elevation_m: a.activity === 'walk' ? null : a.elevation > 0 ? Math.round(a.elevation) : sum?.elevation_m ?? null,
       avg_hr: a.hr > 0 ? Math.round(a.hr) : null, calories: a.kcal > 0 ? Math.round(a.kcal) : sum?.calories ?? null,
       source: 'watch', segments: segs.length > 1 ? segs : null,
     });
