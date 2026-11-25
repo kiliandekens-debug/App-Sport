@@ -1,4 +1,4 @@
-import { muscleOf, equipOf } from './exercises.js';
+import { muscleOf } from './exercises.js';
 
 export const isWork = (s) => s.set_type !== 'warmup' && s.weight_kg != null && s.reps > 0;
 // Rows with absurd reps (e.g. 67 on a chest press) are almost always typing errors.
@@ -6,10 +6,8 @@ export const isPlausible = (s) => !(s.reps > 40 && s.weight_kg > 0);
 export const e1rm = (kg, reps) => kg * (1 + reps / 30);
 
 // Kilos lifted, as shown everywhere (session, history, Progrès): every set counts, warm-ups
-// included, and dumbbells count twice (one per hand). Loads and records stay « per dumbbell ».
-const ONE_DUMBBELL = /goblet|pull[- ]?over/i;
-export const loadFactor = (name) => (equipOf(name || '') === 'Haltères' && !ONE_DUMBBELL.test(name) ? 2 : 1);
-export const setVolume = (s) => (s.weight_kg != null && s.reps > 0 && isPlausible(s) ? s.weight_kg * s.reps * loadFactor(s.exercise) : 0);
+// included, load × reps as typed.
+export const setVolume = (s) => (s.weight_kg != null && s.reps > 0 && isPlausible(s) ? s.weight_kg * s.reps : 0);
 export const volumeOf = (sets) => sets.reduce((a, s) => a + setVolume(s), 0);
 
 export const fmtKg = (v) => (v == null ? '–' : String(Math.round(v * 10) / 10).replace('.', ','));

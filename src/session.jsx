@@ -3,7 +3,7 @@ import { supabase } from './supabase.js';
 import { syncRestPush } from './push.js';
 import { isNative, nativeKeepAwake } from './native.js';
 import { useData } from './data.jsx';
-import { templateFor, lastSetsOf, setVolume, loadFactor } from './lib/stats.js';
+import { templateFor, lastSetsOf, setVolume } from './lib/stats.js';
 import { exactImageId } from './lib/images.js';
 import { muscleOf, equipOf, incrementOf } from './lib/exercises.js';
 import { defaultRest, routineFromHistory, toggleSuperset as toggleSS, cleanSupersets } from './lib/routines.js';
@@ -460,8 +460,8 @@ export function SessionProvider({ children }) {
     const activeSet = ex ? ex.sets.findIndex((x) => !x.done) : -1;
     let volume = 0, done = 0, total = 0;
     for (const e of s.exercises) for (const x of e.sets) {
-      // Kilos lifted: warm-ups too, both dumbbells. The set count is working sets only.
-      if (x.done) volume += num(x.kg) * num(x.reps) * loadFactor(e.name);
+      // Kilos lifted: warm-ups too. The set count is working sets only.
+      if (x.done) volume += num(x.kg) * num(x.reps);
       if (x.type === 'warmup') continue;
       total += 1;
       if (x.done) done += 1;

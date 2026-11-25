@@ -30,14 +30,6 @@ struct WExercise: Codable, Equatable {
     var alts: [WAlt]?
 
     var isOpen: Bool { sets.contains { !$0.done } }
-
-    /// Dumbbells count twice in the kilos lifted (one per hand), except goblet and pull-over.
-    var loadFactor: Double {
-        let n = name.lowercased()
-        let dumbbell = (n.contains("haltère") || n.contains("haltere") || n.contains("dumbbell")) && !n.contains("kettlebell")
-        let one = n.contains("goblet") || n.contains("pull-over") || n.contains("pullover") || n.contains("pull over")
-        return dumbbell && !one ? 2 : 1
-    }
 }
 
 struct WSession: Codable, Equatable {
@@ -53,9 +45,9 @@ struct WSession: Codable, Equatable {
 
     var done: Int { exercises.reduce(0) { $0 + $1.sets.filter { !$0.warm && $0.done }.count } }
     var total: Int { exercises.reduce(0) { $0 + $1.sets.filter { !$0.warm }.count } }
-    /// Kilos lifted, as on the iPhone: warm-ups included, both dumbbells counted.
+    /// Kilos lifted, as on the iPhone: warm-ups included.
     var volume: Double {
-        exercises.reduce(0) { acc, e in acc + e.sets.filter { $0.done }.reduce(0) { $0 + $1.kg * Double($1.reps) } * e.loadFactor }
+        exercises.reduce(0) { acc, e in acc + e.sets.filter { $0.done }.reduce(0) { $0 + $1.kg * Double($1.reps) } }
     }
 
     /// After the rest: the exercise and the load (« 80 × 8 »), shown under the timer.

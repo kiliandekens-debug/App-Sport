@@ -44,11 +44,6 @@ func setRank(_ e: WExercise, _ si: Int) -> String {
     return "\(x.warm ? "Échauffement" : "Série") \(rank)/\(of)"
 }
 
-/// Dumbbells: the load is per dumbbell.
-private func perDumbbell(_ e: WExercise) -> Bool {
-    e.name.lowercased().contains("haltère") || e.step == 2
-}
-
 struct ContentView: View {
     @EnvironmentObject var store: WatchStore
 
@@ -351,7 +346,7 @@ struct SetView: View {
                     .minimumScaleFactor(0.7)
             }
             HStack(spacing: 6) {
-                LoadTile(value: fmtKg(kg), unit: "kg", caption: perDumbbell(e) ? "par haltère" : "charge", changed: kg != set.kg, crown: true)
+                LoadTile(value: fmtKg(kg), unit: "kg", caption: "charge", changed: kg != set.kg, crown: true)
                     .onTapGesture { pickingKg = true }
                     .accessibilityLabel("Charge \(fmtKg(kg)) kilos")
                     .accessibilityHint("Couronne pour changer, touche pour le poids exact")

@@ -194,14 +194,14 @@ with sync_playwright() as p:
     # 1.8.0: automatic warm-up (50 % × 5, 75 % × 3) before the first heavy exercise of the muscle.
     check(vals[:4] == ['38.5', '5', '58', '3'], f'automatic warm-up from the working load ({vals[:4]})')
     pg.screenshot(path=f'{SHOTS}/flow-library-routine.png', full_page=True)
-    # 1.23.0: one more warm-up set (like the last one, before the working sets), and the kilos
-    # lifted count warm-ups and both dumbbells.
+    # 1.24.0: one more warm-up set (like the last one, before the working sets), and the kilos
+    # lifted count warm-ups (load × reps as typed).
     pg.get_by_role('button', name="Ajouter une série d'échauffement à Développé Couché (Haltère)").click(); pg.wait_for_timeout(300)
     vals = [v.replace(',', '.') for v in pg.locator('main input').evaluate_all('els => els.map(e => e.value)')]
     check(vals[:6] == ['38.5', '5', '58', '3', '58', '3'], f'extra warm-up added before the working sets ({vals[:6]})')
     pg.get_by_role('button', name='Valider la série 1').first.click(); pg.wait_for_timeout(400)
     head = re.sub(r'\s', '', pg.locator('.session-head').inner_text())
-    check('385kg' in head, f'warm-up counted in kilos lifted, both dumbbells ({head[:60]})')
+    check('193kg' in head, f'warm-up counted in kilos lifted ({head[:60]})')
     pg.get_by_role('button', name='Annuler la validation de la série 1').first.click(); pg.wait_for_timeout(300)
     sk = pg.get_by_role('button', name='Passer', exact=True)
     if sk.count(): sk.click(); pg.wait_for_timeout(200)

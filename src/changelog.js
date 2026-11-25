@@ -6,6 +6,13 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.24.1', date: '2026-11-25', title: 'Kilos soulevés : comme avant pour les haltères',
+    items: [
+      'Les haltères ne comptent plus double : le total, c\'est la charge saisie × les répétitions, comme avant. Les échauffements restent comptés.',
+      'Montre : plus de mention « par haltère » sous la charge.',
+    ],
+  },
+  {
     version: '1.24.0', date: '2026-11-25', title: 'Un échauffement en un geste',
     items: [
       'Sous chaque exercice, bouton « Échauffement » à côté de « Série » : il calcule l\'échauffement s\'il n\'y en a pas, sinon il ajoute une série d\'échauffement juste avant les séries de travail (même charge que la précédente).',
