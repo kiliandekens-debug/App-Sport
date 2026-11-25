@@ -2,6 +2,7 @@ import Foundation
 import HealthKit
 import CoreLocation
 import WatchKit
+import AVFoundation
 
 /// Strength training workout on the watch: live heart rate and calories, saved to Apple
 /// Health at the end (it then counts in the activity rings).
@@ -177,6 +178,9 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
     private var lastKmAt: (t: Double, m: Double) = (0, 0)
     private var outside = 0
     private var lastWarnAt: Double = -100
+    private var lastSpokenAt: Double = -100
+    private var spokenInStep = 0
+    private let voice = Voice()
     private var still = 0
     private var moving = 0
     private var manualPause = false
@@ -314,7 +318,7 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
         elapsed = 0; meters = 0; heartRate = 0; averageHeartRate = 0; calories = 0; pace = 0
         stepIndex = 0; paceWarning = 0; autoPaused = false; kmToast = nil
         samples = []; stepStart = (0, 0); splits = []; effortResults = []
-        lastKm = 0; lastKmAt = (0, 0); outside = 0; lastWarnAt = -100; still = 0; moving = 0; manualPause = false
+        lastKm = 0; lastKmAt = (0, 0); outside = 0; lastWarnAt = -100; lastSpokenAt = -100; spokenInStep = 0; still = 0; moving = 0; manualPause = false
         elevation = 0; lastTick = 0; segs = []; segStart = 0
     }
 
@@ -364,7 +368,9 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
         }
     }
 
-    /// Outside the target band for 10 s in a row: one warning, at most every 30 s.
+    /// Outside the target band for 10 s in a row: one vibration, at most every 30 s.
+    /// Voice (« Trop rapide, ralentis »): after 15 s outside, at most once a minute and
+    /// twice per effort, outdoors only (on the tapis the speed is set by hand).
     private func checkPace() {
         guard let s = step, s.alert, s.fast > 0, pace > 0, elapsed - stepStart.t > 20 else { paceWarning = 0; outside = 0; return }
         let w = pace < s.fast ? 1 : pace > s.slow ? -1 : 0
@@ -375,6 +381,11 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
             if elapsed - lastWarnAt > 30 {
                 lastWarnAt = elapsed
                 WKInterfaceDevice.current().play(w > 0 ? .directionDown : .directionUp)
+            }
+            if outside >= 15, !indoor, spokenInStep < 2, elapsed - lastSpokenAt > 60 {
+                lastSpokenAt = elapsed
+                spokenInStep += 1
+                voice.say(w > 0 ? "Trop rapide, ralentis." : "Trop lent, accélère.")
             }
         }
     }
@@ -393,6 +404,7 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
         stepIndex += 1
         paceWarning = 0
         outside = 0
+        spokenInStep = 0
         // Tapis: the next palier's speed and incline, and what to do.
         if indoor, let n = step, let sp = n.speed {
             let inc = n.incline ?? incline
@@ -605,5 +617,32 @@ final class RunManager: NSObject, ObservableObject, HKWorkoutSessionDelegate, HK
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         DispatchQueue.main.async { self.gpsReady = false }
+    }
+}
+
+/// Short spoken alerts in French, over the music (lowered while speaking), in the AirPods
+/// or through the watch's speaker.
+final class Voice: NSObject, AVSpeechSynthesizerDelegate {
+    private let synth = AVSpeechSynthesizer()
+
+    override init() {
+        super.init()
+        synth.delegate = self
+    }
+
+    func say(_ text: String) {
+        guard !synth.isSpeaking else { return }
+        let a = AVAudioSession.sharedInstance()
+        try? a.setCategory(.playback, mode: .voicePrompt, options: [.duckOthers])
+        try? a.setActive(true)
+        let u = AVSpeechUtterance(string: text)
+        u.voice = AVSpeechSynthesisVoice(language: "fr-FR")
+        u.rate = AVSpeechUtteranceDefaultSpeechRate
+        synth.speak(u)
+    }
+
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        // Music back to its normal volume.
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 }
