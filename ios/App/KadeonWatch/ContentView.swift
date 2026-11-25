@@ -340,9 +340,9 @@ struct SetView: View {
                 HeartPill(size: 12)
             }
             Text(e.name)
-                .font(.system(size: 17, weight: .bold, design: .rounded))
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
             if !hint.isEmpty {
                 Text(hint)
                     .font(.system(size: 11, weight: .medium, design: .rounded))
@@ -630,7 +630,7 @@ struct RestView: View {
                     HeartPill(size: 12)
                 }
                 Text(mmss(left))
-                    .font(.system(size: 46, weight: .heavy, design: .rounded))
+                    .font(.system(size: 44, weight: .heavy, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(tint)
                     .contentTransition(.numericText(countsDown: true))
@@ -638,17 +638,22 @@ struct RestView: View {
                     .minimumScaleFactor(0.6)
                     .frame(maxWidth: .infinity)
                     .accessibilityLabel("Repos restant \(mmss(left))")
-                ProgressView(value: pct)
-                    .tint(tint)
-                    .animation(.linear(duration: 1), value: pct)
+                Capsule().fill(Color.white.opacity(0.14))
+                    .frame(height: 4)
+                    .overlay(alignment: .leading) {
+                        GeometryReader { g in
+                            Capsule().fill(tint).frame(width: g.size.width * pct)
+                                .animation(.linear(duration: 1), value: pct)
+                        }
+                    }
                 upNext
                     .padding(.vertical, 2)
                 HStack(spacing: 5) {
                     Button("−15 s") { store.shiftRest(-15) }
-                        .buttonStyle(ChipStyle(height: 32))
+                        .buttonStyle(ChipStyle(height: 30))
                         .accessibilityLabel("Retirer 15 secondes")
                     Button("+15 s") { store.shiftRest(15) }
-                        .buttonStyle(ChipStyle(height: 32))
+                        .buttonStyle(ChipStyle(height: 30))
                         .accessibilityLabel("Ajouter 15 secondes")
                 }
                 Button("Reprendre") { store.skipRest() }
@@ -660,7 +665,15 @@ struct RestView: View {
 
     @ViewBuilder private var upNext: some View {
         VStack(spacing: 0) {
-            if let e = s.exercise, let i = s.activeSet {
+            if let e = s.exercise, let i = s.activeSet, e.sets.contains(where: { $0.done }) {
+                // Same exercise: one line is enough.
+                let x = e.sets[i]
+                Text("\(setRank(e, i)) · " + (x.kg > 0 ? "\(fmtKg(x.kg)) kg × \(x.reps)" : "× \(x.reps)"))
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            } else if let e = s.exercise, let i = s.activeSet {
                 let x = e.sets[i]
                 Text("À suivre · \(e.name)")
                     .font(.system(size: 13, weight: .bold, design: .rounded))
