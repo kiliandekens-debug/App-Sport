@@ -199,6 +199,7 @@ function buildExercise(data, routineEx) {
     deload,
     rest: routineEx.rest ?? restFor(name),
     superset: routineEx.superset || null,
+    target: routineEx.target || null,
     plan: plan ? { kg: Number(plan.target_kg), reps: plan.target_reps, reason: plan.reason } : null,
     sets: applyWarmups(shaped),
   };
@@ -212,6 +213,7 @@ export function sessionToRoutine(s, name) {
       name: e.name,
       rest: e.rest,
       superset: e.superset || null,
+      ...(e.target ? { target: e.target } : {}),
       sets: e.sets.map((x) => ({ type: x.type || 'normal', reps: x.reps === '' ? null : Math.round(num(x.reps)), kg: null })),
     })),
   };

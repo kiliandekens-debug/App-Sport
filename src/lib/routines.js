@@ -1,4 +1,6 @@
-import { templateFor, titleKey } from './stats.js';
+import { templateFor, titleKey, startOfWeek, sameDay } from './stats.js';
+import { programById, placeStrength } from './programs.js';
+import { scheduleOf } from './running.js';
 
 export const LETTERS = 'ABCDEFGH';
 
@@ -55,16 +57,48 @@ export function toggleSuperset(exercises, i) {
 
 export const SUPERSET_COLORS = { A: '#F2B705', B: '#3FBF7F', C: '#F2695C', D: '#B79CFF', E: '#5CC8F2', F: '#F29E4C', G: '#F2B705', H: '#3FBF7F' };
 
-// The session suggested next: the routine done the longest time ago, or, without routines,
-// the next one in the usual rotation of the history. Shared by the home screen and the watch.
-export function nextSession(data) {
+// The strength programme's week: for each day (Monday first), the routine planned, placed
+// around the runs of the plan; done = a session of that name this week. null without programme.
+export function programWeek(data, now = new Date()) {
+  const p = data.program && programById(data.program.id);
+  if (!p) return null;
+  const byId = new Map(data.routines.map((r) => [r.id, r]));
+  const routines = (data.program.routines || []).map((id) => byId.get(id) || null);
+  if (!routines.some(Boolean)) return null;
+  const place = placeStrength(p, data.runProfile ? scheduleOf(data.runProfile) : null);
+  const monday = startOfWeek(now);
+  const doneThisWeek = (r) => data.workouts.find((w) => w.start >= monday && titleKey(w.title) === titleKey(r.name)) || null;
+  const days = place.map((i, d) => {
+    const r = i == null ? null : routines[i];
+    if (!r) return null;
+    const date = new Date(monday);
+    date.setDate(date.getDate() + d);
+    const done = doneThisWeek(r);
+    return { routine: r, dayId: p.days[i], date, done: !!done, today: sameDay(date, now) };
+  });
+  return { program: p, days, routines: routines.filter(Boolean) };
+}
+
+// The session suggested next. With a programme: today's session, else the next one of the
+// week not done yet, else the first of the programme. Without: the routine done the longest
+// time ago, or the next one in the usual rotation of the history. Shared by home and watch.
+export function nextSession(data, now = new Date()) {
   const lastDone = (name) => data.workouts.find((w) => titleKey(w.title) === titleKey(name))?.start || null;
   const routines = data.routines.map((r) => ({ ...r, last: lastDone(r.name) }));
+  const pw = programWeek(data, now);
+  if (pw) {
+    const todayIdx = (now.getDay() + 6) % 7;
+    const pending = pw.days.filter((x, d) => x && !x.done && d >= todayIdx);
+    const any = pw.days.filter((x) => x && !x.done);
+    const pick = pending[0] || any[0] || pw.days.find(Boolean);
+    const next = pick ? routines.find((r) => r.id === pick.routine.id) : null;
+    if (next) return { routines, next, program: pw };
+  }
   const suggested = routines.length
     ? [...routines].sort((a, b) => (a.last?.getTime() || 0) - (b.last?.getTime() || 0))[0]
     : null;
   const fromHistory = !suggested && data.nextProgram
     ? { ...routineFromHistory(data, data.nextProgram.title), name: data.nextProgram.title, last: data.nextProgram.last }
     : null;
-  return { routines, next: suggested || fromHistory };
+  return { routines, next: suggested || fromHistory, program: null };
 }

@@ -4,6 +4,8 @@ import { useData, saveRoutine } from '../data.jsx';
 import { useSession, deloadState, deloadActive, startDeload, stopDeload, deferDeload } from '../session.jsx';
 import { deloadAdvice } from '../lib/coach.js';
 import { fmtDay, sameDay } from '../lib/stats.js';
+import { muscleOf } from '../lib/exercises.js';
+import { adviceOfDay } from '../lib/programs.js';
 import { routineFromHistory, nextSession } from '../lib/routines.js';
 import { Icon, ExerciseImage, GlassHeader } from '../components.jsx';
 import { buildPlan, segments, intensityOf } from '../lib/running.js';
@@ -25,8 +27,17 @@ export default function Accueil({ user }) {
   const today = new Date();
   const run = data.runProfile ? buildPlan(data.runProfile, data.runLogs, data.workouts) : null;
 
-  // Least recently done routine, or the next one in the usual rotation of the history.
-  const { routines, next } = nextSession(data);
+  // With a programme: today's session; else the least recently done routine.
+  const { routines, next, program } = nextSession(data);
+  // Today: the run of the plan, the strength session of the programme, and one coach's word.
+  const todayRun = run ? run.weeks.flat().find((s) => s.today && !s.done) || null : null;
+  const todayGym = program ? program.days.find((x) => x?.today) || null : null;
+  const nextIsToday = !!(program && next && todayGym && !todayGym.done && todayGym.routine.id === next.id);
+  const nextDay = program && next ? program.days.find((x) => x && x.routine.id === next.id && !x.done) : null;
+  const tomorrow = new Date(today.getTime() + 86400000);
+  const tomorrowRun = run ? run.weeks.flat().find((s) => sameDay(s.date, tomorrow)) : null;
+  const legsYesterday = data.workouts.some((w) => today - w.start < 30 * 3600000 && !sameDay(w.start, today) && w.sets.filter((s) => muscleOf(s.exercise) === 'Jambes').length >= 6);
+  const advice0 = adviceOfDay({ date: today, run: todayRun, gym: todayGym && !todayGym.done ? todayGym.dayId : null, tomorrowHard: tomorrowRun && (tomorrowRun.kind === 'quality' || tomorrowRun.kind === 'long'), legsYesterday, pause: run?.pause || null });
   const last = data.workouts[0] || null;
   // What happened, or is planned, on each day of the week: gym, run, or rest.
   const planned = run ? run.weeks.flat() : [];
@@ -34,6 +45,7 @@ export default function Accueil({ user }) {
   const [selDay, setSelDay] = useState(() => Math.max(0, data.weekDays.findIndex((d) => d.today)));
   const [picked, setPicked] = useState(false);
   const sel = weekDays[selDay];
+  const selGym = program ? program.days[(sel.date.getDay() + 6) % 7] : null;
   const selEmpty = !sel.gym.length && !sel.runs.length && !(sel.plan && !sel.past);
   const [openW, setOpenW] = useState(null);
   const [openR, setOpenR] = useState(null);
@@ -79,7 +91,12 @@ export default function Accueil({ user }) {
             );
           })}
         </div>
-        {(!selEmpty || picked) && <DayDetail d={sel} onRun={(key) => nav('/course', { state: { pick: key } })} onGym={(id) => setOpenW(id)} onRunLog={(id) => setOpenR(id)} />}
+        {(!selEmpty || picked || sel.today) && (
+          <DayDetail d={sel} onRun={(key) => nav('/course', { state: { pick: key } })} onGym={(id) => setOpenW(id)} onRunLog={(id) => setOpenR(id)}
+            gymPlan={selGym && !selGym.done ? { name: selGym.routine.name, detail: `${selGym.routine.exercises.length} exercices` } : null}
+            onGymPlan={() => (sel.today && !session.active ? startRoutine(routines.find((r) => r.id === selGym.routine.id) || selGym.routine) : nav(`/routines/${selGym.routine.id}`))}
+            advice={sel.today && !session.active ? advice0 : null} />
+        )}
       </div>
 
       {!data.workouts.length && !session.active && (
@@ -132,7 +149,7 @@ export default function Accueil({ user }) {
       ) : next ? (
         <div className="card lg hero" style={{ margin: '24px 20px 0' }}>
           <div className="stack" style={{ gap: 6 }}>
-            <h2 className="label">Salle, à faire ensuite</h2>
+            <h2 className="label">{program ? (nextIsToday ? `Aujourd'hui · ${program.program.short}` : `${program.program.short} · prochaine séance${nextDay ? `, ${nextDay.date.toLocaleDateString('fr-FR', { weekday: 'long' })}` : ''}`) : 'Salle, à faire ensuite'}</h2>
             <span className="display" style={{ fontSize: 26 }}>{next.name}</span>
             <span className="small muted">{next.exercises.length} exercice{next.exercises.length > 1 ? 's' : ''}, {sets(next)} série{sets(next) > 1 ? 's' : ''}{next.last ? `, ${ago(next.last)}` : ''}</span>
           </div>
@@ -141,7 +158,7 @@ export default function Accueil({ user }) {
               <div key={e.name} className="row" style={{ gap: 10, fontSize: 14 }}>
                 <ExerciseImage name={e.name} size={36} radius={8} />
                 <span className="grow">{e.name}</span>
-                <span className="muted">{e.sets.filter((x) => x.type !== 'warmup').length} × {e.sets[e.sets.length - 1]?.reps ?? '?'}</span>
+                <span className="muted">{e.sets.filter((x) => x.type !== 'warmup').length} × {e.target?.reps ?? e.sets[e.sets.length - 1]?.reps ?? '?'}</span>
               </div>
             ))}
             {next.exercises.length > 3 && <span className="small muted">+ {next.exercises.length - 3} autre{next.exercises.length - 3 > 1 ? 's' : ''}</span>}
@@ -162,6 +179,14 @@ export default function Accueil({ user }) {
               {segments(run.next).map((g, i) => <span key={i} className={`seg-${g.type}`} style={{ flexGrow: g.mins, height: `${Math.round(intensityOf(g.type) * 100)}%` }} />)}
             </span>
           )}
+          <Icon name="chevron" size={18} />
+        </Link>
+        <Link to="/programmes" className="home-link">
+          <span className="tile-icon"><Icon name="list" size={20} /></span>
+          <span className="grow stack" style={{ gap: 1, minWidth: 0 }}>
+            <span className="xs muted">Programme de muscu</span>
+            <span className="ellipsis" style={{ fontWeight: 600 }}>{program ? program.program.title : 'Choisir un programme de coach'}</span>
+          </span>
           <Icon name="chevron" size={18} />
         </Link>
         <Link to="/exercices" className="home-link">

@@ -17,6 +17,7 @@ import Routine from './screens/Routine.jsx';
 import Course from './screens/Course.jsx';
 import Historique from './screens/Historique.jsx';
 import Tapis from './screens/Tapis.jsx';
+import Programmes from './screens/Programmes.jsx';
 import Amis from './screens/Amis.jsx';
 import { keepInviteFromUrl, takePendingInvite, ensureProfile, requestFriend } from './social.js';
 import { useUi } from './ui.jsx';
@@ -90,6 +91,7 @@ function Shell({ user }) {
         <Route path="/course" element={<Course />} />
         <Route path="/historique" element={<Historique />} />
         <Route path="/tapis" element={<Tapis user={user} />} />
+        <Route path="/programmes" element={<Programmes />} />
         <Route path="/amis" element={<Amis />} />
         <Route path="/amis/gerer" element={<Amis />} />
         <Route path="/profil" element={<Profil user={user} />} />

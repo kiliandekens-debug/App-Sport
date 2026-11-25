@@ -9,13 +9,13 @@ import { WALKS } from './lib/treadmill.js';
 const DataCtx = createContext(null);
 
 export function DataProvider({ children }) {
-  const [raw, setRaw] = useState({ workouts: [], custom: [], plans: [], routines: [], runProfile: null, runLogs: [], superadmin: false, access: { beta: null, premium: false } });
+  const [raw, setRaw] = useState({ workouts: [], custom: [], plans: [], routines: [], runProfile: null, runLogs: [], superadmin: false, access: { beta: null, premium: false }, program: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const refresh = useCallback(async () => {
     try {
-      const [workouts, sets, custom, plans, routines, runLogs, runProfileRes, adminRes, access] = await Promise.all([
+      const [workouts, sets, custom, plans, routines, runLogs, runProfileRes, adminRes, access, userRes] = await Promise.all([
         fetchAll('workouts', 'id,title,started_at,ended_at', 'started_at'),
         fetchAll('sets', 'workout_id,exercise,position,set_index,set_type,weight_kg,reps,duration_seconds,distance_km,superset_id', 'id'),
         fetchAll('custom_exercises', '*', 'created_at'),
@@ -25,11 +25,14 @@ export function DataProvider({ children }) {
         supabase.from('run_profile').select('*').maybeSingle(),
         supabase.rpc('is_superadmin'),
         loadAccess().catch(() => ({ beta: null, premium: false })),
+        supabase.auth.getUser().catch(() => ({ data: null })),
       ]);
       const byId = new Map(workouts.map((w) => [w.id, { ...w, sets: [] }]));
       for (const s of sets) byId.get(s.workout_id)?.sets.push({ ...s, weight_kg: s.weight_kg == null ? null : Number(s.weight_kg) });
       for (const w of byId.values()) w.sets.sort((a, b) => a.position - b.position || a.set_index - b.set_index);
-      setRaw({ workouts: [...byId.values()], custom, plans, routines, runLogs, runProfile: runProfileRes.data || null, superadmin: adminRes.data === true, access });
+      // The strength programme chosen (fixed coach programme), kept with the account.
+      const program = userRes?.data?.user?.user_metadata?.program || null;
+      setRaw({ workouts: [...byId.values()], custom, plans, routines, runLogs, runProfile: runProfileRes.data || null, superadmin: adminRes.data === true, access, program });
       setError(null);
     } catch (e) {
       setError(e.message || String(e));
@@ -67,7 +70,7 @@ export function DataProvider({ children }) {
     // Walks (tapis, marche inclinée) are kept apart: they must not change the running level or the plan.
     const runLogs = raw.runLogs.filter((l) => !WALKS.has(l.activity));
     const walkLogs = raw.runLogs.filter((l) => WALKS.has(l.activity));
-    return { ...data, custom: raw.custom, routines: raw.routines, runProfile: raw.runProfile, runLogs, walkLogs, allLogs: raw.runLogs, superadmin: raw.superadmin, access: raw.access, betaNotice, closeBetaNotice: () => setBetaNotice(null), plans, loading, error, refresh };
+    return { ...data, custom: raw.custom, routines: raw.routines, runProfile: raw.runProfile, program: raw.program, runLogs, walkLogs, allLogs: raw.runLogs, superadmin: raw.superadmin, access: raw.access, betaNotice, closeBetaNotice: () => setBetaNotice(null), plans, loading, error, refresh };
   }, [raw, loading, error, refresh, betaNotice]);
 
   // Runs imported from Apple Health or Strava are linked to the planned session of the same
@@ -122,6 +125,12 @@ export async function saveRoutine(routine) {
   const { data, error } = await supabase.from('routines').insert({ ...row, position: routine.position ?? 0 }).select('id').single();
   if (error) throw error;
   return data.id;
+}
+
+// The chosen strength programme ({ id, routines: [ids by day], started_on }) or null.
+export async function saveProgram(program) {
+  const { error } = await supabase.auth.updateUser({ data: { program } });
+  if (error) throw error;
 }
 
 export async function deleteRoutine(id) {

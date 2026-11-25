@@ -5,6 +5,7 @@ import { useData, saveRoutine } from '../data.jsx';
 import { useUi } from '../ui.jsx';
 import { fmtKg, fmtInt, titleKey } from '../lib/stats.js';
 import { SUPERSET_COLORS } from '../lib/routines.js';
+import { targetText } from '../lib/programs.js';
 import { Icon, ExerciseImage, SupersetTag } from '../components.jsx';
 import ExerciseSheet from './ExerciseSheet.jsx';
 
@@ -98,6 +99,7 @@ function ExerciseCard({ e, ei, s, best, isCurrent, onOpen, cardRef }) {
           {REST_OPTIONS.map((o) => <option key={o} value={o}>{restLabel(o)}</option>)}
         </select>
       </label>
+      {e.target && <span className="xs muted">Objectif : {targetText(e.target)}</span>}
       {e.plan && <span className="xs accent">Coach : {fmtKg(e.plan.kg)} kg × {e.plan.reps}. {e.plan.reason}.</span>}
 
       <div className="sets-head"><span>Série</span><span className="prev">Précédent</span><span style={{ textAlign: 'center' }}>Kg</span><span style={{ textAlign: 'center' }}>Reps</span><span /><span /></div>

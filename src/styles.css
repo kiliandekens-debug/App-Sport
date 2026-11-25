@@ -593,3 +593,11 @@ details.disclose p { margin: 4px 0 0; }
 .rank li:last-child { border-bottom: none; }
 .rank li.me { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .icon-btn .dot { position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; border-radius: 5px; background: var(--danger); }
+
+/* Programmes: the week placed around the runs. */
+.prog-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.prog-day { display: flex; flex-direction: column; align-items: stretch; gap: 3px; text-align: center; min-width: 0; }
+.prog-chip { font-size: 10px; line-height: 1.15; font-weight: 650; padding: 4px 2px; border-radius: 7px; overflow: hidden; text-overflow: ellipsis; overflow-wrap: anywhere; }
+.prog-chip.gym { background: color-mix(in srgb, var(--accent) 18%, var(--chip)); }
+.prog-chip.run { background: color-mix(in srgb, var(--ok) 22%, var(--chip)); }
+.prog-chip.rest { background: var(--chip); color: var(--muted); font-weight: 500; }

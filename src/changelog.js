@@ -6,6 +6,16 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.26.0', date: '2026-11-25', title: 'Programmes de coach',
+    items: [
+      'Nouveau : des programmes de muscu fixes, écrits d\'après 48 programmes de pros et de coachs (Helms, Lyle McDonald, Nippard, Viada…). Full body 3 jours, haut/bas 4 jours, 4 jours « la course d\'abord », 5 et 6 jours.',
+      'La structure ne change jamais : mêmes exercices, séries, fourchettes de reps et reps en réserve. Le coach propose seulement les charges.',
+      'Les séances se placent autour de tes courses : jamais de jambes lourdes la veille d\'une séance clé ou d\'une sortie longue.',
+      'Accueil : la séance du programme prévue le jour, et un conseil de coach simple chaque jour.',
+      'Pendant la séance, chaque exercice affiche son objectif (ex. 3 × 6-8 · 2 reps en réserve).',
+    ],
+  },
+  {
     version: '1.25.0', date: '2026-11-25', title: 'Changer d\'exercice, supprimer une série',
     items: [
       'Séance : une petite croix à côté du ✓ supprime la série tout de suite.',

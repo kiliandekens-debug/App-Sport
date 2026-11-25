@@ -70,6 +70,9 @@ def handle(route, req):
         return route.fulfill(status=200, body='null', headers={'content-type': 'application/json'})
     if '/rest/v1/rpc/' in url:
         return route.fulfill(status=200, body='false', headers={'content-type': 'application/json'})
+    if '/auth/v1/user' in url and req.method == 'PUT':
+        sess['user']['user_metadata'].update((req.post_data_json or {}).get('data') or {})
+        return route.fulfill(status=200, body=json.dumps(sess['user']), headers={'content-type': 'application/json'})
     if '/auth/v1/' in url:
         return route.fulfill(status=200, body=json.dumps(sess['user'] if '/auth/v1/user' in url else {}), headers={'content-type': 'application/json'})
     m = re.search(r'/rest/v1/(\w+)', url)
@@ -322,6 +325,22 @@ with sync_playwright() as p:
     pg.get_by_role('button', name='Publier pour mes amis').click(); pg.wait_for_timeout(800)
     post = T['posts'][-1]
     check(post.get('kind') == 'gym' and post['stats'].get('sets', 0) > 0 and post['stats'].get('exercises'), 'gym session published with its numbers')
+
+    # 1.26.0: fixed coach programmes. Choosing one creates its routines, the home screen follows it.
+    n_r = len(T['routines'])
+    pg.goto(BASE + '/programmes'); pg.wait_for_timeout(1200)
+    check(pg.locator('section.card').count() == 5, f'five programmes offered ({pg.locator("section.card").count()})')
+    sw = pg.evaluate('document.documentElement.scrollWidth')
+    check(sw <= 390, f'programmes screen fits the width ({sw})')
+    pg.get_by_role('button', name='Haut / bas 4 jours').click(); pg.wait_for_timeout(300)
+    check(pg.get_by_text('Squat (barre)').count() > 0 and pg.get_by_text('3 × 5-8 · 2 reps en réserve').count() > 0, 'programme detail with sets, reps and RIR')
+    pg.screenshot(path=f'{SHOTS}/flow-programmes.png', full_page=True)
+    pg.locator('section.card', has_text='Haut / bas 4 jours').get_by_role('button', name='Choisir ce programme').click(); pg.wait_for_timeout(1500)
+    check(len(T['routines']) == n_r + 4 and sess['user']['user_metadata'].get('program', {}).get('id') == 'ul4', f'programme chosen: 4 routines and saved on the account ({len(T["routines"]) - n_r})')
+    check(any(e.get('target', {}).get('reps') == '5-8' for r in T['routines'] for e in r.get('exercises', [])), 'routines carry the targets')
+    home = pg.locator('main').inner_text()
+    check("Aujourd'hui" in home and 'Haut / bas 4 jours' in home, 'home shows the day and the programme')
+    pg.screenshot(path=f'{SHOTS}/flow-home-programme.png', full_page=True)
 
     # Sign-up form (logged out).
     lo = b.new_page(viewport={'width': 390, 'height': 844})

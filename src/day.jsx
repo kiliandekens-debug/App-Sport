@@ -25,10 +25,11 @@ export function dayInfo(data, date, planned = [], now = new Date()) {
 export const dayKind = (d) => (d.gym.length ? 'gym' : d.run ? 'run' : d.plan && !d.past ? 'planned' : 'rest');
 
 // The selected day of the week strip: what was done, or what is planned.
-export function DayDetail({ d, onRun, onGym, onRunLog, hideRunLink = false }) {
+// gymPlan: the programme's session planned that day (not done yet); advice: the coach's word.
+export function DayDetail({ d, onRun, onGym, onRunLog, hideRunLink = false, gymPlan = null, onGymPlan, advice = null }) {
   if (!d) return null;
   const title = d.today ? "Aujourd'hui" : d.date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-  const empty = !d.gym.length && !d.runs.length && !(d.plan && !d.past);
+  const empty = !d.gym.length && !d.runs.length && !(d.plan && !d.past) && !gymPlan;
   return (
     <div className="card day-detail" aria-live="polite">
       <span className="xs muted" style={{ textTransform: 'capitalize', fontWeight: 600 }}>{title}</span>
@@ -65,10 +66,25 @@ export function DayDetail({ d, onRun, onGym, onRunLog, hideRunLink = false }) {
           {!hideRunLink && <span className="xs" style={{ color: 'var(--accent)', fontWeight: 650 }}>Voir</span>}
         </button>
       )}
+      {gymPlan && (
+        <button className="day-row" onClick={onGymPlan}>
+          <span className="day-ic k-gym" style={{ opacity: 0.75 }}><Icon name="dumbbell" size={18} /></span>
+          <span className="grow stack" style={{ gap: 1 }}>
+            <span style={{ fontWeight: 650 }}>{gymPlan.name}</span>
+            <span className="xs muted">Muscu prévue : {gymPlan.detail}</span>
+          </span>
+          <span className="xs" style={{ color: 'var(--accent)', fontWeight: 650 }}>{d.today ? 'Démarrer' : 'Voir'}</span>
+        </button>
+      )}
       {empty && (
         <div className="day-row">
           <span className="day-ic k-rest"><Icon name="moon" size={17} /></span>
           <span className="small muted">{d.past ? 'Jour de repos.' : d.today ? 'Rien de prévu aujourd\'hui.' : 'Rien de prévu : jour de repos.'}</span>
+        </div>
+      )}
+      {advice && (
+        <div className="row small" style={{ gap: 8, alignItems: 'flex-start', lineHeight: 1.45, paddingTop: 2 }}>
+          <Icon name="spark" size={16} /><span className="grow">{advice}</span>
         </div>
       )}
     </div>
