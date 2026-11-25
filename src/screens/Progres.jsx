@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useData } from '../data.jsx';
 import { LineChart, ExerciseImage, GlassHeader, Icon, Bars } from '../components.jsx';
-import { fmtKg, fmtDay, fmtInt, isWork, isPlausible } from '../lib/stats.js';
+import { fmtKg, fmtDay, fmtInt, isWork, isPlausible, volumeOf } from '../lib/stats.js';
 import { muscleLoad, GROUPS, REGIONS } from '../lib/anatomy.js';
 import { BodyMap } from '../analysis.jsx';
 import { nSets } from '../lib/analysis.js';
@@ -61,7 +61,7 @@ export default function Progres() {
   const recent = data.workouts.filter((w) => w.start.getTime() > since);
   const recentSets = recent.flatMap((w) => w.sets.filter((x) => isWork(x) && isPlausible(x)));
   const load = muscleLoad(recentSets);
-  const tonnes = recentSets.reduce((a, x) => a + x.weight_kg * x.reps, 0) / 1000;
+  const tonnes = volumeOf(recent.flatMap((w) => w.sets)) / 1000;
   const km = data.runLogs.filter((l) => new Date(l.done_at).getTime() > since).reduce((a, l) => a + Number(l.distance_km || 0), 0);
   const walks = data.walkLogs.filter((l) => new Date(l.done_at).getTime() > since);
   const dplus = Math.round(walks.reduce((a, l) => a + Number(l.elevation_m || 0), 0));

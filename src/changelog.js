@@ -6,6 +6,14 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.23.0', date: '2026-11-25', title: 'Les kilos soulevés comptent tout',
+    items: [
+      'Le total de kilos compte maintenant toutes les séries, échauffements compris : il bouge dès la première série validée.',
+      'Haltères : les deux comptent (12 kg par haltère × 5 = 120 kg). La charge et les records restent affichés par haltère.',
+      'Même calcul partout : pendant la séance, dans l\'historique, le calendrier, Progrès, le coach et sur la montre. Tes anciens totaux sont recalculés.',
+    ],
+  },
+  {
     version: '1.22.0', date: '2026-11-25', title: 'Nouveau look sur la montre',
     items: [
       'Course : l\'allure en très grand, avec « Dans la cible », « Accélère » ou « Ralentis », la cible et le temps restant.',

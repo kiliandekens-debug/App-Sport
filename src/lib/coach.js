@@ -1,4 +1,4 @@
-import { isWork, isPlausible, fmtKg } from './stats.js';
+import { isWork, isPlausible, fmtKg, volumeOf } from './stats.js';
 import { incrementOf } from './exercises.js';
 
 const kg = (v) => `${fmtKg(v)} kg`;
@@ -14,7 +14,7 @@ export function reviewLastSession(data, { lest = false } = {}) {
   const w = data.workouts[0];
   if (!w) return null;
   const work = w.sets.filter((s) => isWork(s) && isPlausible(s));
-  const volume = work.reduce((a, s) => a + s.weight_kg * s.reps, 0);
+  const volume = volumeOf(w.sets);
   const names = [...new Set(work.map((s) => s.exercise))];
 
   const items = names.map((name) => {

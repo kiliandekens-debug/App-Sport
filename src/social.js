@@ -1,7 +1,7 @@
 // Fil des amis. Une publication est une copie des chiffres que l'auteur a choisi de montrer :
 // les amis ne lisent jamais les tables de séances ou de courses (règles RLS côté base).
 import { supabase } from './supabase.js';
-import { isWork, isPlausible, fmtKg } from './lib/stats.js';
+import { isWork, isPlausible, fmtKg, volumeOf } from './lib/stats.js';
 import { buildPlan, segments, intensityOf } from './lib/running.js';
 import { isWalk, ACTIVITIES } from './lib/treadmill.js';
 
@@ -166,7 +166,7 @@ export function gymPost(w, data, { loads = true, hr = null } = {}) {
       sets: loads ? sets.map((s) => ({ kg: s.weight_kg, reps: s.reps })) : null,
     };
   });
-  const tonnes = work.reduce((a, s) => a + s.weight_kg * s.reps, 0) / 1000;
+  const tonnes = volumeOf(w.sets) / 1000;
   return {
     kind: 'gym', ref_id: w.id, title: w.title.slice(0, 80), done_at: w.started_at,
     stats: { mins: w.end ? Math.round((w.end - w.start) / 60000) : null, sets: work.length, tonnes: Math.round(tonnes * 10) / 10, exercises, records: loads ? records.slice(0, 3) : [], ...(hr ? { hr } : {}) },

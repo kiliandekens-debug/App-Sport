@@ -4,14 +4,14 @@ import { useData, deleteWorkout, renameWorkout, deleteRunLog } from './data.jsx'
 import { useUi } from './ui.jsx';
 import { Icon, ExerciseImage } from './components.jsx';
 import { SessionAnalysis } from './analysis.jsx';
-import { fmtKg, fmtInt, sameDay, isWork, isPlausible } from './lib/stats.js';
+import { fmtKg, fmtInt, sameDay, isWork, isPlausible, volumeOf } from './lib/stats.js';
 import { mmss, hms, vdotOf, raceTime } from './lib/running.js';
 import { isWalk, logTitle, fmtSpeed, fmtIncline } from './lib/treadmill.js';
 import { ShareSheet } from './social.jsx';
 
 const ACTIVITY_LOW = { incline_walk: 'marche inclinée', walk: 'marche dehors', treadmill: 'course sur tapis' };
 
-const volume = (w) => w.sets.filter((s) => isWork(s) && isPlausible(s)).reduce((a, s) => a + s.weight_kg * s.reps, 0);
+const volume = (w) => volumeOf(w.sets);
 
 // Everything about one calendar day: gym sessions, runs done, run planned.
 export function dayInfo(data, date, planned = [], now = new Date()) {
@@ -39,7 +39,7 @@ export function DayDetail({ d, onRun, onGym, onRunLog, hideRunLink = false }) {
             <span className="day-ic k-gym"><Icon name="dumbbell" size={18} /></span>
             <span className="grow stack" style={{ gap: 1 }}>
               <span style={{ fontWeight: 650 }}>{w.title}</span>
-              <span className="xs muted">{work.length} série{work.length > 1 ? "s" : ""}, {fmtInt(work.reduce((a, x) => a + x.weight_kg * x.reps, 0))} kg{w.end ? `, ${Math.round((w.end - w.start) / 60000)} min` : ''}</span>
+              <span className="xs muted">{work.length} série{work.length > 1 ? "s" : ""}, {fmtInt(volumeOf(w.sets))} kg{w.end ? `, ${Math.round((w.end - w.start) / 60000)} min` : ''}</span>
             </span>
             <Icon name="chevron" size={18} />
           </button>

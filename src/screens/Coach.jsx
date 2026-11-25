@@ -4,7 +4,7 @@ import { useData, savePlan } from '../data.jsx';
 import { useUi } from '../ui.jsx';
 import { reviewLastSession } from '../lib/coach.js';
 import { hasLest } from '../session.jsx';
-import { fmtKg, fmtInt, fmtDay, sameDay, titleKey, isWork, isPlausible } from '../lib/stats.js';
+import { fmtKg, fmtInt, fmtDay, sameDay, titleKey, isWork, isPlausible, volumeOf as volumeOfSets } from '../lib/stats.js';
 import { incrementOf } from '../lib/exercises.js';
 import { Icon, ExerciseImage, GlassHeader } from '../components.jsx';
 import { SessionAnalysis } from '../analysis.jsx';
@@ -16,7 +16,7 @@ const KIND = {
   question: ['À vérifier', 'var(--warn-bg)', 'var(--warm)'],
 };
 
-const volumeOf = (w) => w.sets.filter((s) => isWork(s) && isPlausible(s)).reduce((a, s) => a + s.weight_kg * s.reps, 0);
+const volumeOf = (w) => volumeOfSets(w.sets);
 
 function setsText(sets) {
   if (!sets.length) return '';

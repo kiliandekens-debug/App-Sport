@@ -3,13 +3,13 @@ import { useLocation } from 'react-router-dom';
 import { useData } from '../data.jsx';
 import { GlassHeader, Icon } from '../components.jsx';
 import { WorkoutSheet, RunSheet } from '../day.jsx';
-import { fmtKg, fmtInt, isWork, isPlausible } from '../lib/stats.js';
+import { fmtKg, fmtInt, isWork, isPlausible, volumeOf } from '../lib/stats.js';
 import { hms } from '../lib/running.js';
 import { logTitle } from '../lib/treadmill.js';
 
 const MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 const dayLabel = (d) => d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
-const volume = (w) => w.sets.filter((s) => isWork(s) && isPlausible(s)).reduce((a, s) => a + s.weight_kg * s.reps, 0);
+const volume = (w) => volumeOf(w.sets);
 const nSeries = (n) => `${n} série${n > 1 ? 's' : ''}`;
 
 // Every past session (gym and runs), newest first, grouped by month. Tap to see the detail, rename or delete.
