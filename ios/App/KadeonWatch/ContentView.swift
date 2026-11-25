@@ -162,9 +162,13 @@ struct SetView: View {
     @State private var repsTicks: Double = 0
     @State private var field = 0
     @State private var menu = false
+    /// Exact load chosen on the wheels (tap on the load); the Crown and − / + step from it.
+    @State private var baseKg: Double? = nil
+    @State private var picking = false
     @FocusState private var focused: Bool
 
-    private var kgFloor: Double { -(set.kg / max(e.step, 0.5)).rounded(.down) }
+    private var startKg: Double { baseKg ?? set.kg }
+    private var kgFloor: Double { -(startKg / max(e.step, 0.5)).rounded(.down) }
 
     /// − / + buttons, for when the Digital Crown is awkward (sweaty fingers, gloves).
     private func step(_ d: Double) {
@@ -174,7 +178,7 @@ struct SetView: View {
 
     private var e: WExercise { s.exercises[s.current] }
     private var set: WSet { e.sets[si] }
-    private var kg: Double { max(0, ((set.kg + kgTicks * e.step) * 10).rounded() / 10) }
+    private var kg: Double { max(0, ((startKg + kgTicks * e.step) * 10).rounded() / 10) }
     private var reps: Int { max(0, set.reps + Int(repsTicks)) }
 
     private var subtitle: String {
@@ -204,9 +208,10 @@ struct SetView: View {
                 .minimumScaleFactor(0.7)
             HStack(spacing: 4) {
                 StepButton(icon: "minus", label: field == 0 ? "Moins de charge" : "Une rep de moins") { step(-1) }
-                ValueBox(value: fmtKg(kg), unit: "kg", selected: field == 0, changed: kgTicks != 0)
-                    .onTapGesture { field = 0 }
+                ValueBox(value: fmtKg(kg), unit: "kg", selected: field == 0, changed: kg != set.kg)
+                    .onTapGesture { field = 0; picking = true }
                     .accessibilityLabel("Charge \(fmtKg(kg)) kilos")
+                    .accessibilityHint("Touche pour choisir le poids exact")
                     .accessibilityAddTraits(.isButton)
                 ValueBox(value: "\(reps)", unit: "reps", selected: field == 1, changed: repsTicks != 0)
                     .onTapGesture { field = 1 }
@@ -225,6 +230,12 @@ struct SetView: View {
                 isContinuous: false,
                 isHapticFeedbackEnabled: true
             )
+            .sheet(isPresented: $picking, onDismiss: { focused = true }) {
+                KgPicker(initial: kg) { v in
+                    baseKg = v
+                    kgTicks = 0
+                }
+            }
             Spacer(minLength: 0)
             Button {
                 store.validate(kg: kg, reps: reps)
@@ -245,6 +256,54 @@ struct SetView: View {
         .sheet(isPresented: $menu) {
             SetMenu(s: s).environmentObject(store)
         }
+    }
+}
+
+/// Exact load: whole kilos and tenths on two wheels, e.g. 12,3 kg.
+struct KgPicker: View {
+    @Environment(\.dismiss) private var dismiss
+    let onPick: (Double) -> Void
+    @State private var whole: Int
+    @State private var tenth: Int
+
+    init(initial: Double, onPick: @escaping (Double) -> Void) {
+        self.onPick = onPick
+        let t = Int((max(0, min(initial, 400)) * 10).rounded())
+        _whole = State(initialValue: t / 10)
+        _tenth = State(initialValue: t % 10)
+    }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            HStack(alignment: .center, spacing: 2) {
+                Picker("Kilos", selection: $whole) {
+                    ForEach(0...400, id: \.self) { Text("\($0)").tag($0) }
+                }
+                .accessibilityLabel("Kilos")
+                Text(",")
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                Picker("Dixièmes", selection: $tenth) {
+                    ForEach(0...9, id: \.self) { Text("\($0)").tag($0) }
+                }
+                .frame(width: 44)
+                .accessibilityLabel("Dixièmes de kilo")
+                Text("kg")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.secondary)
+            }
+            .pickerStyle(.wheel)
+            .labelsHidden()
+            .frame(height: 96)
+            Button {
+                onPick(Double(whole) + Double(tenth) / 10)
+                WKInterfaceDevice.current().play(.click)
+                dismiss()
+            } label: {
+                Label("OK", systemImage: "checkmark")
+            }
+            .buttonStyle(MainStyle())
+        }
+        .navigationTitle("Charge")
     }
 }
 
