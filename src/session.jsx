@@ -5,7 +5,7 @@ import { isNative, nativeKeepAwake } from './native.js';
 import { useData } from './data.jsx';
 import { templateFor, lastSetsOf, setVolume } from './lib/stats.js';
 import { exactImageId } from './lib/images.js';
-import { muscleOf, equipOf, incrementOf } from './lib/exercises.js';
+import { muscleOf, equipOf, incrementOf, LIBRARY } from './lib/exercises.js';
 import { defaultRest, routineFromHistory, toggleSuperset as toggleSS, cleanSupersets } from './lib/routines.js';
 
 const KEY = 'app-sport-session';
@@ -122,6 +122,34 @@ function restFor(name) {
 
 // routineEx: { name, rest, superset, sets: [{ type, kg, reps }] } (all optional but name).
 // Loads not fixed by the routine come from the coach plan, then from the last session.
+// Exercises for the same muscle, to swap one during the session (machine taken, change of
+// plan): those already done first (most recent first, with their last load), then the
+// library's. Names already in the session are left out.
+export function similarExercises(data, name, exclude = []) {
+  const muscle = muscleOf(name);
+  if (muscle === 'Autre' || muscle === 'Cardio') return [];
+  const skip = new Set([name, ...exclude].map((n) => resolveName(data, n)));
+  const done = [...data.exercises.values()]
+    .filter((x) => x.muscle === muscle && !skip.has(x.name) && x.history.length)
+    .sort((a, b) => new Date(b.history[b.history.length - 1].date) - new Date(a.history[a.history.length - 1].date))
+    .slice(0, 6)
+    .map((x) => {
+      const h = x.history[x.history.length - 1];
+      const top = (h.sets || []).find((y) => y.weight_kg === h.maxKg);
+      return { name: x.name, kg: Number(h.maxKg) || 0, reps: Number(top?.reps ?? h.maxReps) || 0, done: true };
+    });
+  const seen = new Set(done.map((x) => x.name));
+  const lib = [];
+  for (const x of LIBRARY) {
+    if (x.muscle !== muscle) continue;
+    const n = resolveName(data, x.name);
+    if (skip.has(n) || seen.has(n)) continue;
+    seen.add(n);
+    lib.push({ name: n, equip: x.equip, done: false });
+  }
+  return [...done, ...lib.slice(0, Math.max(4, 10 - done.length))];
+}
+
 // A routine built from the library may name a movement differently from the
 // history ("Développé couché (haltères)" vs "Développé Couché (Haltère)").
 // Without history or a coach plan under its own name, take the most recently
@@ -516,6 +544,7 @@ export function SessionProvider({ children }) {
         return { ...e, sets: [...e.sets, { kg: last.kg, reps: last.reps, type: 'normal', done: false }] };
       }),
       addWarmup: (ei) => mapEx(ei, (e) => ({ ...e, sets: withExtraWarmup(e.sets, incrementOf(e.name)) })),
+      removeSet: (ei, si) => mapEx(ei, (e) => ({ ...e, sets: e.sets.filter((_, j) => j !== si) })),
       removeLastSet: (ei) => mapEx(ei, (e) => ({ ...e, sets: e.sets.slice(0, -1) })),
       toggleSuperset: (ei) => update((c) => ({ ...c, exercises: toggleSS(c.exercises, ei) })),
       removeExercise: (ei) => update((c) => {

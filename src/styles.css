@@ -149,7 +149,10 @@ button, .btn, .icon-btn, .chip, .prog-item { transition: transform 0.08s, backgr
 .bars-labels { display: grid; gap: 4px; font-size: 11px; color: var(--muted); text-align: center; }
 
 /* Sets */
-.sets-head, .set-row { display: grid; grid-template-columns: 36px 1fr 68px 58px 44px; gap: 8px; align-items: center; }
+.sets-head, .set-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) 62px 52px 44px 26px; gap: 6px; align-items: center; }
+.set-row .prev, .sets-head .prev { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-row .del { width: 26px; height: 44px; padding: 0; display: grid; place-items: center; border: none; border-radius: 10px; background: none; color: var(--muted); }
+.set-row .del:active { background: var(--danger-bg); color: var(--danger); }
 .sets-head { font-size: 12px; color: var(--muted); padding: 0 4px; }
 .set-row { border-radius: 12px; padding: 5px 4px; min-height: 54px; }
 .set-row.done { background: var(--done); animation: pop 0.25s ease-out; }

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useData } from '../data.jsx';
 import { useSession } from '../session.jsx';
 import { LIBRARY, MUSCLES, EQUIPS, muscleOf, equipOf } from '../lib/exercises.js';
@@ -87,7 +87,16 @@ export default function Exercices() {
   const all = useCatalog();
 
   const inSession = new Set(session.active ? session.exercises.map((e) => e.name) : []);
+  // « Autre exercice… » from the session: the chosen one replaces this exercise.
+  const [params] = useSearchParams();
+  const replacing = session.active ? params.get('remplacer') : null;
+  const ri = replacing ? session.exercises.findIndex((e) => e.name === replacing) : -1;
   const add = (ex) => {
+    if (ri >= 0) {
+      session.replaceExercise(ri, replacing, ex.name);
+      nav('/seance');
+      return;
+    }
     session.addExercise(ex.name);
     if (!session.active) nav('/seance');
   };
@@ -108,7 +117,7 @@ export default function Exercices() {
       )}
       <div className="split">
         <div className="panel">
-          <GlassHeader eyebrow={`${all.length} exercices${session.active ? `, ajout à « ${session.title} »` : ''}`} title="Exercices"
+          <GlassHeader eyebrow={ri >= 0 ? `Remplace « ${replacing} »` : `${all.length} exercices${session.active ? `, ajout à « ${session.title} »` : ''}`} title={ri >= 0 ? 'Changer d\'exercice' : 'Exercices'}
             right={<Link to="/variante" aria-label="Créer un exercice ou une variante" className="icon-btn accent only-narrow"><Icon name="plus" width={2.5} /></Link>} />
           <ExercisePicker selected={inSession} onAdd={add} onOpen={setOpen} bottomPad={session.active ? 72 : 0} />
           <div className="pad only-narrow" style={{ paddingTop: 8 }}>
