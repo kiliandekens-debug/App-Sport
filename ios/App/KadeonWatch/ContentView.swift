@@ -609,6 +609,9 @@ struct SetMenu: View {
 
 // MARK: - Rest timer
 
+/// 40 and 41 mm watches: a few screens put their buttons on one line.
+private let compact = WKInterfaceDevice.current().screenBounds.height < 210
+
 struct RestView: View {
     @EnvironmentObject var store: WatchStore
     let s: WSession
@@ -655,10 +658,18 @@ struct RestView: View {
                     Button("+15 s") { store.shiftRest(15) }
                         .buttonStyle(ChipStyle(height: 30))
                         .accessibilityLabel("Ajouter 15 secondes")
+                    // Small watch: Reprendre on the same line, so everything fits.
+                    if compact {
+                        Button { store.skipRest() } label: { Image(systemName: "play.fill") }
+                            .buttonStyle(ChipStyle(fill: restBlue, fg: .black, height: 30))
+                            .accessibilityLabel("Reprendre")
+                    }
                 }
-                Button("Reprendre") { store.skipRest() }
-                    .buttonStyle(MainStyle(colors: [restBlue, restDeep], height: 36))
-                    .accessibilityLabel("Passer le repos")
+                if !compact {
+                    Button("Reprendre") { store.skipRest() }
+                        .buttonStyle(MainStyle(colors: [restBlue, restDeep], height: 36))
+                        .accessibilityLabel("Passer le repos")
+                }
             }
         }
     }
