@@ -6,6 +6,14 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.25.0', date: '2026-11-25', title: 'Changer d\'exercice, supprimer une série',
+    items: [
+      'Séance : une petite croix à côté du ✓ supprime la série tout de suite.',
+      'Menu ⋯ d\'un exercice : « Changer d\'exercice » propose ceux du même muscle, d\'abord ceux que tu as déjà faits avec ta dernière charge, puis ceux de la bibliothèque. « Autre exercice… » ouvre toute la liste.',
+      'Apple Watch : sur l\'écran de repos, « Reprendre » ne dépasse plus en bas de l\'écran.',
+    ],
+  },
+  {
     version: '1.24.1', date: '2026-11-25', title: 'Kilos soulevés : comme avant pour les haltères',
     items: [
       'Les haltères ne comptent plus double : le total, c\'est la charge saisie × les répétitions, comme avant. Les échauffements restent comptés.',
