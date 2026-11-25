@@ -101,9 +101,12 @@ function ExerciseCard({ e, ei, s, best, isCurrent, onOpen, cardRef }) {
           );
         })}
       </div>
-      <div className={hasWarm ? 'stack' : 'grid2'}>
-        {!hasWarm && <button className="btn dashed" onClick={() => s.addWarmups(ei)}><Icon name="flame" size={16} />Échauffement auto</button>}
-        <button className="btn dashed" onClick={() => s.addSet(ei)}><Icon name="plus" size={16} />Série</button>
+      <div className="grid2">
+        <button className="btn dashed" onClick={() => (hasWarm ? s.addWarmup(ei) : s.addWarmups(ei))}
+          aria-label={hasWarm ? `Ajouter une série d'échauffement à ${e.name}` : `Ajouter l'échauffement calculé à ${e.name}`}>
+          <Icon name="flame" size={16} />Échauffement
+        </button>
+        <button className="btn dashed" onClick={() => s.addSet(ei)} aria-label={`Ajouter une série à ${e.name}`}><Icon name="plus" size={16} />Série</button>
       </div>
     </section>
   );

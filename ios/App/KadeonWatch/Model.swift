@@ -120,6 +120,23 @@ struct WSession: Codable, Equatable {
         current = ei
     }
 
+    /// One more warm-up set before the working sets: like the last warm-up, or half of the first
+    /// working load × 5. Same rule as withExtraWarmup() in src/session.jsx.
+    mutating func addWarmup(ex ei: Int) {
+        guard exercises.indices.contains(ei) else { return }
+        let e = exercises[ei]
+        let step = max(e.step, 0.5)
+        let set: WSet
+        if let last = e.sets.last(where: { $0.warm }) {
+            set = WSet(kg: last.kg, reps: last.reps, warm: true, done: false, prev: "", type: "warmup")
+        } else {
+            let first = e.sets.first(where: { !$0.warm })?.kg ?? 0
+            set = WSet(kg: (first * 0.5 / step).rounded() * step, reps: 5, warm: true, done: false, prev: "", type: "warmup")
+        }
+        exercises[ei].sets.insert(set, at: e.sets.firstIndex(where: { !$0.warm }) ?? e.sets.count)
+        current = ei
+    }
+
     /// Port of replaceExercise() in src/session.jsx: the alternative takes the remaining sets
     /// (done sets stay with the first exercise). The iPhone refines the loads afterwards.
     mutating func replace(ex ei: Int, with alt: WAlt) {

@@ -5,7 +5,7 @@ import { isNative, nativeKeepAwake } from './native.js';
 import { useData } from './data.jsx';
 import { templateFor, lastSetsOf, setVolume, loadFactor } from './lib/stats.js';
 import { exactImageId } from './lib/images.js';
-import { muscleOf, equipOf } from './lib/exercises.js';
+import { muscleOf, equipOf, incrementOf } from './lib/exercises.js';
 import { defaultRest, routineFromHistory, toggleSuperset as toggleSS, cleanSupersets } from './lib/routines.js';
 
 const KEY = 'app-sport-session';
@@ -71,6 +71,21 @@ export function applyWarmups(sets) {
 }
 
 // Adds three automatic warm-up sets, or puts the existing ones back on automatic.
+// One more warm-up set, just before the working sets: like the last warm-up, or half of the
+// first working load × 5 when there is none yet. Same rule on the watch (WSession.addWarmup).
+export function withExtraWarmup(sets, step = 2.5) {
+  const warm = sets.filter((x) => x.type === 'warmup');
+  const last = warm[warm.length - 1];
+  const first = sets.find((x) => x.type !== 'warmup');
+  const half = Math.round((num(first?.kg) * 0.5) / step) * step;
+  const set = last
+    ? { kg: last.kg, reps: last.reps, type: 'warmup', done: false }
+    : { kg: half ? String(half).replace('.', ',') : '', reps: '5', type: 'warmup', done: false };
+  const at = sets.findIndex((x) => x.type !== 'warmup');
+  const i = at === -1 ? sets.length : at;
+  return [...sets.slice(0, i), set, ...sets.slice(i)];
+}
+
 export function withAutoWarmups(sets) {
   const has = sets.some((x) => x.type === 'warmup');
   const next = has
@@ -268,6 +283,11 @@ export function watchAction(c, a) {
       if (!same) return c;
       const last = e.sets.filter((x) => x.type !== 'warmup').pop() || e.sets[e.sets.length - 1] || { kg: '', reps: '' };
       const exercises = c.exercises.map((y, i) => (i !== a.ex ? y : { ...y, sets: [...y.sets, { kg: last.kg, reps: last.reps, type: 'normal', done: false }] }));
+      return { ...c, exercises, current: a.ex };
+    }
+    case 'addWarmup': {
+      if (!same) return c;
+      const exercises = c.exercises.map((y, i) => (i !== a.ex ? y : { ...y, sets: withExtraWarmup(y.sets, incrementOf(y.name)) }));
       return { ...c, exercises, current: a.ex };
     }
     case 'current': return same ? { ...c, current: a.ex } : c;
@@ -495,6 +515,7 @@ export function SessionProvider({ children }) {
         const last = e.sets.filter((x) => x.type !== 'warmup').pop() || e.sets[e.sets.length - 1] || { kg: '', reps: '' };
         return { ...e, sets: [...e.sets, { kg: last.kg, reps: last.reps, type: 'normal', done: false }] };
       }),
+      addWarmup: (ei) => mapEx(ei, (e) => ({ ...e, sets: withExtraWarmup(e.sets, incrementOf(e.name)) })),
       removeLastSet: (ei) => mapEx(ei, (e) => ({ ...e, sets: e.sets.slice(0, -1) })),
       toggleSuperset: (ei) => update((c) => ({ ...c, exercises: toggleSS(c.exercises, ei) })),
       removeExercise: (ei) => update((c) => {

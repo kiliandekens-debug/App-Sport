@@ -6,6 +6,13 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.24.0', date: '2026-11-25', title: 'Un échauffement en un geste',
+    items: [
+      'Sous chaque exercice, bouton « Échauffement » à côté de « Série » : il calcule l\'échauffement s\'il n\'y en a pas, sinon il ajoute une série d\'échauffement juste avant les séries de travail (même charge que la précédente).',
+      'Apple Watch : « Ajouter un échauffement » dans le menu ⋯ de la série.',
+    ],
+  },
+  {
     version: '1.23.0', date: '2026-11-25', title: 'Les kilos soulevés comptent tout',
     items: [
       'Le total de kilos compte maintenant toutes les séries, échauffements compris : il bouge dès la première série validée.',

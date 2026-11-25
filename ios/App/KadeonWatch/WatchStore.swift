@@ -147,6 +147,17 @@ final class WatchStore: NSObject, ObservableObject, WCSessionDelegate {
         WKInterfaceDevice.current().play(.click)
     }
 
+    /// One more warm-up set on the current exercise, before its working sets.
+    func addWarmup() {
+        guard var s = session else { return }
+        let ei = s.current
+        guard s.exercises.indices.contains(ei) else { return }
+        s.addWarmup(ex: ei)
+        setSession(s)
+        send(["type": "addWarmup", "ex": ei, "name": s.exercises[ei].name], at: nowMs())
+        WKInterfaceDevice.current().play(.click)
+    }
+
     /// Machine taken: another exercise for the same muscle takes the remaining sets.
     func replace(with alt: WAlt) {
         guard var s = session else { return }

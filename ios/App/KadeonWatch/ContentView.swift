@@ -574,6 +574,12 @@ struct SetMenu: View {
             } label: {
                 Label("Ajouter une série", systemImage: "plus.circle.fill")
             }
+            Button {
+                store.addWarmup()
+                dismiss()
+            } label: {
+                Label("Ajouter un échauffement", systemImage: "flame.fill")
+            }
             if let alts = s.exercise?.alts, !alts.isEmpty {
                 Section("Machine prise ? Remplacer par") {
                     ForEach(alts, id: \.self) { a in
