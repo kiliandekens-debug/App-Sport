@@ -6,6 +6,13 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.19.1', date: '2026-11-25', title: 'Tapis plus simple',
+    items: [
+      'Tapis : vitesse de 1 à 30 km/h et pente de 0 à 15 %, comme sur un tapis classique (téléphone et montre).',
+      'Marche dehors : plus de pente ni de dénivelé, seulement la durée, la distance et les calories.',
+    ],
+  },
+  {
     version: '1.19.0', date: '2026-11-25', title: 'Le fil des amis',
     items: [
       'Nouvel onglet Amis (à la place d\'Exercices, maintenant sur l\'accueil) : les séances que tes amis partagent, avec bravos et commentaires.',
