@@ -6,6 +6,13 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.20.0', date: '2026-11-25', title: 'Poids exact sur la montre',
+    items: [
+      'Apple Watch : touche le poids pendant une série pour le choisir sur deux roues, au dixième près (par exemple 12,3 kg).',
+      'La Couronne et les boutons − et + repartent ensuite de ce poids, par crans de 2 kg (haltères), 1 kg (curls, élévations) ou 2,5 kg.',
+    ],
+  },
+  {
     version: '1.19.1', date: '2026-11-25', title: 'Tapis plus simple',
     items: [
       'Tapis : vitesse de 1 à 30 km/h et pente de 0 à 15 %, comme sur un tapis classique (téléphone et montre).',
