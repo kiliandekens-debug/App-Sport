@@ -74,33 +74,38 @@ jobs:
           APP=$(find ios/App/build "$HOME/Library/Developer/Xcode/DerivedData" -type d -path '*Debug-watchsimulator/KadeonWatch.app' 2>/dev/null | head -1)
           echo "App: $APP"
           [ -n "$APP" ]
-          UDID=$(xcrun simctl list devices available -j | python3 -c '
-          import json, sys
+          # Two watches: the biggest and the smallest available (does it fit on both?).
+          read BIG SMALL <<< "$(xcrun simctl list devices available -j | python3 -c '
+          import json, re, sys
           d = json.load(sys.stdin)["devices"]
-          c = [x for k, v in d.items() if "watchOS" in k for x in v if "Apple Watch" in x["name"]]
-          c.sort(key=lambda x: (not any(m in x["name"] for m in ("46mm", "45mm")), x["name"]))
-          print(c[0]["udid"] if c else "")
-          ')
-          if [ -z "$UDID" ]; then
-            RT=$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; r=[x for x in json.load(sys.stdin)["runtimes"] if x["platform"]=="watchOS" and x["isAvailable"]]; print(r[-1]["identifier"] if r else "")')
-            DT=$(xcrun simctl list devicetypes -j | python3 -c 'import json,sys; t=[x for x in json.load(sys.stdin)["devicetypes"] if "Apple Watch Series" in x["name"]]; print(t[-1]["identifier"] if t else "")')
-            UDID=$(xcrun simctl create "Kadence Watch" "$DT" "$RT")
-          fi
-          xcrun simctl list devices | grep "$UDID" || true
-          xcrun simctl boot "$UDID" || true
-          xcrun simctl bootstatus "$UDID" -b
-          xcrun simctl status_bar "$UDID" override --time "12:36" || true
-          xcrun simctl install "$UDID" "$APP"
+          c = [x for k, v in d.items() if "watchOS" in k for x in v if "Apple Watch" in x["name"] and "Ultra" not in x["name"]]
+          mm = lambda x: int((re.search(r"(\d\d)mm", x["name"]) or [0, 44])[1])
+          c.sort(key=mm)
+          print(c[-1]["udid"], c[0]["udid"]) if c else print("", "")
+          ')"
+          echo "Montres : $BIG / $SMALL"
+          [ -n "$BIG" ]
           OUT="$RUNNER_TEMP/shots"
           mkdir -p "$OUT"
-          FIRST=1
-          for s in home run-start free-start countdown warmup-run run-in run-slow run-fast recovery block done free paused run-summary tapis warmup set rest next summary; do
-            xcrun simctl terminate "$UDID" be.kadeon.sport.watchkitapp 2>/dev/null || true
-            xcrun simctl launch "$UDID" be.kadeon.sport.watchkitapp -demo "$s" > /dev/null
-            if [ "$FIRST" = 1 ]; then sleep 12; FIRST=0; else sleep 5; fi
-            xcrun simctl io "$UDID" screenshot "$OUT/$s.png" > /dev/null
-            echo "shot $s"
-          done
+          shoot() {
+            local UDID=$1 SUFFIX=$2; shift 2
+            xcrun simctl boot "$UDID" || true
+            xcrun simctl bootstatus "$UDID" -b > /dev/null
+            xcrun simctl install "$UDID" "$APP"
+            local FIRST=1
+            for s in "$@"; do
+              xcrun simctl terminate "$UDID" be.kadeon.sport.watchkitapp 2>/dev/null || true
+              xcrun simctl launch "$UDID" be.kadeon.sport.watchkitapp -demo "$s" > /dev/null
+              if [ "$FIRST" = 1 ]; then sleep 12; FIRST=0; else sleep 5; fi
+              xcrun simctl io "$UDID" screenshot "$OUT/$s$SUFFIX.png" > /dev/null 2>&1
+              echo "shot $s$SUFFIX"
+            done
+            xcrun simctl shutdown "$UDID" || true
+          }
+          shoot "$BIG" "" home run-start free-start countdown warmup-run run-in run-slow run-fast recovery block done free paused run-summary tapis warmup set rest next summary
+          if [ -n "$SMALL" ] && [ "$SMALL" != "$BIG" ]; then
+            shoot "$SMALL" "-petite" home run-start run-in recovery block done free tapis set rest
+          fi
           # Branch on top of this commit (an orphan branch is refused), Vercel off for it.
           git fetch -q --depth 1 origin "$GITHUB_SHA" || true
           git checkout -q -B watch-shots

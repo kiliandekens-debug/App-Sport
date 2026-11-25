@@ -24,6 +24,9 @@ func paceQ(_ secPerKm: Double) -> String {
     return String(format: "%d’%02d”", t / 60, t % 60)
 }
 
+/// Pace in big, or « -’--” » while it is not known yet.
+func bigPace(_ secPerKm: Double) -> String { secPerKm > 0 ? paceQ(secPerKm) : "-’--”" }
+
 /// 90 → « 1 min 30 », 60 → « 1 min », 20 → « 20 s ».
 func fmtDur(_ secs: Double) -> String {
     let t = Int(secs.rounded())
@@ -153,12 +156,13 @@ struct ChipStyle: ButtonStyle {
 /// Main action: a glowing capsule, orange by default (blue for the rest).
 struct MainStyle: ButtonStyle {
     var colors: [Color] = [ember, brand]
+    var height: CGFloat = 40
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(.body, design: .rounded).weight(.bold))
             .foregroundStyle(.white)
-            .frame(maxWidth: .infinity, minHeight: 40)
+            .frame(maxWidth: .infinity, minHeight: height)
             .background(Capsule().fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)))
             .shadow(color: (colors.last ?? brand).opacity(0.45), radius: configuration.isPressed ? 2 : 6)
             .scaleEffect(configuration.isPressed ? 0.96 : 1)
@@ -337,8 +341,8 @@ struct SetView: View {
             }
             Text(e.name)
                 .font(.system(size: 17, weight: .bold, design: .rounded))
-                .lineLimit(2)
-                .minimumScaleFactor(0.65)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
             if !hint.isEmpty {
                 Text(hint)
                     .font(.system(size: 11, weight: .medium, design: .rounded))
@@ -368,6 +372,7 @@ struct SetView: View {
                     }
             }
             .padding(.top, 2)
+            .fixedSize(horizontal: false, vertical: true)
             .focusable(true)
             .focused($focused)
             .digitalCrownRotation(
@@ -388,6 +393,7 @@ struct SetView: View {
                     .minimumScaleFactor(0.8)
             }
             .buttonStyle(MainStyle())
+            .fixedSize(horizontal: false, vertical: true)
             .disabled(reps == 0)
             .opacity(reps == 0 ? 0.4 : 1)
         }
@@ -624,7 +630,7 @@ struct RestView: View {
                     HeartPill(size: 12)
                 }
                 Text(mmss(left))
-                    .font(.system(size: 52, weight: .heavy, design: .rounded))
+                    .font(.system(size: 46, weight: .heavy, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(tint)
                     .contentTransition(.numericText(countsDown: true))
@@ -636,7 +642,7 @@ struct RestView: View {
                     .tint(tint)
                     .animation(.linear(duration: 1), value: pct)
                 upNext
-                    .padding(.vertical, 3)
+                    .padding(.vertical, 2)
                 HStack(spacing: 5) {
                     Button("−15 s") { store.shiftRest(-15) }
                         .buttonStyle(ChipStyle(height: 32))
@@ -646,7 +652,7 @@ struct RestView: View {
                         .accessibilityLabel("Ajouter 15 secondes")
                 }
                 Button("Reprendre") { store.skipRest() }
-                    .buttonStyle(MainStyle(colors: [restBlue, restDeep]))
+                    .buttonStyle(MainStyle(colors: [restBlue, restDeep], height: 36))
                     .accessibilityLabel("Passer le repos")
             }
         }
@@ -989,7 +995,7 @@ struct RunMetrics: View {
                 .foregroundStyle(r.phase == .paused ? warn : phaseColor(st.phase))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-            BigValue(value: paceQ(r.pace), unit: "/km", size: 50)
+            BigValue(value: bigPace(r.pace), unit: "/km", size: 50)
             status(r, st)
             if st.fast > 0 {
                 Text("Cible \(paceQ(st.fast))–\(paceQ(st.slow))/km")
@@ -1058,7 +1064,7 @@ struct RunMetrics: View {
             Text("Allure")
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(.secondary)
-            BigValue(value: paceQ(r.pace), unit: "/km", size: 48, color: go)
+            BigValue(value: bigPace(r.pace), unit: "/km", size: 48, color: go)
             Rectangle().fill(line).frame(height: 0.5).padding(.vertical, 3)
             HStack(alignment: .top, spacing: 6) {
                 stat(hms(r.elapsed), "", "Durée")
