@@ -101,14 +101,25 @@ jobs:
             xcrun simctl io "$UDID" screenshot "$OUT/$s.png" > /dev/null
             echo "shot $s"
           done
-          cd "$OUT"
-          echo '{"git":{"deploymentEnabled":false}}' > vercel.json
-          printf 'Captures de %s (%s)\n' "${GITHUB_SHA::7}" "$GITHUB_REF_NAME" > README.md
-          git init -q -b watch-shots
-          git add -A
+          # Branch on top of this commit (an orphan branch is refused), Vercel off for it.
+          git fetch -q --depth 1 origin "$GITHUB_SHA" || true
+          git checkout -q -B watch-shots
+          rm -rf watch-shots && mkdir watch-shots && cp "$OUT"/*.png watch-shots/
+          node -e "const f='vercel.json',j=require('./'+f);j.git={deploymentEnabled:false};require('fs').writeFileSync(f,JSON.stringify(j,null,2))"
+          git add -f watch-shots vercel.json
           git -c user.name="Kadeon CI" -c user.email="ci@kadeon.be" commit -qm "Captures montre ${GITHUB_SHA::7} ($GITHUB_REF_NAME)"
-          git push -fq "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" watch-shots
+          git push -fq origin HEAD:refs/heads/watch-shots
           echo "Captures sur la branche watch-shots"
+
+      - name: Keep the screenshots
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: watch-shots
+          path: ${{ runner.temp }}/shots/*.png
+          retention-days: 14
+          if-no-files-found: ignore
 
       - name: Check App Store Connect secrets
         id: asc
