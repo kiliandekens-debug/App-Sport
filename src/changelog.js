@@ -6,6 +6,16 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.22.0', date: '2026-11-25', title: 'Nouveau look sur la montre',
+    items: [
+      'Course : l\'allure en très grand, avec « Dans la cible », « Accélère » ou « Ralentis », la cible et le temps restant.',
+      'Récupération en bleu avec le compte à rebours avant l\'effort suivant, et un écran « Bloc terminé » : temps en effort et temps dans la cible.',
+      'Avant le départ, la séance en quelques lignes (efforts, allure, récup, durée) ; course libre plus lisible.',
+      'Muscu : deux grandes cases (poids et répétitions), un écran pour les répétitions avec − et +, et un repos plus clair.',
+      'Tapis : la Couronne va de 1 à 30 km/h et de 0 à 15 %.',
+    ],
+  },
+  {
     version: '1.21.0', date: '2026-11-25', title: 'La montre te parle',
     items: [
       'Apple Watch : pendant un effort avec une allure cible, une voix te dit « Trop rapide, ralentis » ou « Trop lent, accélère » (dans les AirPods ou par le haut-parleur, la musique baisse un instant).',
