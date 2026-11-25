@@ -626,22 +626,25 @@ struct RestView: View {
         let tint = ending ? go : restBlue
         ScrollView {
             VStack(alignment: .leading, spacing: 3) {
-                HStack {
-                    Text(ready ? "Prêt" : "Repos")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                // The time, with « Repos » and the heart rate beside it: one line less, so
+                // Reprendre stays clear of the rounded corners at the bottom.
+                HStack(alignment: .center, spacing: 4) {
+                    Text(mmss(left))
+                        .font(.system(size: 44, weight: .heavy, design: .rounded))
+                        .monospacedDigit()
                         .foregroundStyle(tint)
-                    Spacer(minLength: 4)
-                    HeartPill(size: 12)
+                        .contentTransition(.numericText(countsDown: true))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .accessibilityLabel("Repos restant \(mmss(left))")
+                    Spacer(minLength: 2)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(ready ? "Prêt" : "Repos")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundStyle(tint)
+                        HeartPill(size: 12)
+                    }
                 }
-                Text(mmss(left))
-                    .font(.system(size: 44, weight: .heavy, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(tint)
-                    .contentTransition(.numericText(countsDown: true))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .frame(maxWidth: .infinity)
-                    .accessibilityLabel("Repos restant \(mmss(left))")
                 Capsule().fill(Color.white.opacity(0.14))
                     .frame(height: 4)
                     .overlay(alignment: .leading) {
@@ -672,6 +675,7 @@ struct RestView: View {
                         .accessibilityLabel("Passer le repos")
                 }
             }
+            .padding(.bottom, 8)
         }
     }
 

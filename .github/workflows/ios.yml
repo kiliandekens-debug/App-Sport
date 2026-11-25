@@ -78,8 +78,9 @@ jobs:
           read BIG SMALL <<< "$(xcrun simctl list devices available -j | python3 -c '
           import json, re, sys
           d = json.load(sys.stdin)["devices"]
-          c = [x for k, v in d.items() if "watchOS" in k for x in v if "Apple Watch" in x["name"] and "Ultra" not in x["name"]]
-          mm = lambda x: int((re.search(r"(\d\d)mm", x["name"]) or [0, 44])[1])
+          c = [x for k, v in d.items() if "watchOS" in k for x in v if "Apple Watch" in x["name"]]
+          # Ultra first among the big ones (Kilian's watch, 49 mm).
+          mm = lambda x: 99 if "Ultra" in x["name"] else int((re.search(r"(\d\d)mm", x["name"]) or [0, 44])[1])
           c.sort(key=mm)
           print(c[-1]["udid"], c[0]["udid"]) if c else print("", "")
           ')"
