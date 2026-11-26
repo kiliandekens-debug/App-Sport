@@ -7,8 +7,8 @@ import { fmtKg } from './lib/stats.js';
 import { mmss, hms } from './lib/running.js';
 import { publish, gymPost, runPost, ensureProfile } from './social.js';
 
-const COLORS = ['#7CCFF2', '#3DD68C', '#FFC933', '#B79CFF', '#FF8FB1', '#FF6A2B'];
-const INK = { '#7CCFF2': '#0B2230', '#3DD68C': '#07160E', '#FFC933': '#2A1E00', '#B79CFF': '#1B1036', '#FF8FB1': '#3A0B1C', '#FF6A2B': '#1A0A02' };
+const COLORS = ['#7CCFF2', '#3DD68C', '#FFC933', '#B79CFF', '#FF8FB1', '#00A3FF'];
+const INK = { '#7CCFF2': '#0B2230', '#3DD68C': '#07160E', '#FFC933': '#2A1E00', '#B79CFF': '#1B1036', '#FF8FB1': '#3A0B1C', '#00A3FF': '#00121F' };
 const colorOf = (id = '') => COLORS[[...id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 997, 7) % COLORS.length];
 const initials = (name = '?') => name.trim().slice(0, 2).toUpperCase();
 const n1 = (v) => String(Math.round(v * 10) / 10).replace('.', ',');

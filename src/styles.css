@@ -1,50 +1,50 @@
-/* Identity: a training notebook. Calm surfaces separated by tone rather than lines, quiet
-   system type for words, an expanded sporty face for the numbers that matter. One action
-   colour, race-bib orange, only for "do this now". Ice blue is rest, green is done,
-   yellow is warm-up, red is destructive only. */
+/* Identity (Kadence D.A., November 2026): night blue-black surfaces separated by tone rather
+   than lines, Inter for words, Montserrat for the numbers and titles that matter. One action
+   colour, electric blue, only for "do this now". Teal is rest, green is done, yellow is
+   warm-up, red is destructive only. */
 :root {
-  --brand: #E8500E; --on-brand: #1A0A02;
-  --bg: #F1F2F4; --card: #FFFFFF; --chip: #E7E9EC; --raised: #F5F6F7; --line: #E3E5E9; --border: #C9CDD3;
-  --text: #13161A; --soft: #39404A; --muted: #69717C;
+  --brand: #0070B8; --on-brand: #FFFFFF;
+  --bg: #F5F5F5; --card: #FFFFFF; --chip: #E8EAEE; --raised: #F7F8FA; --line: #E2E5EA; --border: #C6CCD4;
+  --text: #0D0F14; --soft: #2E3A47; --muted: #66707C;
   --ok: #10914A; --on-ok: #FFFFFF; --done: #E3F4EA; --done-line: #B9E2C8;
-  --rest: #0A6E99; --rest-bg: #E1F1F8; --rest-fill: #46B4E3;
+  --rest: #0B7A72; --rest-bg: #DDF3F0; --rest-fill: #2BC4B4;
   --warm: #A87800; --drop: #6D3FD0; --danger: #CC2B2B; --danger-bg: #FBE6E6;
   --warn-bg: #FFF5E6; --warn-line: #F0D6A8;
-  --hero-bg: #16191D; --shadow: 0 1px 2px rgba(19, 22, 26, 0.05), 0 6px 18px rgba(19, 22, 26, 0.04);
-  --nav-bg: rgba(255, 255, 255, 0.82); --nav-ink: #13161A; --nav-muted: #7A828D;
-  --display: 'Archivo Variable', 'Archivo', system-ui, sans-serif;
-  --body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Archivo Variable', sans-serif;
+  --hero-bg: #0D0F14; --shadow: 0 1px 2px rgba(13, 15, 20, 0.05), 0 6px 18px rgba(13, 15, 20, 0.04);
+  --nav-bg: rgba(255, 255, 255, 0.82); --nav-ink: #0D0F14; --nav-muted: #7A828D;
+  --display: 'Montserrat Variable', 'Montserrat', system-ui, sans-serif;
+  --body: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color-scheme: light;
 }
 :root[data-theme='dark'], .watch-wrap, .dock, .hero {
-  --brand: #FF6A2B; --on-brand: #1A0A02;
-  --bg: #111316; --card: #1A1D21; --chip: #262A30; --raised: #22262B; --line: #2A2F35; --border: #3D434B;
-  --text: #F3F4F6; --soft: #D2D6DC; --muted: #8E959F;
-  --ok: #3DD68C; --on-ok: #07160E; --done: #142A1E; --done-line: #24533A;
-  --rest: #7CCFF2; --rest-bg: #11293A; --rest-fill: #4FC1F0;
+  --brand: #00A3FF; --on-brand: #0D0F14;
+  --bg: #0D0F14; --card: #161A21; --chip: #232A34; --raised: #1D232B; --line: #232A33; --border: #2E3A47;
+  --text: #F5F5F5; --soft: #D3D9E0; --muted: #8A95A3;
+  --ok: #3DD68C; --on-ok: #07160E; --done: #122A20; --done-line: #24533A;
+  --rest: #5EE0D0; --rest-bg: #0E2A28; --rest-fill: #2FD2C0;
   --warm: #FFC933; --drop: #B79CFF; --danger: #FF8080; --danger-bg: #3A1616;
   --warn-bg: #2A2215; --warn-line: #4A3B1E;
-  --hero-bg: #2A2420; --shadow: none;
-  --nav-bg: rgba(20, 22, 26, 0.84); --nav-ink: #FFFFFF; --nav-muted: #8E959F;
+  --hero-bg: #1A222C; --shadow: none;
+  --nav-bg: rgba(13, 15, 20, 0.84); --nav-ink: #FFFFFF; --nav-muted: #8A95A3;
 }
 :root[data-theme='dark'] { color-scheme: dark; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --brand: #FF6A2B; --on-brand: #1A0A02;
-    --bg: #111316; --card: #1A1D21; --chip: #262A30; --raised: #22262B; --line: #2A2F35; --border: #3D434B;
-    --text: #F3F4F6; --soft: #D2D6DC; --muted: #8E959F;
-    --ok: #3DD68C; --on-ok: #07160E; --done: #142A1E; --done-line: #24533A;
-    --rest: #7CCFF2; --rest-bg: #11293A; --rest-fill: #4FC1F0;
+    --brand: #00A3FF; --on-brand: #0D0F14;
+    --bg: #0D0F14; --card: #161A21; --chip: #232A34; --raised: #1D232B; --line: #232A33; --border: #2E3A47;
+    --text: #F5F5F5; --soft: #D3D9E0; --muted: #8A95A3;
+    --ok: #3DD68C; --on-ok: #07160E; --done: #122A20; --done-line: #24533A;
+    --rest: #5EE0D0; --rest-bg: #0E2A28; --rest-fill: #2FD2C0;
     --warm: #FFC933; --drop: #B79CFF; --danger: #FF8080; --danger-bg: #3A1616;
     --warn-bg: #2A2215; --warn-line: #4A3B1E;
-    --hero-bg: #2A2420; --shadow: none;
-    --nav-bg: rgba(20, 22, 26, 0.84); --nav-ink: #FFFFFF; --nav-muted: #8E959F;
+    --hero-bg: #1A222C; --shadow: none;
+    --nav-bg: rgba(13, 15, 20, 0.84); --nav-ink: #FFFFFF; --nav-muted: #8A95A3;
     color-scheme: dark;
   }
 }
 :root, .watch-wrap, .dock, .hero { --accent: var(--brand); --accent-ink: var(--on-brand); }
 /* The hero is the one dark focal card of a screen, in both themes. */
-.hero { --card: var(--hero-bg); --raised: #2A2F35; --chip: #2E333A; }
+.hero { --card: var(--hero-bg); --raised: #232C37; --chip: #2E3A47; }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--body); font-size: 16px; line-height: 1.35; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
@@ -76,8 +76,8 @@ button, .btn, .icon-btn, .chip, .prog-item { transition: transform 0.08s, backgr
 .center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 40px 24px; text-align: center; }
 
 /* Type */
-.title { margin: 0; font-family: var(--display); font-size: 34px; font-weight: 800; font-stretch: 112%; line-height: 1.05; letter-spacing: -0.02em; }
-.title-s { margin: 0; font-family: var(--display); font-size: 24px; font-weight: 800; font-stretch: 110%; line-height: 1.1; letter-spacing: -0.015em; }
+.title { margin: 0; font-family: var(--display); font-size: 34px; font-weight: 700; font-stretch: 112%; line-height: 1.05; letter-spacing: -0.02em; }
+.title-s { margin: 0; font-family: var(--display); font-size: 24px; font-weight: 700; font-stretch: 110%; line-height: 1.1; letter-spacing: -0.015em; }
 .display { font-family: var(--display); font-weight: 700; font-stretch: 100%; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
 .muted { color: var(--muted); }
 .soft { color: var(--soft); }
@@ -358,10 +358,10 @@ html, body { overflow-x: clip; }
 /* Disabled buttons read as unavailable, not as a muddy version of the action colour. */
 .btn:disabled, .btn:disabled.primary { opacity: 1; filter: none; background: var(--chip); color: var(--muted); box-shadow: none; }
 
-/* Hero: neutral dark with the light of the action colour pooling in one corner. */
-.hero { background: radial-gradient(120% 100% at 0% 0%, color-mix(in srgb, var(--brand) 24%, transparent), transparent 55%), #1B1E23; }
+/* Hero: night blue-black with the light of the action colour pooling in one corner. */
+.hero { background: radial-gradient(120% 100% at 0% 0%, color-mix(in srgb, var(--brand) 22%, transparent), transparent 55%), #141A22; }
 
-/* Orange is for actions: big statistics are ink, not accent. */
+/* Blue is for actions: big statistics are ink, not accent. */
 .tile .v.accent { color: var(--text); }
 
 /* Sheets: three statistics side by side must fit on one line each. */
@@ -587,7 +587,7 @@ details.disclose p { margin: 4px 0 0; }
 .share-opt { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 4px 14px; }
 .share-opt input { width: 22px; height: 22px; accent-color: var(--accent); flex-shrink: 0; }
 .comment { background: var(--raised); border-radius: 14px; padding: 8px 10px; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
-.invite { background: linear-gradient(135deg, var(--brand), #E8500E); color: var(--on-brand); }
+.invite { background: linear-gradient(135deg, var(--brand), #0070B8); color: var(--on-brand); }
 .rank { margin: 0; padding: 0; list-style: none; }
 .rank li { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 14px; border-bottom: 1px solid var(--line); }
 .rank li:last-child { border-bottom: none; }

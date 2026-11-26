@@ -11,7 +11,7 @@ export function applyTheme(t = getTheme()) {
   const root = document.documentElement;
   if (t === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t);
   const dark = t === 'dark' || (t === 'auto' && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#111316' : '#F1F2F4');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0D0F14' : '#F5F5F5');
   nativeStatusBar(dark);
 }
 

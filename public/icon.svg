@@ -1,13 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFA13A"/><stop offset="0.55" stop-color="#FF6A1F"/><stop offset="1" stop-color="#E8430E"/></linearGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#232B35"/><stop offset="0.6" stop-color="#12161D"/><stop offset="1" stop-color="#0D0F14"/></linearGradient>
+    <linearGradient id="k" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#C9D0D8"/></linearGradient>
   </defs>
   <rect width="1024" height="1024" fill="url(#bg)"/>
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <!-- stem -->
-    <path d="M300 250 V774" stroke="#FFFFFF" stroke-width="112"/>
-    <!-- two chevrons: the K and its echo, like a rhythm -->
-    <path d="M560 250 L400 512 L560 774" stroke="#FFFFFF" stroke-width="112"/>
-    <path d="M770 300 L640 512 L770 724" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="88"/>
-  </g>
+  <g transform="translate(204 336) scale(2.2)"><path fill="url(#k)" d="M83.2 0L128.2 0L99.2 56.9L36 91.6Z M214.5 0L279.2 0L0.2 160L29.8 104.6Z M92.2 118.6L132 96.2L213.5 160L144.2 160Z"/></g>
 </svg>

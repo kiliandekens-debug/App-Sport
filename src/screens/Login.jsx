@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../supabase.js';
+import { Wordmark } from '../brand.jsx';
 
 // Sign in with e-mail and password, or with a link sent by e-mail; or create an account
 // (with an optional beta invitation code, used at the first opening of the account).
@@ -54,9 +55,9 @@ export default function Login() {
   return (
     <div className="screen login" style={{ paddingBottom: 0 }}>
       <div className="center" style={{ alignItems: 'stretch', textAlign: 'left', maxWidth: 400, margin: '0 auto', width: '100%', gap: 20 }}>
-        <img src="/icon.svg" alt="" width="64" height="64" style={{ borderRadius: 18, boxShadow: '0 10px 30px rgba(232, 80, 14, 0.25)' }} />
-        <div className="stack" style={{ gap: 8 }}>
-          <h1 className="title" translate="no" style={{ fontSize: 40 }}>Kadence</h1>
+        <img src="/icon.svg" alt="" width="64" height="64" style={{ borderRadius: 18, boxShadow: '0 10px 30px rgba(0, 163, 255, 0.22)' }} />
+        <div className="stack" style={{ gap: 12 }}>
+          <h1 className="title" translate="no" style={{ margin: 0, lineHeight: 0 }}><Wordmark width={230} /></h1>
           <p className="muted" style={{ margin: 0, fontSize: 17, lineHeight: 1.45 }}>Ta muscu et ta course au même endroit.</p>
         </div>
         {state === 'confirm' ? (

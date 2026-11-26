@@ -201,7 +201,7 @@ export default function Profil({ user }) {
           <Row icon="dumbbell" tint="#5856D6" right={<button className="switch" role="switch" aria-checked={lest} aria-label="Ceinture de lest pour tractions et dips" onClick={() => { setHasLest(!lest); setLest(!lest); ui.notify(!lest ? 'Le coach proposera du lest dès 12 reps aux tractions et aux dips' : 'Le coach restera au poids du corps'); }}><span /></button>}>
             Lest pour tractions et dips
           </Row>
-          {isNative() && !session.active && <Row icon="flame" tint="#E8500E" onClick={async () => { const msg = await testLive(() => !sessionRef.current.active); await ui.confirm({ title: 'Dynamic Island', message: msg, ok: 'OK' }); }}>Tester la Dynamic Island</Row>}
+          {isNative() && !session.active && <Row icon="flame" tint="#0A84FF" onClick={async () => { const msg = await testLive(() => !sessionRef.current.active); await ui.confirm({ title: 'Dynamic Island', message: msg, ok: 'OK' }); }}>Tester la Dynamic Island</Row>}
           {push && <Row icon="send" tint="#8E8E93" onClick={async () => { try { await testPush(); ui.notify('Notification de test dans 5 secondes'); } catch (e) { ui.notify(e.message || String(e)); } }}>Envoyer une notification de test</Row>}
         </div>
         <span className="gfoot">
@@ -246,11 +246,11 @@ export default function Profil({ user }) {
         <h2 className="label">Bêta</h2>
         <div className="glist">
           {beta ? (
-            <Row icon="spark" tint="#E8500E" right={<span className="xs muted">{betaActive(beta) ? `jusqu'au ${fmtDay(new Date(beta.ends_at))} ${new Date(beta.ends_at).getFullYear()}` : 'terminée'}</span>}>
+            <Row icon="spark" tint="#0A84FF" right={<span className="xs muted">{betaActive(beta) ? `jusqu'au ${fmtDay(new Date(beta.ends_at))} ${new Date(beta.ends_at).getFullYear()}` : 'terminée'}</span>}>
               Bêta-testeur n° {beta.seat}
             </Row>
           ) : (
-            <Row icon="spark" tint="#E8500E" onClick={enterCode}>J'ai un code bêta</Row>
+            <Row icon="spark" tint="#0A84FF" onClick={enterCode}>J'ai un code bêta</Row>
           )}
           <Row icon="send" tint="#34C759" onClick={() => setFeedback(true)}>Donner mon avis</Row>
         </div>
@@ -263,7 +263,7 @@ export default function Profil({ user }) {
           {data.superadmin && <Row icon="user" tint="#8E8E93" onClick={() => window.open('https://admin.kadeon.be', '_blank')}>Back-office</Row>}
           <Row icon="user" tint="#34C759" onClick={editWeight} right={<span className="xs muted">{user?.user_metadata?.weight_kg ? `${String(user.user_metadata.weight_kg).replace('.', ',')} kg` : 'À indiquer'}</span>}>Poids</Row>
           <Row icon="edit" tint="#8E8E93" onClick={() => setPwd(!pwd)} aria-expanded={pwd}>Mot de passe</Row>
-          <Row icon="spark" tint="#E8500E" onClick={() => setNews(true)} right={<span className="xs muted">{VERSION}</span>}>Nouveautés</Row>
+          <Row icon="spark" tint="#0A84FF" onClick={() => setNews(true)} right={<span className="xs muted">{VERSION}</span>}>Nouveautés</Row>
           <Row onClick={signOut} danger>Se déconnecter</Row>
         </div>
         <div className="glist">
