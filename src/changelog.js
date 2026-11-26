@@ -6,6 +6,10 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.29.1', date: '2026-11-26', title: 'Nouveau logo sur l\'iPhone',
+    items: ['L\'icône de l\'app iPhone et de l\'Apple Watch passe au nouveau K Kadence, comme l\'écran de démarrage.'],
+  },
+  {
     version: '1.29.0', date: '2026-11-26', title: 'Continuer avec Apple',
     items: [
       'App iPhone : inscription et connexion en un geste avec « Continuer avec Apple » (Face ID), sans mot de passe.',
