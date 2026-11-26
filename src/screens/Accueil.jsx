@@ -35,7 +35,7 @@ export default function Accueil({ user }) {
   const nextIsToday = !!(program && next && todayGym && !todayGym.done && todayGym.routine.id === next.id);
   const nextDay = program && next ? program.days.find((x) => x && x.routine.id === next.id && !x.done) : null;
   const tomorrow = new Date(today.getTime() + 86400000);
-  const tomorrowRun = run ? run.weeks.flat().find((s) => sameDay(s.date, tomorrow)) : null;
+  const tomorrowRun = run ? run.weeks.flat().find((s) => !s.off && sameDay(s.date, tomorrow)) : null;
   const legsYesterday = data.workouts.some((w) => today - w.start < 30 * 3600000 && !sameDay(w.start, today) && w.sets.filter((s) => muscleOf(s.exercise) === 'Jambes').length >= 6);
   const advice0 = adviceOfDay({ date: today, run: todayRun, gym: todayGym && !todayGym.done ? todayGym.dayId : null, tomorrowHard: tomorrowRun && (tomorrowRun.kind === 'quality' || tomorrowRun.kind === 'long'), legsYesterday, pause: run?.pause || null });
   const last = data.workouts[0] || null;
