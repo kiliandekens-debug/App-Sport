@@ -6,6 +6,10 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.29.2', date: '2026-11-26', title: 'La montre aux couleurs Kadence',
+    items: ['Apple Watch : bleu électrique à la place de l\'orange, repos en turquoise comme sur le téléphone.', 'Écran verrouillé et Dynamic Island : la mèche du repos passe au bleu.'],
+  },
+  {
     version: '1.29.1', date: '2026-11-26', title: 'Nouveau logo sur l\'iPhone',
     items: ['L\'icône de l\'app iPhone et de l\'Apple Watch passe au nouveau K Kadence, comme l\'écran de démarrage.'],
   },
