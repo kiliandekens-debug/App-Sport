@@ -1,7 +1,7 @@
 {
   "name": "app-sport",
   "private": true,
-  "version": "1.27.1",
+  "version": "1.28.0",
   "type": "module",
   "scripts": {
     "ocr": "node scripts/copy-ocr.mjs",
@@ -20,6 +20,8 @@
     "@capacitor/local-notifications": "^8.3.1",
     "@capacitor/status-bar": "^8.0.4",
     "@fontsource-variable/archivo": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/montserrat": "^5.3.0",
     "@fontsource/barlow": "^5.3.0",
     "@fontsource/barlow-condensed": "^5.3.0",
     "@supabase/supabase-js": "^2.45.0",

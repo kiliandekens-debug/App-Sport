@@ -6,6 +6,15 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.28.0', date: '2026-11-26', title: 'Nouvelle identité Kadence',
+    items: [
+      'Nouveau logo : le K en trois lames, sur fond nuit. Nouvelle icône pour l\'écran d\'accueil du téléphone.',
+      'Bleu électrique à la place de l\'orange pour les actions, fonds bleu nuit en sombre et gris clair en clair.',
+      'Nouvelles polices : Montserrat pour les titres et les chiffres, Inter pour les textes.',
+      'Le repos passe en turquoise pour ne pas se confondre avec le bleu des boutons.',
+    ],
+  },
+  {
     version: '1.27.1', date: '2026-11-26', title: 'Petits correctifs',
     items: [
       'Programmes : les repos de 150 s s\'affichent « 2 min 30 » au lieu de « 2.5 min ».',
