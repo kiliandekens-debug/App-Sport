@@ -104,7 +104,7 @@ export default function Programmes() {
                             <ExerciseImage name={x.name} size={34} radius={8} />
                             <span className="grow stack" style={{ gap: 0, minWidth: 0 }}>
                               <span className="small" style={{ fontWeight: 600 }}>{x.name}</span>
-                              <span className="xs muted">{targetText(x)} · repos {x.rest >= 120 ? `${x.rest / 60} min` : `${x.rest} s`}</span>
+                              <span className="xs muted">{targetText(x)} · repos {x.rest >= 120 ? `${Math.floor(x.rest / 60)} min${x.rest % 60 ? ` ${x.rest % 60}` : ''}` : `${x.rest} s`}</span>
                             </span>
                           </div>
                         ))}
