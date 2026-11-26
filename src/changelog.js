@@ -6,6 +6,14 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.27.1', date: '2026-11-26', title: 'Petits correctifs',
+    items: [
+      'Programmes : les repos de 150 s s\'affichent « 2 min 30 » au lieu de « 2.5 min ».',
+      'Accueil : plus de conseil « séance clé demain » quand la séance de demain est annulée (vacances, maladie).',
+      'Bilan après une sortie : la prochaine séance affiche « aujourd\'hui » quand elle tombe le jour même, au lieu du jour de la semaine.',
+    ],
+  },
+  {
     version: '1.27.0', date: '2026-11-25', title: 'Plans de course de coach, façon Runna',
     items: [
       'Nouveau : des plans de course fixes 5 km, 10 km, semi et marathon, écrits d\'après 50 programmes d\'élites et de coachs (Daniels, Pfitzinger, Hansons, Canova, méthode norvégienne…). Les séances ne changent jamais, seules tes allures suivent ton niveau.',
