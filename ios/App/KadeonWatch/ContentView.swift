@@ -1,15 +1,16 @@
 import SwiftUI
 import WatchKit
 
-// Kadence colours: orange for efforts and strength, blue for rest and recovery, green for easy
-// running and « in the target », yellow for warnings.
-private let brand = Color(red: 1.0, green: 0.42, blue: 0.17)
-private let ember = Color(red: 1.0, green: 0.66, blue: 0.22)
+// Kadence colours (D.A. of November 2026): electric blue for efforts and strength, teal for
+// rest and recovery, green for easy running and « in the target », yellow for warnings.
+private let brand = Color(red: 0.0, green: 0.64, blue: 1.0)        // #00A3FF
+private let brandDeep = Color(red: 0.0, green: 0.44, blue: 0.72)   // #0070B8
+private let ember = Color(red: 0.42, green: 0.81, blue: 1.0)       // light blue: warm-up, changed values
 private let go = Color(red: 0.2, green: 0.82, blue: 0.4)
 private let chip = Color.white.opacity(0.14)
 private let line = Color.white.opacity(0.18)
-private let restBlue = Color(red: 0.31, green: 0.76, blue: 0.94)
-private let restDeep = Color(red: 0.13, green: 0.52, blue: 0.86)
+private let restBlue = Color(red: 0.37, green: 0.88, blue: 0.82)  // teal #5EE0D0
+private let restDeep = Color(red: 0.12, green: 0.66, blue: 0.62)
 private let warn = Color(red: 1.0, green: 0.79, blue: 0.2)
 
 /// Soft glow at the top of every screen, fading to black (same mood as the iPhone app).
@@ -148,9 +149,9 @@ struct ChipStyle: ButtonStyle {
     }
 }
 
-/// Main action: a glowing capsule, orange by default (blue for the rest).
+/// Main action: a glowing capsule, blue by default (teal for the rest).
 struct MainStyle: ButtonStyle {
-    var colors: [Color] = [ember, brand]
+    var colors: [Color] = [brand, brandDeep]
     var height: CGFloat = 40
 
     func makeBody(configuration: Configuration) -> some View {
@@ -671,7 +672,7 @@ struct RestView: View {
                 }
                 if !compact {
                     Button("Reprendre") { store.skipRest() }
-                        .buttonStyle(MainStyle(colors: [restBlue, restDeep], height: 36))
+                        .buttonStyle(MainStyle(colors: [restDeep, Color(red: 0.05, green: 0.45, blue: 0.42)], height: 36))
                         .accessibilityLabel("Passer le repos")
                 }
             }

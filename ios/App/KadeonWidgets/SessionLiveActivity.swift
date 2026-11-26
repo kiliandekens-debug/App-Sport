@@ -3,7 +3,7 @@ import AppIntents
 import SwiftUI
 import WidgetKit
 
-private let brand = Color(red: 1.0, green: 0.42, blue: 0.17)
+private let brand = Color(red: 0.0, green: 0.64, blue: 1.0) // #00A3FF
 private let gold = Color(red: 1.0, green: 0.78, blue: 0.19)
 private let go = Color(red: 0.2, green: 0.78, blue: 0.35)
 
@@ -20,7 +20,7 @@ private struct Look {
     var resting: Bool { restRange != nil && !stale && (st.restEnd ?? .distantPast) > Date() }
     var restOver: Bool { st.restEnd != nil && !resting }
     var record: Bool { !st.record.isEmpty }
-    /// The fuse burns orange, or gold when the next set can beat the record.
+    /// The fuse burns blue, or gold when the next set can beat the record.
     var tint: Color { restOver || (resting && st.ready) ? go : record ? gold : brand }
 }
 

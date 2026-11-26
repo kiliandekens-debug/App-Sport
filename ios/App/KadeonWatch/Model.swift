@@ -171,7 +171,7 @@ struct PhoneState: Codable {
 
 // MARK: - Running (same shapes as guidedRun() in src/lib/running.js)
 
-/// One part of a run: phase work (orange), recovery (blue) or easy (green). fast/slow is the
+/// One part of a run: phase work (blue), recovery (teal) or easy (green). fast/slow is the
 /// target pace band in seconds per km (0 = none); alert = warn when outside it.
 struct WRunStep: Codable, Equatable, Hashable {
     var secs: Double
