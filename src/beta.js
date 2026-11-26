@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js';
 import { VERSION } from './changelog.js';
 import { isNative } from './native.js';
+import { takePendingInvite } from './appleAuth.js';
 
 // Bêta : 50 places, premium pendant 1 an, obtenues avec un code d'invitation (créé dans le
 // back-office). La base vérifie tout (fonction redeem_invite) ; l'app ne fait qu'afficher.
@@ -25,11 +26,13 @@ export async function redeemCode(code) {
 // Code saisi à l'inscription : utilisé une seule fois, à la première ouverture du compte.
 export async function redeemPendingCode() {
   const { data } = await supabase.auth.getUser();
-  const code = data?.user?.user_metadata?.invite_code;
+  const meta = data?.user?.user_metadata?.invite_code;
+  // « Continuer avec Apple » : the code typed before is kept on the device (appleAuth.js).
+  const code = meta || takePendingInvite();
   if (!code) return null;
   let res;
   try { res = await redeemCode(code); } catch (e) { res = { error: e.message || String(e) }; }
-  await supabase.auth.updateUser({ data: { invite_code: null } });
+  if (meta) await supabase.auth.updateUser({ data: { invite_code: null } });
   return res;
 }
 

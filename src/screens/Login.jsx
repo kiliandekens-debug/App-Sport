@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../supabase.js';
 import { Wordmark } from '../brand.jsx';
+import { signInWithApple, rememberInvite, appleAvailable } from '../appleAuth.js';
 
 // Sign in with e-mail and password, or with a link sent by e-mail; or create an account
 // (with an optional beta invitation code, used at the first opening of the account).
@@ -44,6 +45,17 @@ export default function Login() {
     if (err) fail(err); else setState('sent');
   };
 
+  // « Continuer avec Apple » : sign-up and sign-in in one; the beta code typed is kept for the first opening.
+  const apple = async () => {
+    setState('sending');
+    setError('');
+    if (mode === 'signup') rememberInvite(code);
+    try {
+      const ok = await signInWithApple();
+      if (!ok) setState('idle');
+    } catch (err) { fail(err); }
+  };
+
   const forgot = async () => {
     if (!email.trim()) { setError('Indique ton e-mail, puis touche « Mot de passe oublié ».'); return; }
     setState('sending');
@@ -74,9 +86,22 @@ export default function Login() {
           </div>
         ) : (
           <form onSubmit={submit} className="glass stack" style={{ gap: 12, padding: 18, alignItems: 'stretch' }}>
-            {mode === 'signup' ? (
-              <strong style={{ fontSize: 18 }}>Créer un compte</strong>
-            ) : (
+            {mode === 'signup' && <strong style={{ fontSize: 18 }}>Créer un compte</strong>}
+            {mode === 'signup' && (
+              <label className="stack" style={{ gap: 6 }}>
+                <h2 className="label">Code bêta (facultatif)</h2>
+                <input className="input" autoCapitalize="characters" autoComplete="off" spellCheck={false} placeholder="KAD-ABCD-EFGH" value={code} onChange={(e) => setCode(e.target.value)} />
+                <span className="xs muted" style={{ lineHeight: 1.4 }}>Avec un code, tout Kadence est gratuit pendant un an (50 places).</span>
+              </label>
+            )}
+            {appleAvailable() && <>
+            <button type="button" className="btn big apple-btn" disabled={state === 'sending'} onClick={apple}>
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor"><path d="M16.37 1.43c0 1.14-.5 2.27-1.18 3.08-.74.9-1.99 1.57-2.99 1.57-.12 0-.23-.02-.3-.03-.01-.06-.04-.22-.04-.39 0-1.15.57-2.27 1.21-2.98.8-.94 2.14-1.64 3.25-1.68.03.13.05.28.05.43zm4.56 15.71c-.03.07-.46 1.58-1.52 3.12-.94 1.34-1.94 2.71-3.43 2.71-1.52 0-1.9-.88-3.63-.88-1.7 0-2.3.91-3.67.91-1.38 0-2.33-1.26-3.43-2.8-1.29-1.82-2.32-4.63-2.32-7.28 0-4.28 2.8-6.55 5.55-6.55 1.45 0 2.68.95 3.6.95.87 0 2.22-1.01 3.9-1.01.61 0 2.89.06 4.37 2.19-.13.09-2.38 1.37-2.38 4.19 0 3.26 2.85 4.42 2.96 4.45z" /></svg>
+              Continuer avec Apple
+            </button>
+            <div className="or-sep" aria-hidden="true"><span>ou avec ton e-mail</span></div>
+            </>}
+            {mode !== 'signup' && (
               <div className="seg" role="group" aria-label="Méthode de connexion" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
                 <button type="button" className={mode === 'password' ? 'on' : ''} aria-pressed={mode === 'password'} onClick={() => { setMode('password'); setError(''); }}>Mot de passe</button>
                 <button type="button" className={mode === 'link' ? 'on' : ''} aria-pressed={mode === 'link'} onClick={() => { setMode('link'); setError(''); }}>Lien par e-mail</button>
@@ -90,13 +115,6 @@ export default function Login() {
               <label className="stack" style={{ gap: 6 }}>
                 <h2 className="label">Mot de passe</h2>
                 <input className="input" type="password" required minLength={mode === 'signup' ? 8 : undefined} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} value={password} onChange={(e) => setPassword(e.target.value)} />
-              </label>
-            )}
-            {mode === 'signup' && (
-              <label className="stack" style={{ gap: 6 }}>
-                <h2 className="label">Code bêta (facultatif)</h2>
-                <input className="input" autoCapitalize="characters" autoComplete="off" spellCheck={false} placeholder="KAD-ABCD-EFGH" value={code} onChange={(e) => setCode(e.target.value)} />
-                <span className="xs muted" style={{ lineHeight: 1.4 }}>Avec un code, tout Kadence est gratuit pendant un an (50 places).</span>
               </label>
             )}
             <button className="btn primary big" disabled={state === 'sending'}>{state === 'sending' ? '…' : mode === 'password' ? 'Se connecter' : mode === 'signup' ? 'Créer mon compte' : 'Recevoir le lien'}</button>

@@ -1,5 +1,6 @@
 import Foundation
 import Capacitor
+import AuthenticationServices
 
 /// Web app ↔ Apple Watch (see src/watch.js).
 @objc(WatchBridgePlugin)
@@ -16,9 +17,12 @@ public class WatchBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "liveInfo", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setAuth", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "runSplits", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "appleSignIn", returnType: CAPPluginReturnPromise),
     ]
 
     private var observer: NSObjectProtocol?
+    /// The pending « Continuer avec Apple » call (see src/appleAuth.js).
+    private var appleCall: CAPPluginCall?
 
     override public func load() {
         observer = NotificationCenter.default.addObserver(forName: WatchLink.actionsQueued, object: nil, queue: .main) { [weak self] _ in
@@ -94,5 +98,52 @@ public class WatchBridgePlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func info(_ call: CAPPluginCall) {
         call.resolve(WatchLink.shared.info)
+    }
+
+    /// Sign in with Apple: the system sheet (Face ID), then the identity token goes back to the
+    /// web app, which hands it to Supabase. `nonce` is the SHA-256 of the raw nonce kept by JS.
+    @objc func appleSignIn(_ call: CAPPluginCall) {
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        request.requestedScopes = [.fullName, .email]
+        request.nonce = call.getString("nonce")
+        appleCall = call
+        DispatchQueue.main.async {
+            let controller = ASAuthorizationController(authorizationRequests: [request])
+            controller.delegate = self
+            controller.presentationContextProvider = self
+            controller.performRequests()
+        }
+    }
+}
+
+extension WatchBridgePlugin: ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+    public func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        bridge?.viewController?.view.window ?? ASPresentationAnchor()
+    }
+
+    public func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        guard let call = appleCall else { return }
+        appleCall = nil
+        guard let cred = authorization.credential as? ASAuthorizationAppleIDCredential,
+              let data = cred.identityToken, let token = String(data: data, encoding: .utf8) else {
+            call.reject("Apple n'a pas renvoyé de jeton.")
+            return
+        }
+        var out: [String: Any] = ["idToken": token, "user": cred.user]
+        if let given = cred.fullName?.givenName { out["givenName"] = given }
+        if let family = cred.fullName?.familyName { out["familyName"] = family }
+        if let email = cred.email { out["email"] = email }
+        if let code = cred.authorizationCode, let c = String(data: code, encoding: .utf8) { out["authorizationCode"] = c }
+        call.resolve(out)
+    }
+
+    public func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        guard let call = appleCall else { return }
+        appleCall = nil
+        if let e = error as? ASAuthorizationError, e.code == .canceled {
+            call.reject("canceled", "canceled")
+        } else {
+            call.reject(error.localizedDescription)
+        }
     }
 }
