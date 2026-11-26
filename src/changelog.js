@@ -6,6 +6,14 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.29.0', date: '2026-11-26', title: 'Continuer avec Apple',
+    items: [
+      'App iPhone : inscription et connexion en un geste avec « Continuer avec Apple » (Face ID), sans mot de passe.',
+      'Le prénom donné par Apple est repris dans ton profil, et le code bêta tapé avant reste valable.',
+      'Sur le site, le bouton arrive dès que la configuration Apple est terminée.',
+    ],
+  },
+  {
     version: '1.28.0', date: '2026-11-26', title: 'Nouvelle identité Kadence',
     items: [
       'Nouveau logo : le K en trois lames, sur fond nuit. Nouvelle icône pour l\'écran d\'accueil du téléphone.',
