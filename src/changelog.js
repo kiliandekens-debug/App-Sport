@@ -6,6 +6,10 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.29.3', date: '2026-11-26', title: 'Titre de la montre en bleu',
+    items: ['Apple Watch : le titre « Kadence » et les éléments système passent aussi au bleu.'],
+  },
+  {
     version: '1.29.2', date: '2026-11-26', title: 'La montre aux couleurs Kadence',
     items: ['Apple Watch : bleu électrique à la place de l\'orange, repos en turquoise comme sur le téléphone.', 'Écran verrouillé et Dynamic Island : la mèche du repos passe au bleu.'],
   },
