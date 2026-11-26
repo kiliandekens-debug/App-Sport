@@ -495,7 +495,7 @@ export function runAfter(session, log, next) {
   if (!session || !log?.distance_km || !log.duration_s) return null;
   const pace = log.duration_s / Number(log.distance_km);
   const plannedPace = session.km ? (session.mins * 60) / session.km : null;
-  const nextLine = next ? `Prochaine : ${next.title.toLowerCase()}, ${next.ymd === session.ymd ? 'aujourd\'hui' : DAY_SHORT[(next.date.getDay() + 6) % 7]}.` : 'Plan terminé : bravo.';
+  const nextLine = next ? `Prochaine : ${next.title.toLowerCase()}, ${next.ymd === ymd(new Date()) ? 'aujourd\'hui' : DAY_SHORT[(next.date.getDay() + 6) % 7]}.` : 'Plan terminé : bravo.';
   if (log.splits?.matched && log.splits.total > 1) {
     const ok = log.splits.ok === log.splits.total;
     return { text: ok ? `Allure tenue sur toutes les fractions.` : log.splits.text, next: ok ? nextLine : `${log.splits.slow > log.splits.fast ? 'Pars un peu moins vite sur la première fraction.' : 'Reste dans la plage : plus vite ne fait pas progresser plus.'} ${nextLine}` };
