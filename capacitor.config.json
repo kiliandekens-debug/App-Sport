@@ -5,9 +5,9 @@
   "ios": {
     "contentInset": "never",
     "scheme": "Kadeon Sport",
-    "backgroundColor": "#F1F2F4"
+    "backgroundColor": "#F5F5F5"
   },
   "plugins": {
-    "LocalNotifications": { "iconColor": "#E8500E" }
+    "LocalNotifications": { "iconColor": "#00A3FF" }
   }
 }
