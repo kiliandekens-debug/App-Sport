@@ -6,6 +6,10 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.29.4', date: '2026-11-27', title: 'Petit correctif',
+    items: ['Accueil : une routine d\'un seul exercice affiche « 1 exercice » et non plus « 1 exercices ».'],
+  },
+  {
     version: '1.29.3', date: '2026-11-26', title: 'Titre de la montre en bleu',
     items: ['Apple Watch : le titre « Kadence » et les éléments système passent aussi au bleu.'],
   },
