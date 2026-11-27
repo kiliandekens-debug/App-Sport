@@ -253,9 +253,10 @@ with sync_playwright() as p:
     pg.screenshot(path=f'{SHOTS}/flow-course.png', full_page=True)
     # 1.27.0: not 100 % and moving a session.
     pg.get_by_role('button', name='Déplacer').click(); pg.wait_for_timeout(300)
-    chips = pg.locator('.card', has_text='Dans la même semaine').locator('button')
-    if chips.count() > 1:
-        chips.nth(1).click(); pg.wait_for_timeout(1200)
+    # The current day of the session is highlighted (primary): pick another one, whatever today is.
+    chips = pg.locator('.card', has_text='Dans la même semaine').locator('button:not(.primary)')
+    if chips.count() > 0:
+        chips.first.click(); pg.wait_for_timeout(1200)
         check(len(T['run_profile'][-1].get('moves') or {}) == 1, 'session moved to another day')
     pg.get_by_role('button', name='Pas à 100 % ?').click(); pg.wait_for_timeout(300)
     pg.get_by_role('button', name=re.compile('^Fatigué')).click(); pg.wait_for_timeout(1200)
