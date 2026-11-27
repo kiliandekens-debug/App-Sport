@@ -12,6 +12,7 @@ import Exercices from './screens/Exercices.jsx';
 import Variante from './screens/Variante.jsx';
 import Coach from './screens/Coach.jsx';
 import Profil from './screens/Profil.jsx';
+import Reglages from './screens/Reglages.jsx';
 import Montre from './screens/Montre.jsx';
 import Routine from './screens/Routine.jsx';
 import Course from './screens/Course.jsx';
@@ -95,6 +96,8 @@ function Shell({ user }) {
         <Route path="/amis" element={<Amis />} />
         <Route path="/amis/gerer" element={<Amis />} />
         <Route path="/profil" element={<Profil user={user} />} />
+        <Route path="/reglages" element={<Reglages user={user} />} />
+        <Route path="/reglages/:section" element={<Reglages user={user} />} />
         <Route path="/montre" element={<Montre />} />
         <Route path="/routines/:id" element={<Routine key={pathname} />} />
         <Route path="*" element={<Navigate to="/" replace />} />

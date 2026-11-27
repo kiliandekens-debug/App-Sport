@@ -8,7 +8,7 @@
   --text: #0D0F14; --soft: #2E3A47; --muted: #66707C;
   --ok: #10914A; --on-ok: #FFFFFF; --done: #E3F4EA; --done-line: #B9E2C8;
   --rest: #0B7A72; --rest-bg: #DDF3F0; --rest-fill: #2BC4B4;
-  --warm: #A87800; --drop: #6D3FD0; --danger: #CC2B2B; --danger-bg: #FBE6E6;
+  --warm: #A87800; --drop: #6D3FD0; --danger: #D92D20; --danger-bg: #FBE6E6;
   --warn-bg: #FFF5E6; --warn-line: #F0D6A8;
   --hero-bg: #0D0F14; --shadow: 0 1px 2px rgba(13, 15, 20, 0.05), 0 6px 18px rgba(13, 15, 20, 0.04);
   --nav-bg: rgba(255, 255, 255, 0.82); --nav-ink: #0D0F14; --nav-muted: #7A828D;
@@ -18,27 +18,27 @@
 }
 :root[data-theme='dark'], .watch-wrap, .dock, .hero {
   --brand: #00A3FF; --on-brand: #0D0F14;
-  --bg: #0D0F14; --card: #161A21; --chip: #232A34; --raised: #1D232B; --line: #232A33; --border: #2E3A47;
-  --text: #F5F5F5; --soft: #D3D9E0; --muted: #8A95A3;
+  --bg: #0D0F14; --card: #161B23; --chip: #222A35; --raised: #1B212A; --line: #222A35; --border: #2E3A47;
+  --text: #F5F5F5; --soft: #D3D9E0; --muted: #8E99A8;
   --ok: #3DD68C; --on-ok: #07160E; --done: #122A20; --done-line: #24533A;
   --rest: #5EE0D0; --rest-bg: #0E2A28; --rest-fill: #2FD2C0;
-  --warm: #FFC933; --drop: #B79CFF; --danger: #FF8080; --danger-bg: #3A1616;
+  --warm: #FFC933; --drop: #B79CFF; --danger: #FF453A; --danger-bg: #3A1616;
   --warn-bg: #2A2215; --warn-line: #4A3B1E;
   --hero-bg: #1A222C; --shadow: none;
-  --nav-bg: rgba(13, 15, 20, 0.84); --nav-ink: #FFFFFF; --nav-muted: #8A95A3;
+  --nav-bg: rgba(13, 15, 20, 0.84); --nav-ink: #FFFFFF; --nav-muted: #8E99A8;
 }
 :root[data-theme='dark'] { color-scheme: dark; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     --brand: #00A3FF; --on-brand: #0D0F14;
-    --bg: #0D0F14; --card: #161A21; --chip: #232A34; --raised: #1D232B; --line: #232A33; --border: #2E3A47;
-    --text: #F5F5F5; --soft: #D3D9E0; --muted: #8A95A3;
+    --bg: #0D0F14; --card: #161B23; --chip: #222A35; --raised: #1B212A; --line: #222A35; --border: #2E3A47;
+    --text: #F5F5F5; --soft: #D3D9E0; --muted: #8E99A8;
     --ok: #3DD68C; --on-ok: #07160E; --done: #122A20; --done-line: #24533A;
     --rest: #5EE0D0; --rest-bg: #0E2A28; --rest-fill: #2FD2C0;
-    --warm: #FFC933; --drop: #B79CFF; --danger: #FF8080; --danger-bg: #3A1616;
+    --warm: #FFC933; --drop: #B79CFF; --danger: #FF453A; --danger-bg: #3A1616;
     --warn-bg: #2A2215; --warn-line: #4A3B1E;
     --hero-bg: #1A222C; --shadow: none;
-    --nav-bg: rgba(13, 15, 20, 0.84); --nav-ink: #FFFFFF; --nav-muted: #8A95A3;
+    --nav-bg: rgba(13, 15, 20, 0.84); --nav-ink: #FFFFFF; --nav-muted: #8E99A8;
     color-scheme: dark;
   }
 }
@@ -608,3 +608,121 @@ details.disclose p { margin: 4px 0 0; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .apple-btn { background: #fff; color: #000; } }
 .or-sep { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
 .or-sep::before, .or-sep::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+/* ==========================================================================
+   Kadence design system (refonte, novembre 2026)
+   One colour per meaning: blue = musculation and the main action, green = course,
+   red = destructive. Glass only on navigation and floating controls; cards are flat
+   tone-on-tone surfaces. Spacing on a 4 px grid, three radii.
+   ========================================================================== */
+:root {
+  --gym: var(--brand); --gym-ink: var(--on-brand);
+  --run: #1A8F43; --run-fill: #30D158; --run-ink: #04210E;
+  --r-s: 12px; --r-m: 16px; --r-l: 22px;
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px;
+}
+:root[data-theme='dark'], .hero, .dock, .watch-wrap { --run: #30D158; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) { --run: #30D158; } }
+
+/* Run days, everywhere: Running Green (effort zones keep their own scale). */
+.week .dot.k-run, .cal-d.k-run, .day-ic.k-run { background: var(--run-fill); color: var(--run-ink); }
+.week .dot.k-planned, .cal-d.k-planned, .day-ic.k-planned { background: color-mix(in srgb, var(--run-fill) 12%, var(--chip)); color: var(--run); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--run-fill) 60%, transparent); }
+.week .dot.k-pgym, .cal-d.k-pgym { background: color-mix(in srgb, var(--gym) 12%, var(--chip)); color: var(--gym); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--gym) 60%, transparent); }
+.week .dot.k-planned.today, .week .dot.k-pgym.today { box-shadow: inset 0 0 0 2px var(--text); }
+.week .dot.k-planned.sel, .week .dot.k-pgym.sel { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--text) 30%, transparent), 0 0 0 2px var(--bg), 0 0 0 4px var(--text); }
+.tile-icon.k-run { background: color-mix(in srgb, var(--run-fill) 16%, var(--chip)); color: var(--run); }
+.tile-icon.k-gym { background: color-mix(in srgb, var(--gym) 16%, var(--chip)); color: var(--gym); }
+/* Second activity of a day: a small badge, filled when done, outlined when planned. */
+.dot-badge { background: var(--run-fill); color: var(--run-ink); }
+.dot-badge.b-gym { background: var(--gym); color: var(--gym-ink); }
+.dot-badge.planned { background: var(--bg); color: var(--run); box-shadow: inset 0 0 0 1.5px var(--run-fill); }
+.dot-badge.planned.b-gym { color: var(--gym); box-shadow: inset 0 0 0 1.5px var(--gym); }
+
+/* Page header: a large title in the flow of the page, nothing around it. Once it has scrolled
+   away, a compact glass bar takes its place at the top (iOS large-title behaviour). */
+.page-head { display: flex; align-items: center; gap: 12px; padding: 14px 20px 6px; min-height: 76px; }
+.page-head .glass-text { gap: 2px; }
+.page-head .glass-title { font-size: 32px; white-space: normal; overflow-wrap: anywhere; }
+.page-head .glass-eyebrow { white-space: nowrap; }
+.page-head .icon-btn { background: var(--chip); box-shadow: none; }
+.compact-bar { position: fixed; left: 0; right: 0; top: 0; z-index: 20; padding: calc(env(safe-area-inset-top) + 6px) 12px 0; pointer-events: none; opacity: 0; transform: translateY(-8px); transition: opacity 0.18s ease, transform 0.18s ease; }
+.compact-bar.on { opacity: 1; transform: none; }
+.compact-bar.on .glass { pointer-events: auto; }
+.compact-bar .glass { max-width: 496px; margin: 0 auto; padding: 8px 8px 8px 16px; min-height: 50px; border-radius: 20px; }
+.compact-bar .glass::after { display: none; }
+.compact-bar .glass-title { font-size: 17px; font-stretch: 100%; }
+.compact-bar .glass-avatar { width: 30px; height: 30px; font-size: 15px; }
+.compact-bar .icon-btn { width: 36px; height: 36px; border-radius: 12px; }
+html { scroll-padding-top: calc(70px + env(safe-area-inset-top)); }
+
+/* Tab bar: finer, quieter rim, the content stays the star. */
+.nav { padding: 0 14px calc(6px + env(safe-area-inset-bottom)); }
+.nav-in { max-width: 460px; padding: 4px; border-radius: 26px; border-color: color-mix(in srgb, var(--glass-rim) 55%, transparent); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--glass-hi) 60%, transparent), 0 8px 24px rgba(0, 0, 0, 0.16); }
+.nav-in::before { opacity: 0.18; }
+.nav a { min-height: 48px; gap: 2px; font-size: 10px; border-radius: 22px; color: var(--nav-muted); }
+.nav a svg { width: 21px; height: 21px; }
+.nav a.active { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.screen { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+
+/* Section header: title on the left, an optional action on the right. */
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.sec-head h2 { margin: 0; font-family: var(--display); font-size: 19px; font-weight: 750; letter-spacing: -0.01em; }
+.sec-head a, .sec-head button { font-size: 15px; font-weight: 600; color: var(--accent); background: none; border: none; padding: 0; text-decoration: none; min-height: 32px; display: inline-flex; align-items: center; gap: 4px; }
+
+/* Sport figures: one tile per number, the number is the hero. */
+.stat-grid { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); gap: 8px; }
+.stat { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; padding: 12px 4px 10px; border-radius: var(--r-m); background: var(--card); box-shadow: var(--shadow); min-width: 0; }
+.stat svg { color: var(--muted); margin-bottom: 2px; }
+.stat.k-gym svg { color: var(--gym); }
+.stat.k-run svg { color: var(--run); }
+.stat b { font-family: var(--display); font-size: 22px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; color: var(--text); white-space: nowrap; }
+.stat b small { font-size: 13px; font-weight: 700; margin-left: 2px; }
+.stat span { font-size: 12px; color: var(--muted); line-height: 1.25; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Quick links: a compact grid of tiles, icon + title + one line. */
+.shortcuts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.shortcut { display: flex; align-items: center; gap: 10px; min-height: 64px; padding: 10px 12px; border-radius: var(--r-m); background: var(--card); box-shadow: var(--shadow); color: inherit; text-decoration: none; min-width: 0; }
+.shortcut .tile-icon { width: 38px; height: 38px; border-radius: 11px; }
+.shortcut b { display: block; font-family: var(--body); font-size: 15px; font-weight: 650; letter-spacing: 0; }
+.shortcut .xs { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shortcut:active { opacity: 0.7; }
+
+/* Hero: the next session. Blue for musculation, green for course. */
+.hero.k-run { --accent: var(--run-fill); --accent-ink: var(--run-ink); background: radial-gradient(120% 100% at 0% 0%, color-mix(in srgb, var(--run-fill) 20%, transparent), transparent 55%), #141A22; }
+.run-figs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.run-figs > div { display: flex; flex-direction: column; gap: 1px; padding: 10px 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.06); min-width: 0; }
+.run-figs b { font-family: var(--display); font-size: 19px; font-weight: 800; white-space: nowrap; }
+.run-figs span { font-size: 12px; color: var(--muted); }
+.hero .mini-run { width: 100%; height: 28px; }
+
+/* Contextual notice (coach advice, beta, deload): compact, one accent line on the left. */
+.notice { display: flex; gap: 12px; padding: 14px 16px; border-radius: var(--r-m); background: var(--card); box-shadow: var(--shadow); }
+.notice > svg { flex: none; color: var(--accent); margin-top: 1px; }
+.notice .notice-t { font-weight: 650; }
+.notice .row { flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.notice .btn { height: 40px; padding: 0 14px; font-size: 15px; border-radius: 12px; }
+.notice.danger > svg { color: var(--danger); }
+
+/* Routines: one row each, start in one touch. */
+.routine-row { display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 8px; border-radius: var(--r-m); background: var(--card); box-shadow: var(--shadow); min-height: 64px; }
+.routine-row > a { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; color: inherit; text-decoration: none; }
+.routine-row .play { width: 42px; height: 42px; border-radius: 13px; background: color-mix(in srgb, var(--gym) 14%, var(--chip)); color: var(--gym); border: none; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.routine-row .play:disabled { opacity: 0.4; }
+
+/* Grouped settings (iOS): monochrome icons, colour kept for integrations and danger. */
+.gi { background: var(--chip); color: var(--soft); }
+.gi.c-health { background: #FF2D55; color: #fff; }
+.gi.c-strava { background: #FC4C02; color: #fff; }
+.gi.c-hevy { background: #5856D6; color: #fff; }
+.gi.c-danger { background: var(--danger-bg); color: var(--danger); }
+.glabel { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: none; padding: 0 4px; margin: 0; }
+.grow-row .val { font-size: 15px; color: var(--muted); white-space: nowrap; }
+.settings-foot { text-align: center; font-size: 13px; color: var(--muted); line-height: 1.5; padding: 24px 20px 0; }
+
+/* Profile header and month calendar refinements. */
+.profile-sub { font-size: 14px; color: var(--muted); }
+.cal-d.multi { background: linear-gradient(135deg, var(--gym) 50%, var(--run-fill) 50%); color: #fff; }
+.cal-d.multi .cal-b { display: none; }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
+.cal-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cal-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }

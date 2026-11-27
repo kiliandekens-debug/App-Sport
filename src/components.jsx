@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { imagesOf } from './lib/images.js';
 import { SUPERSET_COLORS } from './lib/routines.js';
 
@@ -78,6 +78,15 @@ const P = {
   userplus: <><circle cx="9" cy="8" r="4" /><path d="M2 21c0-4 3-6 7-6s7 2 7 6M19 8v6M16 11h6" /></>,
   users: <><circle cx="9" cy="8" r="3.5" /><circle cx="17" cy="9" r="2.5" /><path d="M2 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5M16 14.5c3 0 6 1.5 6 4.5" /></>,
   flame: <path d="M12 3c1 3 4 5 4 9a4 4 0 0 1-8 0c0-1.5.5-2.5 1.5-3.5C10 10 12 8 12 3zM12 21a7 7 0 0 0 7-7" />,
+  gear: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></>,
+  trophy: <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4" />,
+  clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+  calendar: <><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /></>,
+  heart: <path d="M12 20s-7-4.4-9-8.6C1.6 8.4 3.4 5 6.8 5c2 0 3.4 1.2 5.2 3 1.8-1.8 3.2-3 5.2-3 3.4 0 5.2 3.4 3.8 6.4C19 15.6 12 20 12 20z" />,
+  info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7.5v.01" /></>,
+  shield: <path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z" />,
+  palette: <><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.7-.8 1.7-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5c0-4-4-7.2-9-7.2z" /><circle cx="7.5" cy="11" r="1" /><circle cx="10.5" cy="7" r="1" /><circle cx="15" cy="7.5" r="1" /></>,
+  logout: <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l-4-4 4-4M6 12h10" />,
 };
 
 export function Icon({ name, size = 20, width = 2, fill }) {
@@ -96,39 +105,111 @@ const TABS = [
   ['/profil', 'user', 'Profil'],
 ];
 
-// Screen header: a floating pane of liquid glass. Large title at rest, compact once the page scrolls.
-export function GlassHeader({ eyebrow, title, lead = null, right = null }) {
-  const [compact, setCompact] = useState(() => typeof window !== 'undefined' && window.scrollY > 48);
+// Screen header (iOS large title): the title sits in the page, nothing around it. Once it has
+// scrolled away, a compact glass bar with the title (and the same actions) fades in at the top.
+export function GlassHeader({ eyebrow, title, lead = null, right = null, back = null }) {
+  const [compact, setCompact] = useState(() => typeof window !== 'undefined' && window.scrollY > 64);
   useEffect(() => {
     let raf = 0;
     const onScroll = () => {
       cancelAnimationFrame(raf);
-      // Hysteresis: shrink past 48 px, grow back only near the top, so it never flickers.
-      raf = requestAnimationFrame(() => setCompact((c) => (c ? window.scrollY > 12 : window.scrollY > 48)));
+      // Hysteresis, so it never flickers around the threshold.
+      raf = requestAnimationFrame(() => setCompact((c) => (c ? window.scrollY > 44 : window.scrollY > 64)));
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => { window.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf); };
   }, []);
+  const small = lead && lead.props?.className?.includes('glass-avatar') ? lead : null;
+  // back: { to, label } — a back button before the title, in both states.
+  const backBtn = back ? <Link to={back.to} className="icon-btn" aria-label={back.label}><Icon name="back" /></Link> : null;
   return (
-    <header className={`glass-head${compact ? ' compact' : ''}`}>
-      <div className="glass">
+    <>
+      <header className="page-head">
+        {backBtn}
         {lead}
         <div className="grow glass-text">
           {eyebrow && <span className="glass-eyebrow">{eyebrow}</span>}
           <h1 className="glass-title">{title}</h1>
         </div>
         {right}
+      </header>
+      <div className={`compact-bar${compact ? ' on' : ''}`} aria-hidden={!compact} inert={compact ? undefined : ''}>
+        <div className="glass">
+          {backBtn}
+          {small}
+          <span className="grow glass-title ellipsis">{title}</span>
+          {right}
+        </div>
       </div>
-    </header>
+    </>
   );
 }
 
+// A section title with an optional action on the right (« + Nouvelle », « Tout voir »).
+export function SectionHead({ title, action = null }) {
+  return <div className="sec-head"><h2>{title}</h2>{action}</div>;
+}
+
+// Sport figures in tiles: [{ icon, kind: 'gym' | 'run', value, unit, label }]. Only real numbers.
+export function StatGrid({ items, cols }) {
+  return (
+    <div className="stat-grid" style={{ '--cols': cols || items.length }}>
+      {items.map((it) => (
+        <div key={it.label} className={`stat${it.kind ? ` k-${it.kind}` : ''}`}>
+          {it.icon && <Icon name={it.icon} size={20} />}
+          <b className="display">{it.value}{it.unit && <small>{it.unit}</small>}</b>
+          <span>{it.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// A quick link tile: icon, title, one line of context.
+export function Shortcut({ to, icon, kind, title, detail }) {
+  return (
+    <Link to={to} className="shortcut">
+      <span className={`tile-icon${kind ? ` k-${kind}` : ''}`}><Icon name={icon} size={20} /></span>
+      <span className="grow" style={{ minWidth: 0 }}>
+        <b>{title}</b>
+        {detail && <span className="xs muted">{detail}</span>}
+      </span>
+    </Link>
+  );
+}
+
+// Grouped list (iOS settings): a title, the rows, a footnote.
+export function Group({ title, foot, children, id }) {
+  return (
+    <section className="stack" style={{ gap: 8 }} aria-labelledby={id}>
+      {title && <h2 className="glabel" id={id}>{title}</h2>}
+      <div className="glist">{children}</div>
+      {foot}
+    </section>
+  );
+}
+
+// One row of a grouped list: icon (monochrome unless tone is set), label, value or control.
+export function SettingRow({ icon, tone, children, onClick, to, right, danger, chevron, ...rest }) {
+  const inner = (
+    <>
+      {icon && <span className={`gi${tone ? ` c-${tone}` : ''}`}><Icon name={icon} size={17} /></span>}
+      <span className="grow gl" style={danger ? { color: 'var(--danger)' } : null}>{children}</span>
+      {right}
+    </>
+  );
+  if (to) return <Link to={to} className="grow-row" {...rest}>{inner}<Icon name="chevron" size={16} /></Link>;
+  if (onClick) return <button className="grow-row" onClick={onClick} {...rest}>{inner}{chevron && <Icon name="chevron" size={16} />}</button>;
+  return <div className="grow-row" {...rest}>{inner}</div>;
+}
+
 export function Nav() {
+  const { pathname } = useLocation();
   return (
     <nav className="nav" aria-label="Navigation principale">
       <div className="nav-in">
         {TABS.map(([to, icon, label]) => (
-          <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => (isActive ? 'active' : '')}>
+          <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => (isActive || (to === '/profil' && pathname.startsWith('/reglages')) ? 'active' : '')}>
             <Icon name={icon} size={22} />
             {label}
           </NavLink>

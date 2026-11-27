@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useModal } from './modal.js';
 import { useData, deleteWorkout, renameWorkout, deleteRunLog } from './data.jsx';
 import { useUi } from './ui.jsx';
-import { Icon, ExerciseImage } from './components.jsx';
+import { Icon, ExerciseImage, StatGrid } from './components.jsx';
 import { SessionAnalysis } from './analysis.jsx';
 import { fmtKg, fmtInt, sameDay, isWork, isPlausible, volumeOf } from './lib/stats.js';
 import { mmss, hms, vdotOf, raceTime } from './lib/running.js';
@@ -26,10 +26,12 @@ export const dayKind = (d) => (d.gym.length ? 'gym' : d.run ? 'run' : d.plan && 
 
 // The selected day of the week strip: what was done, or what is planned.
 // gymPlan: the programme's session planned that day (not done yet); advice: the coach's word.
-export function DayDetail({ d, onRun, onGym, onRunLog, hideRunLink = false, gymPlan = null, onGymPlan, advice = null }) {
+// hidePlan: the planned run is already shown elsewhere (the next session card); covered: today
+// has something planned that is shown elsewhere, so the card does not say "nothing planned".
+export function DayDetail({ d, onRun, onGym, onRunLog, hideRunLink = false, gymPlan = null, onGymPlan, advice = null, hidePlan = false, covered = false }) {
   if (!d) return null;
   const title = d.today ? "Aujourd'hui" : d.date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-  const empty = !d.gym.length && !d.runs.length && !(d.plan && !d.past) && !gymPlan;
+  const empty = !d.gym.length && !d.runs.length && !(d.plan && !d.past && !hidePlan) && !gymPlan && !covered;
   return (
     <div className="card day-detail" aria-live="polite">
       <span className="xs muted" style={{ textTransform: 'capitalize', fontWeight: 600 }}>{title}</span>
@@ -56,7 +58,7 @@ export function DayDetail({ d, onRun, onGym, onRunLog, hideRunLink = false, gymP
           <Icon name="chevron" size={18} />
         </button>
       ))}
-      {d.plan && !d.past && (
+      {d.plan && !d.past && !hidePlan && (
         <button className="day-row" onClick={() => onRun(d.plan.key)} disabled={hideRunLink}>
           <span className="day-ic k-planned"><Icon name="run" size={18} /></span>
           <span className="grow stack" style={{ gap: 1 }}>
@@ -182,7 +184,9 @@ export function WorkoutSheet({ id, onClose }) {
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
 // A full month, Monday first. Each day shows what was done (or planned); tap a day for its detail.
-export function MonthCalendar({ planned = [] }) {
+// withSummary: the month's figures above the calendar (they follow the month shown).
+// plannedGym: dates of the programme's strength sessions still to do.
+export function MonthCalendar({ planned = [], plannedGym = [], withSummary = false }) {
   const data = useData();
   const now = new Date();
   const [month, setMonth] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1));
@@ -195,13 +199,26 @@ export function MonthCalendar({ planned = [] }) {
   const days = Array.from({ length: count }, (_, i) => dayInfo(data, new Date(month.getFullYear(), month.getMonth(), i + 1), planned, now));
   const gymN = days.reduce((a, d) => a + d.gym.length, 0);
   const runN = days.reduce((a, d) => a + d.runs.length, 0);
+  const runOnly = days.reduce((a, d) => a + d.runs.filter((l) => !isWalk(l)).length, 0);
   const km = days.reduce((a, d) => a + d.runs.reduce((b, l) => b + Number(l.distance_km || 0), 0), 0);
+  const gymPlannedOn = (d) => !d.past && !d.gym.length && plannedGym.some((x) => sameDay(x, d.date));
   const selInfo = dayInfo(data, sel, planned, now);
   const go = (d) => setMonth(new Date(month.getFullYear(), month.getMonth() + d, 1));
   const label = `${MONTHS[month.getMonth()]} ${month.getFullYear()}`;
 
   return (
     <div className="stack" style={{ gap: 10 }}>
+      {withSummary && (
+        <>
+          <h2 className="glabel">{sameDay(first, new Date(now.getFullYear(), now.getMonth(), 1)) ? 'Ce mois-ci' : label.replace(/^./, (c) => c.toUpperCase())}</h2>
+          <StatGrid items={[
+            { icon: 'dumbbell', kind: 'gym', value: gymN, label: 'Muscu' },
+            { icon: 'run', kind: 'run', value: runOnly, label: runOnly > 1 ? 'Courses' : 'Course' },
+            { icon: 'flag', value: fmtKg(km), unit: 'km', label: 'Distance' },
+            { icon: 'chart', value: gymN + runN, label: gymN + runN > 1 ? 'Activités' : 'Activité' },
+          ]} />
+        </>
+      )}
       <div className="card cal">
         <div className="row" style={{ gap: 8 }}>
           <button className="icon-btn" aria-label="Mois précédent" onClick={() => go(-1)} style={{ width: 38, height: 38 }}><Icon name="back" size={18} /></button>
@@ -212,11 +229,13 @@ export function MonthCalendar({ planned = [] }) {
           {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((l, i) => <span key={i} className="cal-h">{l}</span>)}
           {Array.from({ length: lead }, (_, i) => <span key={`e${i}`} />)}
           {days.map((d) => {
-            const k = dayKind(d);
+            const pg = gymPlannedOn(d);
+            const k = dayKind(d) === 'rest' && pg ? 'pgym' : dayKind(d);
+            const multi = d.gym.length > 0 && d.run;
             const isSel = sameDay(d.date, sel);
-            const what = [d.gym.length && 'muscu', d.run && 'course', !d.gym.length && !d.run && d.plan && !d.past && 'course prévue'].filter(Boolean).join(' et ') || 'repos';
+            const what = [d.gym.length && 'muscu', d.run && 'course', pg && 'muscu prévue', !d.run && d.plan && !d.past && 'course prévue'].filter(Boolean).join(' et ') || 'repos';
             return (
-              <button key={d.date.getDate()} className={`cal-d k-${k}${d.today ? ' today' : ''}${isSel ? ' sel' : ''}`} onClick={() => {
+              <button key={d.date.getDate()} className={`cal-d k-${k}${multi ? ' multi' : ''}${d.today ? ' today' : ''}${isSel ? ' sel' : ''}`} onClick={() => {
                   setSel(d.date);
                   const items = d.gym.length + d.runs.length;
                   if (items === 1) { if (d.gym.length) setOpenW(d.gym[0].id); else setOpenR(d.runs[0].id); }
@@ -224,16 +243,25 @@ export function MonthCalendar({ planned = [] }) {
                 }}
                 aria-pressed={isSel} aria-label={`${d.date.getDate()} ${MONTHS[month.getMonth()]} : ${what}`}>
                 <span className="cal-n">{d.date.getDate()}</span>
-                {k !== 'rest' && <span className="cal-i"><Icon name={k === 'gym' ? 'dumbbell' : 'run'} size={13} width={2.4} /></span>}
+                {k !== 'rest' && <span className="cal-i">{multi ? <><Icon name="dumbbell" size={11} width={2.4} /><Icon name="run" size={11} width={2.4} /></> : <Icon name={k === 'gym' || k === 'pgym' ? 'dumbbell' : 'run'} size={13} width={2.4} />}</span>}
                 {k === 'gym' && d.run && <span className="cal-b" />}
               </button>
             );
           })}
         </div>
-        <div className="row xs muted" style={{ gap: 14, flexWrap: 'wrap' }}>
-          <span><b className="display" style={{ color: 'var(--text)', fontSize: 15 }}>{gymN}</b> séance{gymN > 1 ? 's' : ''} de salle</span>
-          <span><b className="display" style={{ color: 'var(--text)', fontSize: 15 }}>{runN}</b> course{runN > 1 ? 's' : ''}{km ? `, ${fmtKg(km)} km` : ''}</span>
-        </div>
+        {withSummary ? (
+          <div className="cal-legend" aria-hidden="true">
+            <span><i style={{ background: 'var(--gym)' }} />Musculation</span>
+            <span><i style={{ background: 'var(--run-fill)' }} />Course</span>
+            <span><i style={{ boxShadow: 'inset 0 0 0 1.5px var(--muted)' }} />Prévue</span>
+            <span><i style={{ boxShadow: 'inset 0 0 0 2px var(--text)' }} />Aujourd'hui</span>
+          </div>
+        ) : (
+          <div className="row xs muted" style={{ gap: 14, flexWrap: 'wrap' }}>
+            <span><b className="display" style={{ color: 'var(--text)', fontSize: 15 }}>{gymN}</b> séance{gymN > 1 ? 's' : ''} de salle</span>
+            <span><b className="display" style={{ color: 'var(--text)', fontSize: 15 }}>{runN}</b> course{runN > 1 ? 's' : ''}{km ? `, ${fmtKg(km)} km` : ''}</span>
+          </div>
+        )}
       </div>
       {(selInfo.gym.length > 0 || selInfo.runs.length > 0 || (selInfo.plan && !selInfo.past)) && (
         <div id="cal-detail" style={{ scrollMarginBottom: 110 }}><DayDetail d={selInfo} onRun={() => {}} onGym={(id) => setOpenW(id)} onRunLog={(id) => setOpenR(id)} hideRunLink /></div>

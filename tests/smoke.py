@@ -122,7 +122,7 @@ with sync_playwright() as p:
         pg.route(re.compile(r'.*/version\.json.*'), lambda r, q: r.fulfill(status=404, body=''))
         pg.add_init_script(f"localStorage.setItem('sb-{REF}-auth-token', JSON.stringify({json.dumps(sess)}))")
         pg.emulate_media(color_scheme=mode)
-        for path in ['/', '/exercices', '/progres', '/course', '/coach', '/profil', '/historique', '/variante', '/tapis', '/amis', '/amis/gerer']:
+        for path in ['/', '/exercices', '/progres', '/course', '/coach', '/profil', '/reglages', '/reglages/compte', '/historique', '/variante', '/tapis', '/amis', '/amis/gerer']:
             pg.goto(BASE + path); pg.wait_for_timeout(1200)
             sw = pg.evaluate('document.documentElement.scrollWidth')
             check(sw <= 390, f'{mode} {path} no horizontal overflow ({sw})')
@@ -141,6 +141,22 @@ with sync_playwright() as p:
             pg.screenshot(path=f'{SHOTS}/{mode}{path.replace("/", "-") or "-home"}.png', full_page=True)
         pg.close()
 
+    # 1.30.0: the redesigned screens fit small and large iPhones.
+    for w in [360, 430]:
+        pg = b.new_page(viewport={'width': w, 'height': 844})
+        pg.route(re.compile(r'.*supabase\.co/.*'), handle)
+        pg.route(re.compile(r'.*/version\.json.*'), lambda r, q: r.fulfill(status=404, body=''))
+        pg.add_init_script(f"localStorage.setItem('sb-{REF}-auth-token', JSON.stringify({json.dumps(sess)}))")
+        for path in ['/', '/profil', '/reglages', '/reglages/compte']:
+            pg.goto(BASE + path); pg.wait_for_timeout(1000)
+            sw = pg.evaluate('document.documentElement.scrollWidth')
+            check(sw <= w, f'{w}px {path} no horizontal overflow ({sw})')
+        pg.goto(BASE + '/'); pg.wait_for_timeout(800)
+        pg.evaluate('window.scrollTo(0, 400)'); pg.wait_for_timeout(400)
+        check(pg.locator('.compact-bar.on').count() == 1, f'{w}px compact title bar appears on scroll')
+        pg.screenshot(path=f'{SHOTS}/w{w}-home-scrolled.png')
+        pg.close()
+
     # Session flow: routines from history, start, validate, finish, coach.
     pg = b.new_page(viewport={'width': 390, 'height': 844})
     pg.on('pageerror', lambda e: errors.append(f'flow PAGEERR {e}'))
@@ -149,7 +165,7 @@ with sync_playwright() as p:
     pg.goto(BASE + '/'); pg.wait_for_timeout(1200)
     pg.get_by_text('Créer depuis mon historique').click(); pg.wait_for_timeout(1200)
     check(len(T['routines']) >= 3, 'routines created from history')
-    pg.get_by_role('button', name='Démarrer', exact=True).click(); pg.wait_for_timeout(800)
+    pg.get_by_role('button', name='Démarrer la séance', exact=True).click(); pg.wait_for_timeout(800)
     # Simulated 300 px keyboard: the dock must sit right above it.
     pg.evaluate("document.documentElement.style.setProperty('--kb','300px'); document.body.classList.add('kb-open')")
     pg.wait_for_timeout(100)
@@ -267,8 +283,20 @@ with sync_playwright() as p:
     pg.get_by_role('button', name='Je vais mieux, reprendre le plan').click(); pg.wait_for_timeout(1200)
     check(not (T['run_profile'][-1].get('pauses') or []), 'pause ended')
 
-    # 1.15.0: beta code, feedback, /admin gone from the app.
+    # 1.30.0: the profile is the athlete's space; settings moved to Réglages (the gear).
     pg.goto(BASE + '/profil'); pg.wait_for_timeout(1200)
+    check(pg.locator('.stat-grid .stat').count() == 4, 'profile shows the month figures')
+    check(pg.locator('.cal-grid .cal-d').count() >= 28, 'profile shows the month calendar')
+    pg.get_by_role('link', name='Réglages').first.click(); pg.wait_for_timeout(800)
+    check(pg.url.rstrip('/').endswith('/reglages'), 'gear opens Réglages')
+    for label in ['Notification de fin de repos', "Garder l'écran allumé", 'Échauffement automatique', 'Ceinture de lest pour tractions et dips']:
+        check(pg.get_by_role('switch', name=label).count() == 1, f'setting kept in Réglages: {label}')
+    check(pg.get_by_role('button', name='Se déconnecter').count() == 1, 'sign out in Réglages')
+    pg.get_by_role('link', name='Mon compte').click(); pg.wait_for_timeout(800)
+    check(pg.get_by_role('button', name='Supprimer mon compte').count() == 1 and pg.get_by_role('button', name='Mot de passe').count() == 1, 'account page: password and deletion')
+    pg.screenshot(path=f'{SHOTS}/flow-compte.png', full_page=True)
+    # 1.15.0: beta code, feedback, /admin gone from the app.
+    pg.goto(BASE + '/reglages'); pg.wait_for_timeout(1200)
     check(pg.get_by_role('button', name="J'ai un code bêta").count() == 1, 'profile offers the beta code')
     pg.get_by_role('button', name="J'ai un code bêta").click(); pg.wait_for_timeout(300)
     pg.locator('.sheet input').fill('kad-test-0001'); pg.locator('.sheet').get_by_role('button', name='Valider').click(); pg.wait_for_timeout(1500)

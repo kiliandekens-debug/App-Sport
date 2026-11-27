@@ -6,6 +6,16 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.30.0', date: '2026-11-27', title: 'Nouveau design : Accueil, Profil et Réglages',
+    items: [
+      'Accueil réorganisé : la semaine, aujourd\'hui, la prochaine séance (bleue pour la muscu, verte pour la course, avec durée, distance et allure), tes routines, des raccourcis et le résumé de ta semaine.',
+      'Les séances de ton programme de muscu apparaissent aussi comme prévues dans la semaine et le calendrier ; une journée muscu + course se voit d\'un coup d\'œil.',
+      'Profil : ton espace sportif, avec les chiffres du mois, le calendrier et tes raccourcis. Tous les réglages passent dans Réglages (la roue dentée), rangés par thème comme sur l\'iPhone.',
+      'Nouveau : tu peux changer ton prénom dans Réglages › Mon compte.',
+      'Titres plus légers : le grand titre reste dans la page et une barre compacte apparaît quand tu fais défiler. Barre d\'onglets plus fine.',
+    ],
+  },
+  {
     version: '1.29.4', date: '2026-11-27', title: 'Petit correctif',
     items: ['Accueil : une routine d\'un seul exercice affiche « 1 exercice » et non plus « 1 exercices ».'],
   },
