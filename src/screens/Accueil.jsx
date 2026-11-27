@@ -93,7 +93,7 @@ export default function Accueil({ user }) {
         </div>
         {(!selEmpty || picked || sel.today) && (
           <DayDetail d={sel} onRun={(key) => nav('/course', { state: { pick: key } })} onGym={(id) => setOpenW(id)} onRunLog={(id) => setOpenR(id)}
-            gymPlan={selGym && !selGym.done ? { name: selGym.routine.name, detail: `${selGym.routine.exercises.length} exercices` } : null}
+            gymPlan={selGym && !selGym.done ? { name: selGym.routine.name, detail: `${selGym.routine.exercises.length} exercice${selGym.routine.exercises.length > 1 ? 's' : ''}` } : null}
             onGymPlan={() => (sel.today && !session.active ? startRoutine(routines.find((r) => r.id === selGym.routine.id) || selGym.routine) : nav(`/routines/${selGym.routine.id}`))}
             advice={sel.today && !session.active ? advice0 : null} />
         )}
