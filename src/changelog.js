@@ -6,6 +6,17 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.31.0', date: '2026-11-28', title: 'Un seul design partout',
+    items: [
+      'Un seul bleu : le bleu Kadence sur tous les boutons, en clair comme en sombre.',
+      'Mêmes titres de section, mêmes tuiles de chiffres et mêmes badges sur tous les écrans (Progrès, Historique, Tapis, Course, Amis…).',
+      'Noms d\'exercices écrits d\'une seule façon : « Développé couché (haltères) » partout, y compris pour ceux importés de Hevy.',
+      'La semaine de l\'accueil garde la date de chaque jour, avec l\'icône de ce qui a été fait, comme le calendrier du profil.',
+      'Historique : haltère bleu pour la muscu, coureur vert pour la course, colline pour la marche. Ton avatar est le même dans Profil et Amis.',
+      'Nouvelle variante et Routine ont le même en-tête que le reste de l\'app ; menus déroulants et champs au même style.',
+    ],
+  },
+  {
     version: '1.30.1', date: '2026-11-28', title: 'Petit correctif',
     items: ['Dates écrites correctement : « Samedi 28 novembre » et non plus « Samedi 28 Novembre », sur l\'accueil, la fiche du jour et les fiches séance et course.'],
   },
