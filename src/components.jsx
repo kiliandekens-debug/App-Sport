@@ -77,6 +77,7 @@ const P = {
   flag: <path d="M5 21V4M5 4h11l-2 4 2 4H5" />,
   userplus: <><circle cx="9" cy="8" r="4" /><path d="M2 21c0-4 3-6 7-6s7 2 7 6M19 8v6M16 11h6" /></>,
   users: <><circle cx="9" cy="8" r="3.5" /><circle cx="17" cy="9" r="2.5" /><path d="M2 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5M16 14.5c3 0 6 1.5 6 4.5" /></>,
+  hill: <path d="M3 19l6.5-9 4 5.5 2.5-3.5L21 19zM6.5 6.5h0" />,
   flame: <path d="M12 3c1 3 4 5 4 9a4 4 0 0 1-8 0c0-1.5.5-2.5 1.5-3.5C10 10 12 8 12 3zM12 21a7 7 0 0 0 7-7" />,
   gear: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></>,
   trophy: <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4" />,
@@ -121,7 +122,9 @@ export function GlassHeader({ eyebrow, title, lead = null, right = null, back = 
   }, []);
   const small = lead && lead.props?.className?.includes('glass-avatar') ? lead : null;
   // back: { to, label } — a back button before the title, in both states.
-  const backBtn = back ? <Link to={back.to} className="icon-btn" aria-label={back.label}><Icon name="back" /></Link> : null;
+  const backBtn = !back ? null : back.to
+    ? <Link to={back.to} onClick={back.onClick} className="icon-btn" aria-label={back.label}><Icon name="back" /></Link>
+    : <button className="icon-btn" onClick={back.onClick} aria-label={back.label}><Icon name="back" /></button>;
   return (
     <>
       <header className="page-head">
@@ -179,10 +182,10 @@ export function Shortcut({ to, icon, kind, title, detail }) {
 }
 
 // Grouped list (iOS settings): a title, the rows, a footnote.
-export function Group({ title, foot, children, id }) {
+export function Group({ title, foot, children, id, section = false }) {
   return (
-    <section className="stack" style={{ gap: 8 }} aria-labelledby={id}>
-      {title && <h2 className="glabel" id={id}>{title}</h2>}
+    <section className="stack" style={{ gap: section ? 12 : 8 }} aria-labelledby={id}>
+      {title && <h2 className={section ? 'sec-title' : 'glabel'} id={id}>{title}</h2>}
       <div className="glist">{children}</div>
       {foot}
     </section>

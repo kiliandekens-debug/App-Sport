@@ -5,6 +5,7 @@ import { GlassHeader, Icon } from '../components.jsx';
 import { WorkoutSheet, RunSheet } from '../day.jsx';
 import { fmtKg, fmtInt, isWork, isPlausible, volumeOf } from '../lib/stats.js';
 import { hms } from '../lib/running.js';
+import { isWalk } from '../lib/treadmill.js';
 import { logTitle } from '../lib/treadmill.js';
 
 const MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
@@ -38,13 +39,13 @@ export default function Historique() {
         {!items.length && <div className="card"><span className="muted">Aucune séance pour l'instant. Termine une séance ou importe ton historique Hevy depuis le profil.</span></div>}
         {groups.map((g) => (
           <div key={g.key} className="stack" style={{ gap: 6 }}>
-            <h2 className="label" style={{ padding: '14px 4px 2px' }}>{g.key}</h2>
+            <h2 className="sec-title" style={{ padding: '18px 0 4px' }}>{g.key}</h2>
             <div className="list">
               {g.items.map((it) => (
                 <button key={it.kind + it.id} onClick={() => setOpen(it)}
                   style={{ background: 'none', border: 'none', borderBottom: '1px solid var(--line)', color: 'inherit', textAlign: 'left', width: '100%', cursor: 'pointer' }}>
-                  <span className="tile-icon" style={{ width: 36, height: 36, background: it.kind === 'run' ? 'color-mix(in srgb, var(--z1) 22%, var(--chip))' : 'var(--chip)' }}>
-                    <Icon name={it.kind === 'run' ? 'timer' : 'dumbbell'} size={18} />
+                  <span className={`tile-icon k-${it.kind === 'run' ? 'run' : 'gym'}`} style={{ width: 36, height: 36 }}>
+                    <Icon name={it.kind === 'run' ? (isWalk(it.l) ? 'hill' : 'run') : 'dumbbell'} size={18} />
                   </span>
                   <span className="grow stack" style={{ gap: 1, minWidth: 0 }}>
                     <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.kind === 'gym' ? it.w.title : `${logTitle(it.l)}, ${fmtKg(Number(it.l.distance_km))} km`}</span>

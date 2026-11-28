@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useData } from '../data.jsx';
 import { useSession } from '../session.jsx';
-import { LIBRARY, MUSCLES, EQUIPS, muscleOf, equipOf } from '../lib/exercises.js';
+import { LIBRARY, MUSCLES, EQUIPS, muscleOf, equipOf, exLabel } from '../lib/exercises.js';
 import { Icon, ExerciseImage, GlassHeader } from '../components.jsx';
 import { VarianteForm } from './Variante.jsx';
 import ExerciseSheet from './ExerciseSheet.jsx';
@@ -58,7 +58,7 @@ export function ExercisePicker({ selected = new Set(), onAdd, onOpen, bottomPad 
             <button className="grow row" style={{ gap: 12, background: 'none', border: 'none', color: 'inherit', textAlign: 'left', padding: 0 }} onClick={() => onOpen?.(ex)} aria-label={`Voir ${ex.name}`}>
               <ExerciseImage name={ex.name} base={ex.base} size={48} />
               <span className="grow stack" style={{ gap: 2 }}>
-                <span style={{ fontSize: 15, fontWeight: 600 }}>{ex.name}</span>
+                <span style={{ fontSize: 15, fontWeight: 600 }}>{exLabel(ex.name)}</span>
                 <span className="xs muted">{ex.muscle} · {ex.equip}{ex.count ? ` · ${ex.count} séance${ex.count > 1 ? 's' : ''}` : ''}</span>
               </span>
             </button>
@@ -118,7 +118,7 @@ export default function Exercices() {
       <div className="split">
         <div className="panel">
           <GlassHeader eyebrow={ri >= 0 ? `Remplace « ${replacing} »` : `${all.length} exercices${session.active ? `, ajout à « ${session.title} »` : ''}`} title={ri >= 0 ? 'Changer d\'exercice' : 'Exercices'}
-            right={<Link to="/variante" aria-label="Créer un exercice ou une variante" className="icon-btn accent only-narrow"><Icon name="plus" width={2.5} /></Link>} />
+            right={<Link to="/variante" aria-label="Créer un exercice ou une variante" className="icon-btn only-narrow"><Icon name="plus" width={2.5} /></Link>} />
           <ExercisePicker selected={inSession} onAdd={add} onOpen={setOpen} bottomPad={session.active ? 72 : 0} />
           <div className="pad only-narrow" style={{ paddingTop: 8 }}>
             <Link to="/variante" className="btn dashed" style={{ height: 52, width: '100%' }}>Il manque ma version ? Créer une variante</Link>

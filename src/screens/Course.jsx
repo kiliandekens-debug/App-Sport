@@ -133,7 +133,7 @@ const fmtDate = (ymdStr) => new Date(`${ymdStr}T12:00:00`).toLocaleDateString('f
 
 const TAPIS_LINK = (
   <Link to="/tapis" className="card" style={{ flexDirection: 'row', alignItems: 'center', gap: 12, color: 'inherit', textDecoration: 'none' }}>
-    <span className="tile-icon" style={{ width: 40, height: 40, background: 'color-mix(in srgb, var(--ok) 20%, var(--chip))' }}><Icon name="up" size={20} /></span>
+    <span className="tile-icon k-run"><Icon name="hill" size={20} /></span>
     <span className="grow stack" style={{ gap: 1 }}>
       <span style={{ fontWeight: 650 }}>Tapis et marche inclinée</span>
       <span className="xs muted">12-3-30 et séances guidées, vitesse et pente, dénivelé</span>
@@ -146,10 +146,10 @@ function Choice({ on, title, detail, onClick }) {
   return (
     <button onClick={onClick} aria-pressed={on} style={{ textAlign: 'left', width: '100%', color: 'inherit', background: on ? 'var(--raised)' : 'transparent', border: 'none' }}>
       <span className="grow stack" style={{ gap: 2 }}>
-        <span style={{ fontWeight: on ? 700 : 600, fontSize: 17 }}>{title}</span>
+        <span style={{ fontWeight: on ? 650 : 500, fontSize: 16 }}>{title}</span>
         {detail && <span className="xs muted">{detail}</span>}
       </span>
-      {on ? <span style={{ color: 'var(--accent)' }}><Icon name="check" size={18} width={3} /></span> : <Icon name="chevron" size={16} />}
+      {on ? <span style={{ color: 'var(--accent-text)' }}><Icon name="check" size={18} width={3} /></span> : <Icon name="chevron" size={16} />}
     </button>
   );
 }
@@ -208,7 +208,7 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
         <div className="row" style={{ gap: 4 }} aria-hidden="true">
           {steps.slice(0, -1).map((k, i) => <span key={k} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= idx ? 'var(--accent)' : 'var(--chip)' }} />)}
         </div>
-        <h2 className="display" style={{ margin: '6px 0 0', fontSize: 28, lineHeight: 1.1, letterSpacing: '-0.01em' }}>{title}</h2>
+        <h2 className="sec-title" style={{ marginTop: 6 }}>{title}</h2>
         {help && <span className="small muted" style={{ lineHeight: 1.45 }}>{help}</span>}
         {body}
         {canNext && <button className="btn primary big" onClick={next}>{from ? 'OK' : 'Suivant'}</button>}
@@ -222,7 +222,7 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
     return question('Ton objectif ?', auto ? `Ton niveau, je le connais déjà grâce à tes ${fit.runs} course${fit.runs > 1 ? 's' : ''}. Trois questions et ton plan est prêt.` : 'Quelques questions et ton plan est prêt.', (
       <>
         <div className="list">{Object.keys(GOALS).map((k) => <Choice key={k} on={goal === k} title={GOAL_TEXT[k]} onClick={() => { setGoal(k); next(); }} />)}</div>
-        {!initial && <span className="label" style={{ paddingTop: 8 }}>Plutôt tapis ou marche ?</span>}
+        {!initial && <h2 className="sec-title" style={{ paddingTop: 10 }}>Plutôt tapis ou marche ?</h2>}
         {!initial && TAPIS_LINK}
       </>
     ), false);
@@ -285,19 +285,19 @@ function Setup({ initial, onSave, onCancel, onStop, fit }) {
       <GlassHeader eyebrow="Plan de course" title={initial ? 'Ton plan' : 'Ton plan est prêt'} />
       <div className="pad stack" style={{ gap: 14, paddingTop: 10 }}>
         <div className="list">
-          <button style={PLAIN} onClick={() => edit('goal')}><span className="grow stack" style={{ gap: 1, textAlign: 'left' }}><span className="xs muted">Objectif</span><b>{GOAL_TEXT[goal]}</b></span><span className="xs" style={{ color: 'var(--accent)', fontWeight: 600 }}>Modifier</span></button>
-          <button style={PLAIN} onClick={() => edit('week')}><span className="grow stack" style={{ gap: 1, textAlign: 'left' }}><span className="xs muted">Ta semaine</span><b>{count} sorties, la longue le {DAYS[longDayOf(schedule)].toLowerCase()}</b></span><span className="xs" style={{ color: 'var(--accent)', fontWeight: 600 }}>Modifier</span></button>
-          <button style={PLAIN} onClick={() => edit('race')}><span className="grow stack" style={{ gap: 1, textAlign: 'left' }}><span className="xs muted">Course</span><b>{date ? fmtDate(date) : 'Pas de date'}</b></span><span className="xs" style={{ color: 'var(--accent)', fontWeight: 600 }}>Modifier</span></button>
+          <button style={PLAIN} onClick={() => edit('goal')}><span className="grow stack" style={{ gap: 1, textAlign: 'left' }}><span className="xs muted">Objectif</span><b>{GOAL_TEXT[goal]}</b></span><span className="xs" style={{ color: 'var(--accent-text)', fontWeight: 600 }}>Modifier</span></button>
+          <button style={PLAIN} onClick={() => edit('week')}><span className="grow stack" style={{ gap: 1, textAlign: 'left' }}><span className="xs muted">Ta semaine</span><b>{count} sorties, la longue le {DAYS[longDayOf(schedule)].toLowerCase()}</b></span><span className="xs" style={{ color: 'var(--accent-text)', fontWeight: 600 }}>Modifier</span></button>
+          <button style={PLAIN} onClick={() => edit('race')}><span className="grow stack" style={{ gap: 1, textAlign: 'left' }}><span className="xs muted">Course</span><b>{date ? fmtDate(date) : 'Pas de date'}</b></span><span className="xs" style={{ color: 'var(--accent-text)', fontWeight: 600 }}>Modifier</span></button>
         </div>
 
         {coachOk && (
           <section className="stack" style={{ gap: 8 }} aria-label="Type de plan">
-            <h2 className="label">Type de plan</h2>
+            <h2 className="sec-title">Type de plan</h2>
             <div className="list">
               <Choice on={kind === 'coach'} title="Plan de coach (fixe)" detail={`Écrit d'après 50 programmes d'élites et de coachs (Daniels, Pfitzinger, Hansons…). ${coachRuns(goal)} sorties par semaine, les mêmes séances quoi qu'il arrive : seules tes allures s'ajustent.`} onClick={() => setKind('coach')} />
               <Choice on={kind !== 'coach'} title="Plan sur mesure" detail="Le coach construit chaque semaine selon tes sorties, ton volume et ta forme." onClick={() => setKind(null)} />
             </div>
-            {kind === 'coach' && count < coachRuns(goal) && <span className="small" style={{ color: 'var(--accent)', lineHeight: 1.4 }}>Ce plan compte {coachRuns(goal)} sorties par semaine : choisis au moins {coachRuns(goal)} jours dans « Ta semaine », sinon les footings en trop sont retirés.</span>}
+            {kind === 'coach' && count < coachRuns(goal) && <span className="small" style={{ color: 'var(--accent-text)', lineHeight: 1.4 }}>Ce plan compte {coachRuns(goal)} sorties par semaine : choisis au moins {coachRuns(goal)} jours dans « Ta semaine », sinon les footings en trop sont retirés.</span>}
             {kind === 'coach' && count > coachRuns(goal) && <span className="xs muted" style={{ lineHeight: 1.4 }}>Ce plan compte {coachRuns(goal)} sorties : tes autres jours restent libres (repos ou salle).</span>}
           </section>
         )}
@@ -753,7 +753,7 @@ export default function Course() {
         {!draft && tab === 'plan' && (
           <>
             <div className="between" style={{ paddingTop: 4 }}>
-              <h2 className="label">Cette semaine</h2>
+              <h2 className="sec-title">Cette semaine</h2>
               <span className="xs muted">{weekSessions.filter((s) => s.done).length} sur {weekSessions.length} faites</span>
             </div>
             {weekSessions.map((s) => <SessionRow key={s.key} s={s} active={next?.key === s.key} onPick={() => pick(s.key)} />)}
@@ -804,7 +804,7 @@ export default function Course() {
             {showPlan && plan.weeks.map((wk, i) => (
               <div key={i} className="stack" style={{ gap: 8 }}>
                 <div className="between" style={{ paddingTop: 8 }}>
-                  <h2 className="label">Semaine {i + 1}{i === plan.current ? ' (en cours)' : ''}, {PHASES[wk[0]?.phase]?.label.toLowerCase()}{wk[0]?.recover ? ', allégée' : ''}</h2>
+                  <h2 className="sec-title">Semaine {i + 1}{i === plan.current ? ' (en cours)' : ''}, {PHASES[wk[0]?.phase]?.label.toLowerCase()}{wk[0]?.recover ? ', allégée' : ''}</h2>
                   <span className="xs muted">≈ {km1(wk.reduce((a, x) => a + x.km, 0))} km</span>
                 </div>
                 {wk.map((s) => <SessionRow key={s.key} s={s} active={next?.key === s.key} onPick={() => pick(s.key)} />)}
@@ -837,7 +837,7 @@ export default function Course() {
 
             {!!logs.length && (
               <>
-                <h2 className="label" style={{ paddingTop: 4 }}>Dernières courses</h2>
+                <h2 className="sec-title" style={{ paddingTop: 8 }}>Dernières courses</h2>
                 {logs.slice(0, 6).map((l) => (
                   <div key={l.id} className="card row" style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 }}>
                     <div className="grow stack" style={{ gap: 1 }}>

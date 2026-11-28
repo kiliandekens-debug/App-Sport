@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
+import { exLabel } from '../lib/exercises.js';
 import { useState } from 'react';
 import { useData } from '../data.jsx';
-import { LineChart, ExerciseImage, GlassHeader, Icon, Bars } from '../components.jsx';
+import { LineChart, ExerciseImage, GlassHeader, Icon, Bars, StatGrid, SectionHead } from '../components.jsx';
 import { fmtKg, fmtDay, fmtInt, isWork, isPlausible, volumeOf } from '../lib/stats.js';
 import { muscleLoad, GROUPS, REGIONS } from '../lib/anatomy.js';
 import { BodyMap } from '../analysis.jsx';
@@ -80,13 +81,13 @@ export default function Progres() {
 
       {data.workouts.length > 0 && (
         <div className="pad stack" style={{ paddingTop: 8, gap: 12 }}>
+          <SectionHead title="Cette semaine" action={data.week.streak > 1 ? <span className="row xs" style={{ gap: 4, color: 'var(--ok)', fontWeight: 700 }}><Icon name="flame" size={14} />{data.week.streak} semaines d'affilée</span> : null} />
+          <StatGrid items={[
+            { icon: 'dumbbell', kind: 'gym', value: recent.length, label: recent.length > 1 ? 'Séances' : 'Séance' },
+            { icon: 'chart', value: fmtKg(tonnes), unit: 't', label: 'Volume' },
+            { icon: 'flag', kind: 'run', value: fmtKg(km), unit: 'km', label: 'Course' },
+          ]} />
           <div className="card" style={{ gap: 12 }}>
-            <div className="between"><h2 className="label">Ta semaine</h2>{data.week.streak > 1 && <span className="row xs" style={{ gap: 4, color: 'var(--ok)', fontWeight: 700 }}><Icon name="flame" size={14} />{data.week.streak} semaines d'affilée</span>}</div>
-            <div className="kpis">
-              <span><b>{recent.length}</b>séance{recent.length > 1 ? 's' : ''}</span>
-              <span><b>{fmtKg(tonnes)}</b>tonne{tonnes >= 2 ? 's' : ''}</span>
-              <span><b>{fmtKg(km)}</b>km couru{km >= 2 ? 's' : ''}</span>
-            </div>
             {walks.length > 0 && <span className="small"><span className="muted">Marche et tapis : </span><b>{walks.length}</b> séance{walks.length > 1 ? 's' : ''}{dplus ? <>, <b>{dplus}</b> m de dénivelé</> : null}</span>}
             {recentSets.length > 0 && (
               <>
@@ -104,8 +105,9 @@ export default function Progres() {
               </>
             )}
             {!!facts.length && (
-              <div className="warn" style={{ gap: 2 }}>
-                <span className="small" style={{ lineHeight: 1.4 }}><b style={{ color: 'var(--warm)' }}>À surveiller : </b>{facts[0]}</span>
+              <div className="warn callout">
+                <Icon name="info" size={18} />
+                <span className="stack" style={{ gap: 2 }}><span className="notice-t">À surveiller</span><span className="small" style={{ lineHeight: 1.45 }}>{facts[0]}</span></span>
               </div>
             )}
           </div>
@@ -117,9 +119,9 @@ export default function Progres() {
       ) : (
         <>
           <div className="pad stack" style={{ paddingTop: 16, gap: 6 }}>
-            <h2 className="label">Un exercice</h2>
+            <h2 className="sec-title">Un exercice</h2>
             <select className="input" value={name} onChange={(e) => setName(e.target.value)} aria-label="Exercice">
-              {list.map((e) => <option key={e.name} value={e.name}>{e.name}</option>)}
+              {list.map((e) => <option key={e.name} value={e.name}>{exLabel(e.name)}</option>)}
             </select>
           </div>
 
@@ -152,11 +154,11 @@ export default function Progres() {
 
       {!!records.length && (
         <div className="section">
-          <h2 className="label">Tes derniers records</h2>
+          <h2 className="sec-title">Tes derniers records</h2>
           <div className="list">
             {records.map((e) => (
               <div key={e.name}>
-                <span style={{ fontSize: 15 }} className="grow">{e.name}</span>
+                <span style={{ fontSize: 15 }} className="grow">{exLabel(e.name)}</span>
                 <span className="stack" style={{ gap: 0, alignItems: 'flex-end' }}>
                   <span className="display" style={{ fontWeight: 600 }}>{fmtKg(e.best.kg)} kg × {e.best.reps}</span>
                   <span className="xs muted">{fmtDay(e.best.date)} {e.best.date.getFullYear()}</span>
@@ -171,13 +173,13 @@ export default function Progres() {
       )}
       {s.sessions > 0 && (
         <div className="section">
-          <h2 className="label">Depuis le début</h2>
+          <h2 className="sec-title">Depuis le début</h2>
+          <StatGrid items={[
+            { icon: 'dumbbell', kind: 'gym', value: s.sessions, label: s.sessions > 1 ? 'Séances' : 'Séance' },
+            { icon: 'clock', value: Math.round(s.hours), unit: 'h', label: 'Temps' },
+            { icon: 'chart', value: fmtInt(s.tonnes), unit: 't', label: 'Volume' },
+          ]} />
           <div className="card" style={{ gap: 8 }}>
-            <div className="kpis">
-              <span><b>{s.sessions}</b>séance{s.sessions > 1 ? 's' : ''}</span>
-              <span><b>{Math.round(s.hours)}</b>heure{Math.round(s.hours) >= 2 ? 's' : ''}</span>
-              <span><b>{fmtInt(s.tonnes)}</b>tonne{Math.round(s.tonnes) >= 2 ? 's' : ''}</span>
-            </div>
             <details className="disclose">
               <summary>Volume par mois</summary>
               <div className="stack" style={{ gap: 8, paddingTop: 8 }}>

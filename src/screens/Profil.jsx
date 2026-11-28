@@ -28,7 +28,7 @@ export default function Profil({ user }) {
       </div>
 
       <div className="section" style={{ paddingTop: 28 }}>
-        <Group title="Mon activité" id="g-activite">
+        <Group title="Mon activité" id="g-activite" section>
           <SettingRow icon="clock" to="/historique">Historique des entraînements</SettingRow>
           <SettingRow icon="trophy" to="/progres" right={s.sessions ? <span className="val">{s.sessions} séance{s.sessions > 1 ? 's' : ''}</span> : null}>Records et progrès</SettingRow>
           <SettingRow icon="run" to="/course">{data.runProfile ? 'Mon plan de course' : 'Créer un plan de course'}</SettingRow>
@@ -37,7 +37,7 @@ export default function Profil({ user }) {
       </div>
 
       <div className="section" style={{ paddingTop: 24 }}>
-        <Group title="Moi" id="g-moi">
+        <Group title="Moi" id="g-moi" section>
           <SettingRow icon="user" to="/reglages/compte" right={weight ? <span className="val">{String(weight).replace('.', ',')} kg</span> : null}>Informations personnelles</SettingRow>
           <SettingRow icon="gear" to="/reglages">Réglages</SettingRow>
         </Group>

@@ -27,6 +27,7 @@ import { useUi } from './ui.jsx';
 keepInviteFromUrl();
 import { PasswordForm } from './password.jsx';
 import { UpdateBanner, WhatsNew, useFreshVersion } from './update.jsx';
+import { setMe } from './social.jsx';
 import { WatchSync } from './watch.js';
 
 export default function App() {
@@ -64,6 +65,7 @@ export default function App() {
 }
 
 function Shell({ user }) {
+  setMe(user?.id);
   const data = useData();
   const { pathname } = useLocation();
   const hideNav = pathname.startsWith('/seance') || pathname.startsWith('/montre') || pathname.startsWith('/variante') || pathname.startsWith('/routines');

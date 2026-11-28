@@ -89,7 +89,7 @@ export default function Login() {
             {mode === 'signup' && <strong style={{ fontSize: 18 }}>Créer un compte</strong>}
             {mode === 'signup' && (
               <label className="stack" style={{ gap: 6 }}>
-                <h2 className="label">Code bêta (facultatif)</h2>
+                <h2 className="glabel">Code bêta (facultatif)</h2>
                 <input className="input" autoCapitalize="characters" autoComplete="off" spellCheck={false} placeholder="KAD-ABCD-EFGH" value={code} onChange={(e) => setCode(e.target.value)} />
                 <span className="xs muted" style={{ lineHeight: 1.4 }}>Avec un code, tout Kadence est gratuit pendant un an (50 places).</span>
               </label>
@@ -108,12 +108,12 @@ export default function Login() {
               </div>
             )}
             <label className="stack" style={{ gap: 6 }}>
-              <h2 className="label">E-mail</h2>
+              <h2 className="glabel">E-mail</h2>
               <input className="input" type="email" required autoComplete="username" placeholder="toi@exemple.com" value={email} onChange={(e) => setEmail(e.target.value)} />
             </label>
             {mode !== 'link' && (
               <label className="stack" style={{ gap: 6 }}>
-                <h2 className="label">Mot de passe</h2>
+                <h2 className="glabel">Mot de passe</h2>
                 <input className="input" type="password" required minLength={mode === 'signup' ? 8 : undefined} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} value={password} onChange={(e) => setPassword(e.target.value)} />
               </label>
             )}

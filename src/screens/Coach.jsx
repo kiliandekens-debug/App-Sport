@@ -5,7 +5,7 @@ import { useUi } from '../ui.jsx';
 import { reviewLastSession } from '../lib/coach.js';
 import { hasLest } from '../session.jsx';
 import { fmtKg, fmtInt, fmtDay, sameDay, titleKey, isWork, isPlausible, volumeOf as volumeOfSets } from '../lib/stats.js';
-import { incrementOf } from '../lib/exercises.js';
+import { incrementOf, exLabel } from '../lib/exercises.js';
 import { Icon, ExerciseImage, GlassHeader } from '../components.jsx';
 import { SessionAnalysis } from '../analysis.jsx';
 import { ShareSheet } from '../social.jsx';
@@ -127,7 +127,7 @@ export default function Coach() {
 
         {state?.summary && (
           <button className="card" onClick={() => setShare(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, textAlign: 'left', color: 'inherit', font: 'inherit', border: 'none', cursor: 'pointer', width: '100%' }}>
-            <span className="tile-icon" style={{ background: 'color-mix(in srgb, var(--accent) 18%, var(--chip))', color: 'var(--accent)' }}><Icon name="users" size={20} /></span>
+            <span className="tile-icon" style={{ background: 'color-mix(in srgb, var(--accent) 18%, var(--chip))', color: 'var(--accent-text)' }}><Icon name="users" size={20} /></span>
             <span className="grow stack" style={{ gap: 1 }}><span style={{ fontWeight: 650 }}>Partager avec mes amis</span><span className="xs muted">Bravos et commentaires dans le fil</span></span>
             <Icon name="chevron" size={16} />
           </button>
@@ -137,7 +137,7 @@ export default function Coach() {
         <SessionAnalysis workout={w} />
 
         <div className="between" style={{ paddingTop: 12 }}>
-          <h2 className="label">Pour la prochaine fois</h2>
+          <h2 className="sec-title">Pour la prochaine fois</h2>
           <span className="xs muted">{rows.length} exercice{rows.length > 1 ? 's' : ''}</span>
         </div>
 
@@ -148,7 +148,7 @@ export default function Coach() {
               <div className="row" style={{ alignItems: 'flex-start' }}>
                 <ExerciseImage name={r.name} size={44} />
                 <div className="grow stack" style={{ gap: 3 }}>
-                  <span className="display" style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.15 }}>{r.name}</span>
+                  <span className="display" style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.15 }}>{exLabel(r.name)}</span>
                   <span className="xs muted">Fait : {setsText(r.sets)}</span>
                 </div>
                 <span className="xs" style={{ background: bg, color: fg, fontWeight: 700, borderRadius: 8, padding: '4px 8px', whiteSpace: 'nowrap' }}>{label}</span>

@@ -358,12 +358,12 @@ export default function Tapis({ user }) {
         {!draft && !detail && (
           <>
             <section className="stack" style={{ gap: 8 }} aria-label="Séances guidées">
-              <h2 className="label">Séances guidées</h2>
+              <h2 className="sec-title">Séances guidées</h2>
               <div className="list">
                 {sessions.map((s) => (
                   <button key={s.key} onClick={() => setOpen(s.key.slice(4))} style={{ textAlign: 'left', width: '100%', color: 'inherit', background: 'transparent', border: 'none' }}>
                     <span className="grow stack" style={{ gap: 2 }}>
-                      <span style={{ fontWeight: 650, fontSize: 17 }}>{s.title}{s.level > 0 ? <span className="xs" style={{ color: 'var(--ok)', fontWeight: 700 }}> · niveau {s.level + 1}</span> : null}</span>
+                      <span style={{ fontWeight: 600, fontSize: 16 }}>{s.title}{s.level > 0 ? <><span className="sr-only"> · niveau {s.level + 1}</span><span className="tag ok" aria-hidden="true" style={{ marginLeft: 8, verticalAlign: 1 }}>Niveau {s.level + 1}</span></> : null}</span>
                       <span className="xs muted">{s.mins} min · {n1(s.km)} km · {s.elevation} m D+</span>
                     </span>
                     <Icon name="chevron" size={16} />
@@ -384,7 +384,7 @@ export default function Tapis({ user }) {
 
             {recent.length > 0 && (
               <section className="stack" style={{ gap: 8 }} aria-label="Tes dernières séances">
-                <h2 className="label">Tes dernières séances</h2>
+                <h2 className="sec-title">Tes dernières séances</h2>
                 <div className="list">
                   {recent.map((l) => (
                     <button key={l.id} onClick={() => setSheet(l.id)} style={{ textAlign: 'left', width: '100%', color: 'inherit', background: 'transparent', border: 'none' }}>

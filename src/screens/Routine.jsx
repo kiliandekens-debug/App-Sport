@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { exLabel } from '../lib/exercises.js';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useData, saveRoutine, deleteRoutine } from '../data.jsx';
 import { useSession, SET_TYPES, SET_LABEL, SET_NAME, REST_OPTIONS, mmss } from '../session.jsx';
 import { defaultRest, toggleSuperset, cleanSupersets } from '../lib/routines.js';
-import { Icon, ExerciseImage, SupersetTag } from '../components.jsx';
+import { Icon, ExerciseImage, SupersetTag, GlassHeader } from '../components.jsx';
 import { useUi } from '../ui.jsx';
 import { ExercisePicker } from './Exercices.jsx';
 
@@ -75,10 +76,7 @@ export default function Routine() {
   if (picking) {
     return (
       <main className="screen" style={{ paddingBottom: 'calc(110px + env(safe-area-inset-bottom))' }}>
-        <div className="head-row">
-          <button className="icon-btn" aria-label="Retour à la routine" onClick={() => setPicking(false)}><Icon name="back" /></button>
-          <h1 className="title-s grow">Ajouter des exercices</h1>
-        </div>
+        <GlassHeader title="Ajouter des exercices" back={{ onClick: () => setPicking(false), label: 'Retour à la routine' }} />
         <ExercisePicker selected={new Set(r.exercises.map((e) => e.name))} onAdd={addEx} />
         <div className="glass-dock"><div className="dock-in">
           <button className="btn primary big" onClick={() => setPicking(false)}>{r.exercises.length ? `Terminé, ${r.exercises.length} exercice${r.exercises.length > 1 ? 's' : ''}` : 'Retour à la routine'}</button>
@@ -89,15 +87,12 @@ export default function Routine() {
 
   return (
     <main className="screen" style={{ paddingBottom: 'calc(110px + env(safe-area-inset-bottom))' }}>
-      <div className="head-row">
-        <Link to="/" aria-label="Retour à l'accueil" className="icon-btn" onClick={leave}><Icon name="back" /></Link>
-        <h1 className="title-s grow">{id === 'nouvelle' ? 'Nouvelle routine' : 'Routine'}</h1>
-        <button className="btn" onClick={() => save(false)} disabled={saving}>{saving ? '…' : 'Enregistrer'}</button>
-      </div>
+      <GlassHeader title={id === 'nouvelle' ? 'Nouvelle routine' : 'Routine'} back={{ to: '/', onClick: leave, label: 'Retour à l\'accueil' }}
+        right={<button className="btn" onClick={() => save(false)} disabled={saving}>{saving ? '…' : 'Enregistrer'}</button>} />
 
       <div className="pad stack" style={{ gap: 14 }}>
         <label className="stack" style={{ gap: 6 }}>
-          <h2 className="label">Nom</h2>
+          <h2 className="glabel">Nom</h2>
           <input className="input" value={r.name} placeholder="Ex. Pecs du lundi" onChange={(e) => setR({ ...r, name: e.target.value })} />
         </label>
 
@@ -110,7 +105,7 @@ export default function Routine() {
                 <div className="row">
                   <ExerciseImage name={e.name} size={52} />
                   <div className="grow stack" style={{ gap: 4 }}>
-                    <span style={{ fontSize: 15, fontWeight: 600 }}>{e.name}</span>
+                    <span style={{ fontSize: 15, fontWeight: 600 }}>{exLabel(e.name)}</span>
                     <SupersetTag letter={e.superset} />
                   </div>
                 </div>

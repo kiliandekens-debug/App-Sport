@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { exLabel } from './lib/exercises.js';
 import { useModal } from './modal.js';
 import { useData, deleteWorkout, renameWorkout, deleteRunLog } from './data.jsx';
 import { useUi } from './ui.jsx';
@@ -65,7 +66,7 @@ export function DayDetail({ d, onRun, onGym, onRunLog, hideRunLink = false, gymP
             <span style={{ fontWeight: 650 }}>{d.plan.title}</span>
             <span className="xs muted">Course prévue : {d.plan.mins} min, environ {fmtKg(d.plan.km)} km</span>
           </span>
-          {!hideRunLink && <span className="xs" style={{ color: 'var(--accent)', fontWeight: 650 }}>Voir</span>}
+          {!hideRunLink && <span className="xs" style={{ color: 'var(--accent-text)', fontWeight: 650 }}>Voir</span>}
         </button>
       )}
       {gymPlan && (
@@ -75,7 +76,7 @@ export function DayDetail({ d, onRun, onGym, onRunLog, hideRunLink = false, gymP
             <span style={{ fontWeight: 650 }}>{gymPlan.name}</span>
             <span className="xs muted">Muscu prévue : {gymPlan.detail}</span>
           </span>
-          <span className="xs" style={{ color: 'var(--accent)', fontWeight: 650 }}>{d.today ? 'Démarrer' : 'Voir'}</span>
+          <span className="xs" style={{ color: 'var(--accent-text)', fontWeight: 650 }}>{d.today ? 'Démarrer' : 'Voir'}</span>
         </button>
       )}
       {empty && (
@@ -145,10 +146,10 @@ export function WorkoutSheet({ id, onClose }) {
                     <div className="row" style={{ gap: 12 }}>
                       <ExerciseImage name={e.name} size={44} radius={12} />
                       <div className="grow stack" style={{ gap: 2, minWidth: 0 }}>
-                        <span style={{ fontWeight: 650, lineHeight: 1.25 }}>{e.name}</span>
+                        <span style={{ fontWeight: 650, lineHeight: 1.25 }}>{exLabel(e.name)}</span>
                         <span className="xs muted">{e.sets.filter((x) => isWork(x)).length} série{e.sets.filter((x) => isWork(x)).length > 1 ? 's' : ''}{pr ? '' : stat?.best ? `, record ${fmtKg(stat.best.kg)} kg × ${stat.best.reps}` : ''}</span>
                       </div>
-                      {pr && <span className="tag" style={{ background: 'var(--ok)', color: 'var(--on-ok)' }}>Record</span>}
+                      {pr && <span className="tag rec">Record</span>}
                     </div>
                     <div className="wsets">
                       {e.sets.map((x, i) => {
@@ -210,7 +211,7 @@ export function MonthCalendar({ planned = [], plannedGym = [], withSummary = fal
     <div className="stack" style={{ gap: 10 }}>
       {withSummary && (
         <>
-          <h2 className="glabel">{sameDay(first, new Date(now.getFullYear(), now.getMonth(), 1)) ? 'Ce mois-ci' : label.replace(/^./, (c) => c.toUpperCase())}</h2>
+          <h2 className="sec-title">{sameDay(first, new Date(now.getFullYear(), now.getMonth(), 1)) ? 'Ce mois-ci' : label.replace(/^./, (c) => c.toUpperCase())}</h2>
           <StatGrid items={[
             { icon: 'dumbbell', kind: 'gym', value: gymN, label: 'Muscu' },
             { icon: 'run', kind: 'run', value: runOnly, label: runOnly > 1 ? 'Courses' : 'Course' },

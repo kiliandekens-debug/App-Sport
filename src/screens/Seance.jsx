@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { exLabel } from '../lib/exercises.js';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSession, mmss, num, prevOf, SET_LABEL, SET_NAME, REST_OPTIONS, sessionToRoutine, similarExercises } from '../session.jsx';
 import { useData, saveRoutine } from '../data.jsx';
@@ -57,7 +58,7 @@ function ExerciseCard({ e, ei, s, best, isCurrent, onOpen, cardRef }) {
         </button>
         <div className="grow stack" style={{ gap: 3 }}>
           <SupersetTag letter={e.superset} />
-          <span className="display" style={{ fontSize: 17, lineHeight: 1.2 }}>{e.name}</span>
+          <span className="display" style={{ fontSize: 17, lineHeight: 1.2 }}>{exLabel(e.name)}</span>
           {best && <span className="xs muted">Record {fmtKg(best.kg)} kg × {best.reps}</span>}
         </div>
         <button className="icon-btn sq" aria-label={`Options de ${e.name}`} aria-expanded={menu} onClick={() => (menu ? closeMenu() : setMenu(true))}><Icon name={menu ? 'close' : 'more'} size={18} /></button>
@@ -70,7 +71,7 @@ function ExerciseCard({ e, ei, s, best, isCurrent, onOpen, cardRef }) {
             <button key={x.name} onClick={() => swapTo(x.name)} style={{ minHeight: 58 }}>
               <ExerciseImage name={x.name} size={36} radius={9} />
               <span className="grow stack" style={{ gap: 1, minWidth: 0 }}>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.name}</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{exLabel(x.name)}</span>
                 <span className="xs muted">{x.done ? (x.kg ? `Dernière fois ${fmtKg(x.kg)} kg × ${x.reps}` : `Dernière fois × ${x.reps}`) : `Jamais fait${x.equip ? ` · ${x.equip}` : ''}`}</span>
               </span>
             </button>
@@ -238,7 +239,7 @@ export default function Seance() {
           <button className="btn primary" style={{ height: 40, padding: '0 16px', borderRadius: 20, fontSize: 15 }} onClick={finish} disabled={saving}>{saving ? '…' : 'Terminer'}</button>
         </div>
         <div className="session-stats" style={{ alignItems: 'center' }}>
-          <span><b className="accent" style={{ color: 'var(--accent)' }}>{mmss(s.elapsed)}</b>durée</span>
+          <span><b className="accent" style={{ color: 'var(--accent-text)' }}>{mmss(s.elapsed)}</b>durée</span>
           <span><b>{fmtInt(s.volume)}</b>kg</span>
           <span><b>{s.done}/{s.total}</b>séries</span>
           {s.resting ? (
@@ -259,7 +260,7 @@ export default function Seance() {
             return (
               <button key={e.name} className={`prog-item ${i === ei ? 'cur' : ''}`} onClick={() => { s.setCurrent(i); refs.current[e.name]?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
                 <ExerciseImage name={e.name} size={40} radius={10} />
-                <span className="grow" style={{ fontSize: 15, fontWeight: i === ei ? 600 : 400 }}>{e.name}</span>
+                <span className="grow" style={{ fontSize: 15, fontWeight: i === ei ? 600 : 400 }}>{exLabel(e.name)}</span>
                 <span className={`small ${i === ei ? 'accent' : 'muted'}`}>{w.filter((x) => x.done).length}/{w.length}</span>
               </button>
             );
@@ -314,7 +315,7 @@ export default function Seance() {
           ) : ex && s.activeSet >= 0 ? (
             <div className="row">
               <button className="grow stack" style={{ gap: 2, background: 'none', border: 'none', color: 'inherit', textAlign: 'left', padding: 0 }} onClick={() => refs.current[ex.name]?.scrollIntoView({ behavior: 'smooth', block: 'start' })} aria-label={`Aller à ${ex.name}`}>
-                <span className="xs muted">À toi : {ex.name}</span>
+                <span className="xs muted">À toi : {exLabel(ex.name)}</span>
                 <span className="display" style={{ fontSize: 22 }}>{(() => { const x = ex.sets[s.activeSet]; const pv = prevOf(ex, s.activeSet); const kg = x.kg !== '' ? num(x.kg) : pv?.kg; const reps = x.reps !== '' ? x.reps : pv?.reps; return `${kg != null ? fmtKg(kg) : '?'} kg × ${reps ?? '?'}`; })()}</span>
               </button>
               <button className="btn primary" style={{ height: 56, borderRadius: 16, padding: '0 24px', fontSize: 16 }} onClick={() => onValidate(s, ui, ei, s.activeSet)}>Valider</button>

@@ -3,12 +3,12 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase.js';
 import { useData } from '../data.jsx';
 import { MUSCLES, EQUIPS, muscleOf, equipOf } from '../lib/exercises.js';
-import { Icon } from '../components.jsx';
+import { Icon, GlassHeader } from '../components.jsx';
 
 function Seg({ options, value, onChange, label }) {
   return (
     <div className="stack" style={{ gap: 8 }}>
-      <h2 className="label">{label}</h2>
+      <h2 className="glabel">{label}</h2>
       <div className="seg" role="group" aria-label={label} style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
         {options.map((o) => <button key={o} type="button" className={value === o ? 'on' : ''} aria-pressed={value === o} onClick={() => onChange(o)}>{o}</button>)}
       </div>
@@ -61,7 +61,7 @@ export function VarianteForm({ base, onSaved, embedded }) {
     <div className={embedded ? 'card' : 'stack'} style={{ gap: 18 }}>
       {embedded && <span className="title-s">Nouvelle variante</span>}
       <label className="stack" style={{ gap: 8 }}>
-        <h2 className="label">Exercice de base</h2>
+        <h2 className="glabel">Exercice de base</h2>
         <input className="input" list="ex-names" value={baseName} onChange={(e) => setBaseName(e.target.value)} placeholder="Ex. Développé épaules (machine)" />
         <datalist id="ex-names">{data.exerciseList.map((e) => <option key={e.name} value={e.name} />)}</datalist>
       </label>
@@ -70,16 +70,16 @@ export function VarianteForm({ base, onSaved, embedded }) {
       <Seg label="Côté" options={['Deux bras', 'Un bras']} value={cote} onChange={setCote} />
       <div className="grid2">
         <label className="stack" style={{ gap: 8 }}>
-          <h2 className="label">Muscle</h2>
+          <h2 className="glabel">Muscle</h2>
           <select className="input" value={muscle} onChange={(e) => setMuscle(e.target.value)}>{MUSCLES.map((m) => <option key={m}>{m}</option>)}</select>
         </label>
         <label className="stack" style={{ gap: 8 }}>
-          <h2 className="label">Matériel</h2>
+          <h2 className="glabel">Matériel</h2>
           <select className="input" value={equip} onChange={(e) => setEquip(e.target.value)}>{EQUIPS.map((m) => <option key={m}>{m}</option>)}</select>
         </label>
       </div>
       <label className="stack" style={{ gap: 8 }}>
-        <h2 className="label">Comment je le fais</h2>
+        <h2 className="glabel">Comment je le fais</h2>
         <textarea rows={2} className="input" style={{ height: 'auto', padding: '12px 14px', resize: 'none' }} placeholder="Ex. assis face au dossier, siège cran 4" value={notes} onChange={(e) => setNotes(e.target.value)} />
       </label>
       <div className="row" style={{ padding: 14, borderRadius: 14, background: embedded ? 'var(--raised)' : 'var(--card)' }}>
@@ -106,10 +106,7 @@ export default function Variante() {
   const base = state?.base || (nom ? { name: nom, muscle: muscleOf(nom), equip: equipOf(nom) } : null);
   return (
     <main className="screen">
-      <div className="head-row">
-        <Link to="/exercices" aria-label="Retour aux exercices" className="icon-btn"><Icon name="back" /></Link>
-        <h1 className="title-s grow">Nouvelle variante</h1>
-      </div>
+      <GlassHeader title="Nouvelle variante" back={{ to: '/exercices', label: 'Retour aux exercices' }} />
       <div className="pad" style={{ paddingTop: 8 }}>
         <VarianteForm base={base} onSaved={() => setTimeout(() => nav('/exercices'), 700)} />
       </div>

@@ -2,7 +2,7 @@ import { useModal } from '../modal.js';
 import { useData } from '../data.jsx';
 import { ExerciseImage, Icon } from '../components.jsx';
 import { fmtKg, fmtDay } from '../lib/stats.js';
-import { muscleOf, equipOf } from '../lib/exercises.js';
+import { muscleOf, equipOf, exLabel } from '../lib/exercises.js';
 
 // Bottom sheet with the exercise illustration and the user's history on it.
 export default function ExerciseSheet({ exercise, onClose, children }) {
@@ -16,7 +16,7 @@ export default function ExerciseSheet({ exercise, onClose, children }) {
       <div ref={ref} tabIndex={-1} className="sheet" role="dialog" aria-modal="true" aria-label={exercise.name} onClick={(e) => e.stopPropagation()}>
         <span className="sheet-grip" />
         <div className="row">
-          <span className="display grow" style={{ fontSize: 20, lineHeight: 1.2 }}>{exercise.name}</span>
+          <span className="display grow" style={{ fontSize: 20, lineHeight: 1.2 }}>{exLabel(exercise.name)}</span>
           <button className="icon-btn" aria-label="Fermer" onClick={onClose}><Icon name="close" /></button>
         </div>
         <ExerciseImage name={exercise.name} base={exercise.base} size="full" animate radius={16} />

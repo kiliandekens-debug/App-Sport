@@ -10,14 +10,18 @@ import { publish, gymPost, runPost, ensureProfile } from './social.js';
 const COLORS = ['#7CCFF2', '#3DD68C', '#FFC933', '#B79CFF', '#FF8FB1', '#00A3FF'];
 const INK = { '#7CCFF2': '#0B2230', '#3DD68C': '#07160E', '#FFC933': '#2A1E00', '#B79CFF': '#1B1036', '#FF8FB1': '#3A0B1C', '#00A3FF': '#00121F' };
 const colorOf = (id = '') => COLORS[[...id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 997, 7) % COLORS.length];
-const initials = (name = '?') => name.trim().slice(0, 2).toUpperCase();
+const initials = (name = '?') => (name.trim()[0] || '?').toUpperCase();
+// The signed-in user: always the brand blue, as on the profile.
+let ME = null;
+export const setMe = (id) => { ME = id || null; };
 const n1 = (v) => String(Math.round(v * 10) / 10).replace('.', ',');
 const n2 = (v) => String(Math.round(v * 100) / 100).replace('.', ',');
 const BAR = { warm: 'var(--z0)', cool: 'var(--z0)', rest: 'var(--z0)', recovery: 'var(--z0)', easy: 'var(--z1)', steady: 'var(--z1)', race: 'var(--z2)', tempo: 'var(--z3)', fast: 'var(--z4)', rep: 'var(--z4)', hill: 'var(--z4)', stride: 'var(--z4)' };
 
 export function Avatar({ id, name, size = 40 }) {
-  const c = colorOf(id);
-  return <span aria-hidden="true" className="avatar" style={{ width: size, height: size, borderRadius: size / 2, background: c, color: INK[c], fontSize: Math.round(size * 0.32) }}>{initials(name)}</span>;
+  const me = id === 'me' || (ME && id === ME);
+  const c = me ? 'var(--brand)' : colorOf(id);
+  return <span aria-hidden="true" className="avatar display" style={{ width: size, height: size, borderRadius: size / 2, background: c, color: me ? 'var(--on-brand)' : INK[c], fontSize: Math.round(size * 0.46) }}>{initials(name)}</span>;
 }
 
 export function ago(iso) {
@@ -28,7 +32,7 @@ export function ago(iso) {
   if (mins < 24 * 60) return `Il y a ${Math.round(mins / 60)} h`;
   const days = Math.round(mins / 1440);
   if (days === 1) return 'Hier';
-  if (days < 7) return d.toLocaleDateString('fr-FR', { weekday: 'long' });
+  if (days < 7) return d.toLocaleDateString('fr-FR', { weekday: 'long' }).replace(/^./, (c) => c.toUpperCase());
   return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 }
 
@@ -79,7 +83,7 @@ export function PostBody({ p, full = false }) {
 
 export function PostCard({ p, onOpen, onBravo, onMore }) {
   const s = p.stats || {};
-  const badge = p.kind === 'gym' ? (s.records?.length ? ['RECORD', 'rec'] : null) : s.held != null && s.held === s.of ? ['ALLURE TENUE', 'ok'] : null;
+  const badge = p.kind === 'gym' ? (s.records?.length ? ['Record', 'rec'] : null) : s.held != null && s.held === s.of ? ['Allure tenue', 'ok'] : null;
   return (
     <article className="card post" aria-label={`${p.name}, ${p.title}`}>
       <div className="row" style={{ gap: 10 }}>
@@ -88,7 +92,7 @@ export function PostCard({ p, onOpen, onBravo, onMore }) {
           <span style={{ fontWeight: 700 }}>{p.mine ? 'Toi' : p.name}</span>
           <span className="xs muted" style={{ textTransform: 'none' }}>{ago(p.done_at)} · {KIND[p.kind]}</span>
         </span>
-        {badge && <span className={`post-badge ${badge[1]}`}>{badge[0]}</span>}
+        {badge && <span className={`tag ${badge[1]}`}>{badge[0]}</span>}
         {onMore && <button className="icon-btn" aria-label="Plus d'options" onClick={() => onMore(p)} style={{ width: 36, height: 36 }}><Icon name="more" size={18} /></button>}
       </div>
       <button className="post-open" onClick={() => onOpen(p)}>

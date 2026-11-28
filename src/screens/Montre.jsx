@@ -5,7 +5,7 @@ import { useUi } from '../ui.jsx';
 import { onValidate } from './Seance.jsx';
 import { useData } from '../data.jsx';
 import { fmtKg, fmtInt } from '../lib/stats.js';
-import { incrementOf } from '../lib/exercises.js';
+import { incrementOf, exLabel } from '../lib/exercises.js';
 import { Icon } from '../components.jsx';
 
 // Compact view for a watch-sized screen: one piece of information at a time.
@@ -96,7 +96,7 @@ export default function Montre() {
           {remaining.slice(0, 3).map(({ e, i }, k) => (
             <button key={e.name} className="btn" style={{ minHeight: 44, height: 'auto', borderRadius: 16, padding: '6px 10px', justifyContent: 'flex-start', textAlign: 'left', border: k === 0 ? '2px solid var(--accent)' : 'none' }} onClick={() => s.setCurrent(i)}>
               <span className="stack" style={{ gap: 1 }}>
-                <span style={{ fontSize: 13 }}>{e.name}</span>
+                <span style={{ fontSize: 13 }}>{exLabel(e.name)}</span>
                 <span className="muted" style={{ fontSize: 10, fontWeight: 400 }}>{e.sets.length} × {e.sets[0]?.reps || '?'}</span>
               </span>
             </button>
@@ -120,7 +120,7 @@ export default function Montre() {
   return (
     <Frame>
       <div className="between xs"><span className="accent" style={{ fontWeight: 600 }}>{mmss(s.elapsed)}</span><span className="muted">{s.done}/{s.total}</span></div>
-      <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2 }}>{ex.name}</span>
+      <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.2 }}>{exLabel(ex.name)}</span>
       <span className="muted" style={{ fontSize: 11 }}>
         {firstOfEx && ex.plan ? `Coach : ${fmtKg(ex.plan.kg)} × ${ex.plan.reps}` : `Série ${s.activeSet + 1} / ${ex.sets.length}${prev ? ` · avant : ${fmtKg(prev.kg)} × ${prev.reps}` : ''}`}
       </span>

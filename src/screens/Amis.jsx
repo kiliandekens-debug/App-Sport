@@ -161,7 +161,7 @@ function Manage({ st, reload }) {
       ))}
 
       <section className="stack" style={{ gap: 8 }} aria-label="Classement de la semaine">
-        <h2 className="label">Classement de la semaine</h2>
+        <h2 className="sec-title">Classement de la semaine</h2>
         <div className="seg" role="group" aria-label="Critère" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
           {METRICS.map(([k, l]) => <button key={k} className={metric === k ? 'on' : ''} aria-pressed={metric === k} onClick={() => setMetric(k)}>{l}</button>)}
         </div>
@@ -171,7 +171,7 @@ function Manage({ st, reload }) {
               <b className="display" style={{ width: 18, color: i === 0 && x[metric] > 0 ? 'var(--warm)' : undefined }}>{i + 1}</b>
               <Avatar id={x.user} name={x.name} size={32} />
               <span className="grow" style={{ fontWeight: x.mine ? 700 : 600 }}>{x.mine ? 'Toi' : x.name}</span>
-              {x.streak > 1 && <span className="xs" style={{ color: 'var(--accent)', fontWeight: 700 }}>{x.streak} sem.</span>}
+              {x.streak > 1 && <span className="xs" style={{ color: 'var(--accent-text)', fontWeight: 700 }}>{x.streak} sem.</span>}
               <b className="display" style={{ minWidth: 30, textAlign: 'right' }}>{fmt(x[metric])}</b>
             </li>
           ))}
@@ -181,7 +181,7 @@ function Manage({ st, reload }) {
 
       {(friends.friends.length > 0 || friends.outgoing.length > 0) && (
         <section className="stack" style={{ gap: 8 }} aria-label="Mes amis">
-          <h2 className="label">Mes amis</h2>
+          <h2 className="sec-title">Mes amis</h2>
           <div className="list">
             {friends.friends.map((f) => (
               <button key={f.id} onClick={() => friendMenu(f)} style={{ textAlign: 'left', width: '100%', color: 'inherit', background: 'transparent', border: 'none' }}>

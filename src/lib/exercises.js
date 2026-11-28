@@ -38,3 +38,23 @@ export function incrementOf(name) {
 }
 
 export { LIBRARY } from './library.js';
+
+// How an exercise name is shown: Hevy writes « Développé Couché (Haltère) », the library
+// « Développé couché (haltères) ». Display only: the stored name stays the key of the history.
+const KEEP = /^(EZ|JM|RDL|T|V|W|Y|Smith|Arnold|Scott|Larsen|Pallof|Zottman|Jefferson|Kelso|Meadows|Pendlay|Seal|Spider|Yates|Bayesian)$/;
+export function exLabel(name) {
+  if (!name) return name;
+  const words = name.split(' ');
+  const caps = words.slice(1).filter((w) => /^\(?[A-ZÀ-Ý][a-zà-ÿ]/.test(w)).length;
+  if (caps < 1) return name;
+  return words.map((w, i) => {
+    if (i === 0) return w;
+    const m = w.match(/^(\(?)([^()]+?)(\)?[.,]?)$/);
+    if (!m) return w;
+    const [, a, core, z] = m;
+    if (KEEP.test(core) || /^[A-Z0-9-]{2,}$/.test(core)) return w;
+    let c = core.toLowerCase();
+    if (a === '(' && c === 'haltère') c = 'haltères';
+    return a + c + z;
+  }).join(' ');
+}

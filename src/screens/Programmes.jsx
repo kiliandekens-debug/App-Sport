@@ -83,7 +83,7 @@ export default function Programmes() {
               <button onClick={() => setOpen(shown ? null : p.id)} aria-expanded={shown} style={{ textAlign: 'left', background: 'none', border: 'none', color: 'inherit', padding: 0 }}>
                 <span className="between" style={{ alignItems: 'flex-start', gap: 8 }}>
                   <span className="stack" style={{ gap: 3 }}>
-                    <span className="xs" style={{ fontWeight: 700, color: 'var(--accent)' }}>{on ? 'TON PROGRAMME · ' : ''}{p.short.toUpperCase()}</span>
+                    <span className="xs" style={{ fontWeight: 700, color: 'var(--accent-text)' }}>{on ? 'Ton programme · ' : ''}{p.short}</span>
                     <span className="display" style={{ fontSize: 20 }}>{p.title}</span>
                     <span className="small muted" style={{ lineHeight: 1.45 }}>{p.about}</span>
                     <span className="xs muted">D'après {p.from}</span>

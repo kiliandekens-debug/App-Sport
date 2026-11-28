@@ -4,7 +4,7 @@ import { useData, saveRoutine } from '../data.jsx';
 import { useSession, deloadState, deloadActive, startDeload, stopDeload, deferDeload } from '../session.jsx';
 import { deloadAdvice } from '../lib/coach.js';
 import { fmtDay, fmtKg, sameDay, startOfWeek, titleKey } from '../lib/stats.js';
-import { muscleOf } from '../lib/exercises.js';
+import { muscleOf, exLabel } from '../lib/exercises.js';
 import { adviceOfDay } from '../lib/programs.js';
 import { routineFromHistory, nextSession } from '../lib/routines.js';
 import { isWalk } from '../lib/treadmill.js';
@@ -121,7 +121,8 @@ export default function Accueil({ user }) {
                 aria-label={`${d.date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric' })} : ${what}`}>
                 <span style={d.today ? { color: 'var(--text)', fontWeight: 800 } : null}>{d.letter}</span>
                 <span className={`dot k-${kind}${d.today ? ' today' : ''}${selDay === i ? ' sel' : ''}`}>
-                  {kind === 'rest' ? <span className="dnum">{d.date.getDate()}</span> : <Icon name={kind === 'gym' || kind === 'pgym' ? 'dumbbell' : 'run'} size={19} width={2.2} />}
+                  <span className="dnum">{d.date.getDate()}</span>
+                  {kind !== 'rest' && <span className="dic"><Icon name={kind === 'gym' || kind === 'pgym' ? 'dumbbell' : 'run'} size={12} width={2.4} /></span>}
                   {badge && <span className={`dot-badge${badge === 'pgym' ? ' b-gym planned' : badge === 'prun' ? ' planned' : ''}`}><Icon name={badge === 'pgym' ? 'dumbbell' : 'run'} size={11} width={2.4} /></span>}
                 </span>
               </button>
@@ -173,7 +174,7 @@ export default function Accueil({ user }) {
               {heroGym.exercises.slice(0, 3).map((e) => (
                 <div key={e.name} className="row" style={{ gap: 10, fontSize: 15 }}>
                   <ExerciseImage name={e.name} size={38} radius={9} />
-                  <span className="grow ellipsis">{e.name}</span>
+                  <span className="grow ellipsis">{exLabel(e.name)}</span>
                   <span className="muted" style={{ fontVariantNumeric: 'tabular-nums' }}>{e.sets.filter((x) => x.type !== 'warmup').length} × {e.target?.reps ?? e.sets[e.sets.length - 1]?.reps ?? '?'}</span>
                 </div>
               ))}
@@ -226,7 +227,7 @@ export default function Accueil({ user }) {
               {r.exercises[0] ? <ExerciseImage name={r.exercises[0].name} size={46} radius={11} /> : <span className="tile-icon k-gym"><Icon name="dumbbell" size={20} /></span>}
               <span className="grow stack" style={{ gap: 2, minWidth: 0 }}>
                 <span className="ellipsis" style={{ fontSize: 16, fontWeight: 650 }}>{r.name}</span>
-                <span className="xs muted ellipsis">{s_(r.exercises.length, 'exercice')} · {r.last ? (sameDay(r.last, today) ? "faite aujourd'hui" : `dernière fois le ${fmtDay(r.last)}`) : 'jamais faite'}</span>
+                <span className="xs muted ellipsis">{s_(r.exercises.length, 'exercice')} · {r.last ? `faite ${ago(r.last)}` : 'jamais faite'}</span>
               </span>
             </Link>
             <button className="play" aria-label={`Démarrer ${r.name}`} disabled={session.active} onClick={() => startRoutine(r)}><Icon name="play" size={17} width={2.5} /></button>
@@ -260,7 +261,7 @@ export default function Accueil({ user }) {
 
       {(weekGym.length > 0 || weekLogs.length > 0) && (
         <div className="section" style={{ paddingTop: 28 }}>
-          <SectionHead title="Ma semaine" action={<Link to="/progres">Progrès<Icon name="chevron" size={15} /></Link>} />
+          <SectionHead title="Cette semaine" action={<Link to="/progres">Progrès<Icon name="chevron" size={15} /></Link>} />
           <StatGrid items={[
             { icon: 'dumbbell', kind: 'gym', value: weekGym.length, label: 'Muscu' },
             { icon: 'run', kind: 'run', value: weekRuns.length, label: weekRuns.length > 1 ? 'Courses' : 'Course' },

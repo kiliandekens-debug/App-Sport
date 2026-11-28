@@ -209,8 +209,8 @@ with sync_playwright() as p:
     pg.goto(BASE + '/'); pg.wait_for_timeout(1200)
     pg.get_by_role('button', name='Démarrer Pecs bibliothèque').click(); pg.wait_for_timeout(800)
     body = pg.locator('main').inner_text()
-    check('Développé Couché (Haltère)' in body, 'library routine name resolved to history name')
-    check('Butterfly (Pec Deck)' in body, 'pec deck resolved to Butterfly history')
+    check(pg.get_by_role('button', name='Options de Développé Couché (Haltère)').count() == 1, 'library routine name resolved to history name')
+    check('Butterfly (pec deck)' in body, 'pec deck resolved to Butterfly history')
     vals = [v.replace(',', '.') for v in pg.locator('main input').evaluate_all('els => els.map(e => e.value)')]
     check('77' in vals or '77.0' in vals, f'coach plan load applied ({vals[:6]})')
     # 1.8.0: automatic warm-up (50 % × 5, 75 % × 3) before the first heavy exercise of the muscle.
@@ -235,7 +235,7 @@ with sync_playwright() as p:
     pg.get_by_role('button', name='Options de Développé Couché (Haltère)').click(); pg.wait_for_timeout(200)
     pg.get_by_role('button', name="Changer d'exercice").click(); pg.wait_for_timeout(200)
     alts = pg.locator('.ex-menu button').all_inner_texts()
-    check(any('Chest Press (Machine)' in t and 'Dernière fois' in t for t in alts), f'similar exercises offered, done ones with last load ({[t.split(chr(10))[0] for t in alts[:4]]})')
+    check(any('Chest press (machine)' in t and 'Dernière fois' in t for t in alts), f'similar exercises offered, done ones with last load ({[t.split(chr(10))[0] for t in alts[:4]]})')
     pg.screenshot(path=f'{SHOTS}/flow-swap.png')
     pg.locator('.ex-menu button', has_text='Chest Press (Machine)').first.click(); pg.wait_for_timeout(400)
     names = pg.locator('section.ex-card').evaluate_all('els => els.map(e => e.getAttribute("aria-label"))')
@@ -312,7 +312,7 @@ with sync_playwright() as p:
     # 1.16.2: Progrès in three blocks, details folded.
     pg.goto(BASE + '/progres'); pg.wait_for_timeout(1200)
     body = pg.locator('main').inner_text()
-    check('Ta semaine' in body and 'Un exercice' in body and 'Tes derniers records' in body, 'progress screen in three blocks')
+    check('Cette semaine' in body and 'Un exercice' in body and 'Tes derniers records' in body, 'progress screen in three blocks')
     check(not re.search(r'\d,\d (épaules|triceps|biceps)', body.lower()), 'muscle sets shown as whole numbers')
     check(pg.locator('.list').last.locator(':scope > div').count() <= 3, 'three latest records by default')
     pg.locator('.metric-pick').select_option('maxKg'); pg.wait_for_timeout(300)
@@ -351,7 +351,7 @@ with sync_playwright() as p:
     # 1.19.0: friends' feed: bravo, comment, accept a request, share a session.
     pg.goto(BASE + '/amis'); pg.wait_for_timeout(1500)
     body = pg.locator('main').inner_text()
-    check('Fractionné 4 × 6 min' in body and 'ALLURE TENUE' in body, "feed shows a friend's run")
+    check('Fractionné 4 × 6 min' in body and 'Allure tenue' in body, "feed shows a friend's run")
     check(pg.locator('nav a[href="/amis"]').count() == 1 and pg.locator('nav a[href="/exercices"]').count() == 0, 'Amis tab replaces Exercices in the tab bar')
     pg.get_by_role('button', name=re.compile('^Bravo')).first.click(); pg.wait_for_timeout(500)
     check(('POST', 'reactions') in writes, 'bravo saved')
