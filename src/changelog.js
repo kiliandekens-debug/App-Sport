@@ -6,6 +6,10 @@ export const BUILT_AT = __APP_BUILT_AT__;
 
 export const CHANGELOG = [
   {
+    version: '1.30.1', date: '2026-11-28', title: 'Petit correctif',
+    items: ['Dates écrites correctement : « Samedi 28 novembre » et non plus « Samedi 28 Novembre », sur l\'accueil, la fiche du jour et les fiches séance et course.'],
+  },
+  {
     version: '1.30.0', date: '2026-11-27', title: 'Nouveau design : Accueil, Profil et Réglages',
     items: [
       'Accueil réorganisé : la semaine, aujourd\'hui, la prochaine séance (bleue pour la muscu, verte pour la course, avec durée, distance et allure), tes routines, des raccourcis et le résumé de ta semaine.',
