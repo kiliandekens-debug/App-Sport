@@ -104,7 +104,7 @@ export default function Accueil({ user }) {
 
   return (
     <main className="screen">
-      <GlassHeader eyebrow={<span style={{ textTransform: 'capitalize' }}>{today.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>} title={`Salut ${firstName(user)}`}
+      <GlassHeader eyebrow={today.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^./, (c) => c.toUpperCase())} title={`Salut ${firstName(user)}`}
         right={<span aria-hidden="true" style={{ color: 'var(--brand)', display: 'flex', opacity: 0.9 }}><KMark size={34} /></span>} />
 
       <div className="pad stack" style={{ paddingTop: 6, gap: 14 }}>

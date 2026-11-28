@@ -34,7 +34,7 @@ export function DayDetail({ d, onRun, onGym, onRunLog, hideRunLink = false, gymP
   const empty = !d.gym.length && !d.runs.length && !(d.plan && !d.past && !hidePlan) && !gymPlan && !covered;
   return (
     <div className="card day-detail" aria-live="polite">
-      <span className="xs muted" style={{ textTransform: 'capitalize', fontWeight: 600 }}>{title}</span>
+      <span className="xs muted" style={{ fontWeight: 600 }}>{title.replace(/^./, (c) => c.toUpperCase())}</span>
       {d.gym.map((w) => {
         const work = w.sets.filter((x) => isWork(x) && isPlausible(x));
         return (
@@ -122,7 +122,7 @@ export function WorkoutSheet({ id, onClose }) {
             <span className="sheet-grip" />
             <div className="row" style={{ alignItems: 'flex-start' }}>
               <div className="grow stack" style={{ gap: 4 }}>
-                <span className="xs muted" style={{ textTransform: 'capitalize', fontWeight: 600 }}>{w.start.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                <span className="xs muted" style={{ fontWeight: 600 }}>{w.start.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).replace(/^./, (c) => c.toUpperCase())}</span>
                 <span className="display">{w.title}</span>
               </div>
               <button className="icon-btn" aria-label="Fermer" onClick={() => onClose()}><Icon name="close" /></button>
@@ -302,7 +302,7 @@ export function RunSheet({ id, onClose }) {
         <span className="sheet-grip" />
         <div className="row" style={{ alignItems: 'flex-start' }}>
           <div className="grow stack" style={{ gap: 4 }}>
-            <span className="xs muted" style={{ textTransform: 'capitalize', fontWeight: 600 }}>{date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, {date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+            <span className="xs muted" style={{ fontWeight: 600 }}>{date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).replace(/^./, (c) => c.toUpperCase())}, {date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
             <span className="display">{logTitle(l)}</span>
           </div>
           <button className="icon-btn" aria-label="Fermer" onClick={onClose}><Icon name="close" /></button>
